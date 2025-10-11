@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { unstable_noStore as noStore } from 'next/cache'
 import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET() {
+  noStore()
+  
   try {
     // Get candidates with vote counts
     const kandidat = await db.kandidat.findMany({
