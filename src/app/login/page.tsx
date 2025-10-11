@@ -47,16 +47,6 @@ export default function SiswaLoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => window.location.href = '/'}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali
-        </Button>
-
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mb-4">
@@ -71,7 +61,7 @@ export default function SiswaLoginPage() {
             E-Voting OSIS SMAN 1 Bantarujeg
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Pemilihan Ketua OSIS 2024
+            Pemilihan Ketua OSIS 2025
           </p>
         </div>
 
@@ -146,17 +136,6 @@ export default function SiswaLoginPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Admin Login Link */}
-        <div className="text-center mt-6">
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = '/login/admin'}
-            className="text-sm w-full border-purple-200 text-purple-600 hover:bg-purple-50"
-          >
-            Login Admin
-          </Button>
-        </div>
       </div>
     </div>
   )

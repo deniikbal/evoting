@@ -130,23 +130,23 @@ export default function PengaturanPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => router.push('/admin/dashboard')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 py-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
+                <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Kembali</span>
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
-                <p className="text-sm text-gray-500">Konfigurasi sistem voting</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Pengaturan</h1>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Konfigurasi sistem voting</p>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>
@@ -159,27 +159,27 @@ export default function PengaturanPage() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {/* Voting Control */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Play className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                 Kontrol Voting
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 Atur status dan waktu voting
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSave} className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
                 {/* Voting Status */}
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className={`w-3 h-3 rounded-full ${pengaturan.voting_aktif === 'true' ? 'bg-green-500' : 'bg-red-500'}`}></div>
                     <div>
-                      <p className="font-medium">Status Voting</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-sm sm:text-base">Status Voting</p>
+                      <p className="text-xs sm:text-sm text-gray-500">
                         {pengaturan.voting_aktif === 'true' 
                           ? 'Voting sedang aktif, siswa dapat memilih' 
                           : 'Voting tidak aktif, siswa tidak dapat memilih'
@@ -191,25 +191,29 @@ export default function PengaturanPage() {
                     type="button"
                     onClick={toggleVoting}
                     variant={pengaturan.voting_aktif === 'true' ? "destructive" : "default"}
+                    size="sm"
+                    className="w-full sm:w-auto px-4"
                   >
                     {pengaturan.voting_aktif === 'true' ? (
                       <>
-                        <Square className="w-4 h-4 mr-2" />
-                        Hentikan
+                        <Square className="w-4 h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Hentikan</span>
+                        <span className="sm:hidden">Stop</span>
                       </>
                     ) : (
                       <>
-                        <Play className="w-4 h-4 mr-2" />
-                        Mulai
+                        <Play className="w-4 h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Mulai</span>
+                        <span className="sm:hidden">Start</span>
                       </>
                     )}
                   </Button>
                 </div>
 
                 {/* Time Settings */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="waktu_mulai">Waktu Mulai Voting</Label>
+                    <Label htmlFor="waktu_mulai" className="text-sm">Waktu Mulai Voting</Label>
                     <Input
                       id="waktu_mulai"
                       type="datetime-local"
@@ -218,10 +222,11 @@ export default function PengaturanPage() {
                         ...prev, 
                         waktu_mulai_voting: e.target.value 
                       }))}
+                      className="text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="waktu_selesai">Waktu Selesai Voting</Label>
+                    <Label htmlFor="waktu_selesai" className="text-sm">Waktu Selesai Voting</Label>
                     <Input
                       id="waktu_selesai"
                       type="datetime-local"
@@ -230,27 +235,29 @@ export default function PengaturanPage() {
                         ...prev, 
                         waktu_selesai_voting: e.target.value 
                       }))}
+                      className="text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={isSaving}>
+                <div className="grid grid-cols-2 sm:flex gap-2">
+                  <Button type="submit" disabled={isSaving} className="w-full">
                     {isSaving ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Menyimpan...
+                        <span className="text-sm">Menyimpan...</span>
                       </>
                     ) : (
                       <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Simpan Pengaturan
+                        <Save className="w-4 h-4 mr-1 sm:mr-2" />
+                        <span className="text-sm">Simpan</span>
                       </>
                     )}
                   </Button>
-                  <Button type="button" variant="outline" onClick={fetchPengaturan}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh
+                  <Button type="button" variant="outline" size="sm" onClick={fetchPengaturan} className="w-full">
+                    <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Refresh</span>
+                    <span className="sm:hidden">⟳</span>
                   </Button>
                 </div>
               </form>
@@ -258,39 +265,45 @@ export default function PengaturanPage() {
           </Card>
 
           {/* Quick Actions */}
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Quick Links */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
                   Aksi Cepat
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start"
+                  size="sm"
+                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
                   onClick={() => router.push('/admin/siswa')}
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  Kelola Siswa
+                  <Users className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Kelola Siswa</span>
+                  <span className="sm:hidden">Siswa</span>
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start"
+                  size="sm"
+                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
                   onClick={() => router.push('/admin/kandidat')}
                 >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Kelola Kandidat
+                  <Shield className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Kelola Kandidat</span>
+                  <span className="sm:hidden">Kandidat</span>
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start"
+                  size="sm"
+                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
                   onClick={() => router.push('/admin/hasil')}
                 >
-                  <Key className="w-4 h-4 mr-2" />
-                  Lihat Hasil
+                  <Key className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Lihat Hasil</span>
+                  <span className="sm:hidden">Hasil</span>
                 </Button>
               </CardContent>
             </Card>
@@ -298,13 +311,13 @@ export default function PengaturanPage() {
             {/* System Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                   Informasi Sistem
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs sm:text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status Saat Ini:</span>
                     <span className={`font-medium ${pengaturan.voting_aktif === 'true' ? 'text-green-600' : 'text-red-600'}`}>

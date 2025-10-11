@@ -123,32 +123,32 @@ export default function VotingPage() {
   // Jika siswa sudah voting, tampilkan ucapan terimakasih
   if (siswa?.sudahMemilih) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 flex items-center justify-center p-3 sm:p-4">
         <div className="w-full max-w-md">
           <Card className="text-center">
-            <CardHeader>
-              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-10 h-10 text-green-600" />
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
               </div>
-              <CardTitle className="text-2xl text-green-600">
+              <CardTitle className="text-xl sm:text-2xl text-green-600">
                 Terima Kasih!
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-700">
+            <CardContent className="space-y-3 sm:space-y-4">
+              <p className="text-sm sm:text-base text-gray-700">
                 Anda telah berhasil menggunakan hak suara Anda dalam Pemilihan Ketua OSIS SMAN 1 Bantarujeg.
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600">
                 Partisipasi Anda sangat berarti untuk kemajuan OSIS kita.
               </p>
               
-              <div className="pt-4">
+              <div className="pt-2 sm:pt-4">
                 <Button 
                   onClick={() => {
                     localStorage.removeItem('siswaSession')
                     router.push('/')
                   }}
-                  className="w-full"
+                  className="w-full h-10 sm:h-11 text-sm sm:text-base"
                 >
                   Kembali ke Halaman Utama
                 </Button>
@@ -161,19 +161,19 @@ export default function VotingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 p-3 sm:p-4">
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Pemilihan Ketua OSIS</h1>
-              <p className="text-gray-600">SMAN 1 Bantarujeg 2024</p>
+      <div className="max-w-6xl mx-auto mb-6 sm:mb-8">
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Pemilihan Ketua OSIS</h1>
+              <p className="text-sm sm:text-base text-gray-600">SMAN 1 Bantarujeg 2025</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Pemilih:</p>
-              <p className="font-semibold">{siswa?.namaLengkap}</p>
-              <p className="text-sm text-gray-600">{siswa?.kelas}</p>
+            <div className="text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-gray-500">Pemilih:</p>
+              <p className="font-semibold text-sm sm:text-base truncate">{siswa?.namaLengkap}</p>
+              <p className="text-xs sm:text-sm text-gray-600">{siswa?.kelas}</p>
             </div>
           </div>
         </div>
@@ -189,13 +189,13 @@ export default function VotingPage() {
 
       {/* Kandidat Cards */}
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-xl font-semibold mb-6 text-center">Pilih Salah Satu Kandidat</h2>
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-center">Pilih Salah Satu Kandidat</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {kandidat.map((k) => (
             <Card key={k.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="text-center">
-                <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full flex items-center justify-center">
+              <CardHeader className="text-center pb-3 sm:pb-6">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full flex items-center justify-center">
                   {k.fotoUrl ? (
                     <img 
                       src={k.fotoUrl} 
@@ -203,25 +203,25 @@ export default function VotingPage() {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <User className="w-12 h-12 text-gray-400" />
+                    <User className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
                   )}
                 </div>
-                <Badge variant="secondary" className="w-fit mx-auto mb-2">
+                <Badge variant="secondary" className="w-fit mx-auto mb-2 text-xs sm:text-sm">
                   Nomor {k.nomorUrut}
                 </Badge>
-                <CardTitle className="text-lg">{k.namaCalon}</CardTitle>
+                <CardTitle className="text-base sm:text-lg">{k.namaCalon}</CardTitle>
               </CardHeader>
               
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4">
                 {/* Visi & Misi Preview */}
-                <div className="text-sm">
+                <div className="text-xs sm:text-sm">
                   <p className="font-semibold mb-1">Visi:</p>
                   <p className="text-gray-600 line-clamp-2">
                     {k.visi || 'Belum ada visi'}
                   </p>
                 </div>
 
-                <div className="text-sm">
+                <div className="text-xs sm:text-sm">
                   <p className="font-semibold mb-1">Misi:</p>
                   <p className="text-gray-600 line-clamp-2">
                     {k.misi || 'Belum ada misi'}
@@ -231,26 +231,27 @@ export default function VotingPage() {
                 {/* View Details Button */}
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Lihat Visi & Misi
+                    <Button variant="outline" className="w-full h-9 sm:h-10 text-sm">
+                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Lihat Visi & Misi</span>
+                      <span className="sm:hidden">Detail</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Badge variant="secondary">Nomor {k.nomorUrut}</Badge>
-                        {k.namaCalon}
+                      <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-left">
+                        <Badge variant="secondary" className="w-fit text-xs sm:text-sm">Nomor {k.nomorUrut}</Badge>
+                        <span className="text-base sm:text-lg">{k.namaCalon}</span>
                       </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
-                        <h4 className="font-semibold mb-2">Visi</h4>
-                        <p className="text-gray-600">{k.visi || 'Belum ada visi'}</p>
+                        <h4 className="font-semibold mb-2 text-sm sm:text-base">Visi</h4>
+                        <p className="text-gray-600 text-xs sm:text-sm">{k.visi || 'Belum ada visi'}</p>
                       </div>
                       <div>
-                        <h4 className="font-semibold mb-2">Misi</h4>
-                        <p className="text-gray-600">{k.misi || 'Belum ada misi'}</p>
+                        <h4 className="font-semibold mb-2 text-sm sm:text-base">Misi</h4>
+                        <p className="text-gray-600 text-xs sm:text-sm">{k.misi || 'Belum ada misi'}</p>
                       </div>
                     </div>
                   </DialogContent>
@@ -259,10 +260,10 @@ export default function VotingPage() {
                 {/* Vote Button */}
                 <Button 
                   onClick={() => confirmVote(k)}
-                  className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                  className="w-full h-10 sm:h-11 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-sm sm:text-base font-semibold"
                   disabled={isVoting}
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
                   PILIH
                 </Button>
               </CardContent>
@@ -273,40 +274,40 @@ export default function VotingPage() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Konfirmasi Pilihan</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Konfirmasi Pilihan</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Apakah Anda yakin ingin memilih kandidat ini?
             </DialogDescription>
           </DialogHeader>
           
           {selectedKandidat && (
-            <div className="text-center py-4">
-              <Badge variant="secondary" className="mb-2">
+            <div className="text-center py-3 sm:py-4">
+              <Badge variant="secondary" className="mb-2 text-xs sm:text-sm">
                 Nomor {selectedKandidat.nomorUrut}
               </Badge>
-              <h3 className="text-lg font-semibold">{selectedKandidat.namaCalon}</h3>
+              <h3 className="text-base sm:text-lg font-semibold">{selectedKandidat.namaCalon}</h3>
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button 
               variant="outline" 
               onClick={() => setShowConfirmDialog(false)}
-              className="flex-1"
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base"
               disabled={isVoting}
             >
               Batal
             </Button>
             <Button 
               onClick={handleVote}
-              className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
               disabled={isVoting}
             >
               {isVoting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
                   Memproses...
                 </>
               ) : (

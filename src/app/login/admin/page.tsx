@@ -45,22 +45,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={() => window.location.href = '/'}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali
-        </Button>
-
         {/* Header */}
         <div className="text-center mb-8">
           <div className="mb-4">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg">
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
               <Shield className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -83,25 +73,27 @@ export default function AdminLoginPage() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username" className="text-orange-700">Username</Label>
                 <Input
                   id="username"
                   type="text"
                   placeholder="Masukkan username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  className="border-orange-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-orange-700">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="Masukkan password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="border-orange-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
@@ -114,7 +106,7 @@ export default function AdminLoginPage() {
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700" 
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 focus:ring-orange-500" 
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -130,16 +122,7 @@ export default function AdminLoginPage() {
           </CardContent>
         </Card>
 
-        {/* Student Login Link */}
-        <div className="text-center mt-6">
-          <Button 
-            variant="outline" 
-            onClick={() => window.location.href = '/login'}
-            className="text-sm w-full border-orange-200 text-orange-600 hover:bg-orange-50"
-          >
-            Login Siswa
-          </Button>
-        </div>
+
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,11 +21,46 @@ import {
 } from 'lucide-react'
 
 export default function LandingPage() {
-  const [stats] = useState({
-    totalSiswa: 150,
-    totalKandidat: 3,
-    votingAktif: true
+  const [stats, setStats] = useState({
+    totalSiswa: 0,
+    totalKandidat: 0,
+    votingAktif: false
   })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  const fetchStats = async () => {
+    try {
+      const [statistikResponse, kandidatResponse] = await Promise.all([
+        fetch('/api/admin/statistik'),
+        fetch('/api/kandidat')
+      ])
+
+      if (statistikResponse.ok) {
+        const statistikData = await statistikResponse.json()
+        setStats(prev => ({
+          ...prev,
+          totalSiswa: statistikData.totalSiswa,
+          votingAktif: statistikData.votingAktif
+        }))
+      }
+
+      if (kandidatResponse.ok) {
+        const kandidatData = await kandidatResponse.json()
+        setStats(prev => ({
+          ...prev,
+          totalKandidat: kandidatData.length
+        }))
+      }
+    } catch (err) {
+      console.error('Error fetching stats:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50">
@@ -37,16 +72,13 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
                 <Vote className="w-4 h-4 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-gray-800">E-Voting OSIS</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-800">E-Voting OSIS</h1>
             </div>
-            <nav className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => window.location.href = '/login'}>
-                <User className="w-4 h-4 mr-2" />
-                Login Siswa
-              </Button>
-              <Button onClick={() => window.location.href = '/login/admin'}>
-                <Shield className="w-4 h-4 mr-2" />
-                Admin
+            <nav className="flex items-center gap-2 sm:gap-4">
+              <Button size="sm" onClick={() => window.location.href = '/login'} className="text-xs sm:text-sm px-2 sm:px-4">
+                <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Login Siswa</span>
+                <span className="sm:hidden">Login</span>
               </Button>
             </nav>
           </div>
@@ -54,11 +86,11 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
+      <section className="py-12 sm:py-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <div className="mb-8">
             <Badge className="mb-4 bg-gradient-to-r from-orange-500 to-pink-500">
-              Pemilihan 2024
+              Pemilihan 2025
             </Badge>
             <h1 className="text-5xl font-bold text-gray-800 mb-6">
               E-Voting OSIS
@@ -68,7 +100,7 @@ export default function LandingPage() {
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Sistem pemilihan elektronik yang modern, aman, dan transparan untuk 
-              memilih Ketua OSIS periode 2024/2025
+              memilih Ketua OSIS periode 2025/2026
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -80,28 +112,20 @@ export default function LandingPage() {
                 Login & Voting
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                onClick={() => window.location.href = '/login/admin'}
-              >
-                <Shield className="w-5 h-5 mr-2" />
-                Panel Admin
-              </Button>
             </div>
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 px-4 bg-white/50">
+      <section className="py-8 sm:py-12 px-4 bg-white/50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center">
               <CardHeader>
                 <Users className="w-12 h-12 mx-auto text-orange-500 mb-4" />
                 <CardTitle className="text-3xl font-bold text-gray-800">
-                  {stats.totalSiswa}+
+                  {isLoading ? '...' : stats.totalSiswa}
                 </CardTitle>
                 <CardDescription>Siswa Terdaftar</CardDescription>
               </CardHeader>
@@ -111,7 +135,7 @@ export default function LandingPage() {
               <CardHeader>
                 <Trophy className="w-12 h-12 mx-auto text-pink-500 mb-4" />
                 <CardTitle className="text-3xl font-bold text-gray-800">
-                  {stats.totalKandidat}
+                  {isLoading ? '...' : stats.totalKandidat}
                 </CardTitle>
                 <CardDescription>Kandidat Berkualitas</CardDescription>
               </CardHeader>
@@ -121,7 +145,7 @@ export default function LandingPage() {
               <CardHeader>
                 <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
                 <CardTitle className="text-3xl font-bold text-gray-800">
-                  {stats.votingAktif ? 'Aktif' : 'Non-Aktif'}
+                  {isLoading ? '...' : (stats.votingAktif ? 'Aktif' : 'Non-Aktif')}
                 </CardTitle>
                 <CardDescription>Status Voting</CardDescription>
               </CardHeader>
@@ -261,14 +285,6 @@ export default function LandingPage() {
                     Login Siswa
                   </button>
                 </li>
-                <li>
-                  <button 
-                    onClick={() => window.location.href = '/login/admin'}
-                    className="hover:text-white transition-colors"
-                  >
-                    Login Admin
-                  </button>
-                </li>
               </ul>
             </div>
             
@@ -276,13 +292,13 @@ export default function LandingPage() {
               <h4 className="text-lg font-semibold mb-4">Kontak</h4>
               <p className="text-gray-400">
                 SMAN 1 Bantarujeg<br />
-                Panitia Pemilihan OSIS 2024
+                Panitia Pemilihan OSIS 2025/2026
               </p>
             </div>
           </div>
           
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 E-Voting OSIS SMAN 1 Bantarujeg. All rights reserved.</p>
+            <p>&copy; 2025 E-Voting OSIS SMAN 1 Bantarujeg. All rights reserved.</p>
           </div>
         </div>
       </footer>
