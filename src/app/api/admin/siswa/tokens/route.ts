@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import * as XLSX from 'xlsx'
 
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
