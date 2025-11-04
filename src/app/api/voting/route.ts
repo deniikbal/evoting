@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { siswa, kandidat } from '@/lib/schema'
+import { eq, sql } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
@@ -16,37 +17,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Gunakan transaksi untuk memastikan integritas data
-    const result = await db.$transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // 1. Cek apakah siswa sudah memilih
-      const siswa = await tx.siswa.findUnique({
-        where: { id: siswaId }
-      })
+      const [siswaData] = await tx.select().from(siswa).where(eq(siswa.id, siswaId)).limit(1)
 
-      if (!siswa) {
+      if (!siswaData) {
         throw new Error('Siswa tidak ditemukan')
       }
 
-      if (siswa.sudahMemilih) {
+      if (siswaData.sudahMemilih) {
         throw new Error('Siswa sudah melakukan voting')
       }
 
       // 2. Tambah jumlah suara kandidat
-      const updatedKandidat = await tx.kandidat.update({
-        where: { id: kandidatId },
-        data: {
-          jumlahSuara: {
-            increment: 1
-          }
-        }
-      })
+      const [updatedKandidat] = await tx.update(kandidat)
+        .set({ jumlahSuara: sql`${kandidat.jumlahSuara} + 1` })
+        .where(eq(kandidat.id, kandidatId))
+        .returning()
 
       // 3. Update status siswa sudah memilih
-      await tx.siswa.update({
-        where: { id: siswaId },
-        data: {
-          sudahMemilih: true
-        }
-      })
+      await tx.update(siswa)
+        .set({ sudahMemilih: true })
+        .where(eq(siswa.id, siswaId))
 
       return updatedKandidat
     })

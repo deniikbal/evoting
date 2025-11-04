@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { siswa, pengaturan } from '@/lib/schema'
+import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
@@ -17,11 +18,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Cari siswa berdasarkan NIS
-    const siswa = await db.siswa.findUnique({
-      where: { nis }
-    })
+    const [siswaData] = await db.select().from(siswa).where(eq(siswa.nis, nis)).limit(1)
 
-    if (!siswa) {
+    if (!siswaData) {
       return NextResponse.json(
         { message: 'NIS tidak ditemukan' },
         { status: 404 }
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifikasi token
-    const isTokenValid = await bcrypt.compare(token, siswa.token)
+    const isTokenValid = await bcrypt.compare(token, siswaData.token)
     
     if (!isTokenValid) {
       return NextResponse.json(
@@ -39,9 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Cek apakah voting sedang aktif
-    const votingAktif = await db.pengaturan.findUnique({
-      where: { namaPengaturan: 'voting_aktif' }
-    })
+    const [votingAktif] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, 'voting_aktif')).limit(1)
 
     if (!votingAktif || votingAktif.nilai !== 'true') {
       return NextResponse.json(
@@ -51,11 +48,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Login berhasil, kembalikan data siswa (tanpa token)
-    const { token: _, ...siswaData } = siswa
+    const { token: _, ...siswaResponse } = siswaData
     
     return NextResponse.json({
-      message: siswa.sudahMemilih ? 'Login berhasil - Anda sudah voting' : 'Login berhasil',
-      siswa: siswaData
+      message: siswaData.sudahMemilih ? 'Login berhasil - Anda sudah voting' : 'Login berhasil',
+      siswa: siswaResponse
     })
 
   } catch (error) {

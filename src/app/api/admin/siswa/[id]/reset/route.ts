@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { siswa } from '@/lib/schema'
+import { eq } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -19,9 +21,7 @@ export async function POST(
     }
 
     // Check if student exists
-    const existingSiswa = await db.siswa.findUnique({
-      where: { id }
-    })
+    const [existingSiswa] = await db.select().from(siswa).where(eq(siswa.id, id)).limit(1)
 
     if (!existingSiswa) {
       return NextResponse.json(
@@ -31,12 +31,9 @@ export async function POST(
     }
 
     // Reset voting status
-    await db.siswa.update({
-      where: { id },
-      data: {
-        sudahMemilih: false
-      }
-    })
+    await db.update(siswa)
+      .set({ sudahMemilih: false })
+      .where(eq(siswa.id, id))
 
     return NextResponse.json({
       message: 'Status pemilihan berhasil direset'

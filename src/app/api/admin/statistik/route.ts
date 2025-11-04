@@ -1,30 +1,23 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { siswa, pengaturan } from '@/lib/schema'
+import { eq, count } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
     // Get total siswa
-    const totalSiswa = await db.siswa.count()
+    const [{ total: totalSiswa }] = await db.select({ total: count() }).from(siswa)
 
     // Get siswa yang sudah memilih
-    const sudahMemilih = await db.siswa.count({
-      where: {
-        sudahMemilih: true
-      }
-    })
+    const [{ total: sudahMemilih }] = await db.select({ total: count() }).from(siswa).where(eq(siswa.sudahMemilih, true))
 
     // Get siswa yang belum memilih
     const belumMemilih = totalSiswa - sudahMemilih
 
     // Get voting status
-    const votingAktifSetting = await db.pengaturan.findUnique({
-      where: {
-        namaPengaturan: 'voting_aktif'
-      }
-    })
+    const [votingAktifSetting] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, 'voting_aktif')).limit(1)
 
     const votingAktif = votingAktifSetting?.nilai === 'true'
 

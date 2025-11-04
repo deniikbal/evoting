@@ -1,27 +1,25 @@
-import { PrismaClient } from '@prisma/client'
-import { PrismaNeon } from '@prisma/adapter-neon'
+import { drizzle } from 'drizzle-orm/neon-serverless'
 import { Pool } from '@neondatabase/serverless'
+import * as schema from './schema'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+const globalForDb = globalThis as unknown as {
+  pool: Pool | undefined
 }
 
-function createPrismaClient() {
+function createDbConnection() {
   const connectionString = process.env.DATABASE_URL
 
   if (!connectionString) {
     throw new Error('DATABASE_URL environment variable is not set')
   }
 
-  const pool = new Pool({ connectionString })
-  const adapter = new PrismaNeon(pool)
+  const pool = globalForDb.pool ?? new Pool({ connectionString })
+  
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.pool = pool
+  }
 
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query'] : [],
-  })
+  return drizzle(pool, { schema })
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+export const db = createDbConnection()

@@ -1,29 +1,22 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import bcrypt from 'bcryptjs'
+import { siswa } from '@/lib/schema'
+import { asc } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const siswa = await db.siswa.findMany({
-      select: {
-        id: true,
-        nis: true,
-        namaLengkap: true,
-        kelas: true,
-        token: true
-      },
-      orderBy: [
-        { kelas: 'asc' },
-        { namaLengkap: 'asc' }
-      ]
-    })
+    const allSiswa = await db.select({
+      nis: siswa.nis,
+      namaLengkap: siswa.namaLengkap,
+      kelas: siswa.kelas,
+      plainToken: siswa.plainToken
+    }).from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
 
     // If no students, return empty Excel file
-    if (siswa.length === 0) {
+    if (allSiswa.length === 0) {
       const worksheet = XLSX.utils.json_to_sheet([])
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Tokens Siswa')
@@ -41,36 +34,21 @@ export async function GET() {
       })
     }
 
-    // Generate simple tokens for export (6 character alphanumeric)
-    const siswaWithTokens = []
-    
-    for (const s of siswa) {
-      // Generate a new simple token for export
-      const exportToken = Math.random().toString(36).substring(2, 8).toUpperCase()
-      
-      // Update the student's token to this new one
-      await db.siswa.update({
-        where: { id: s.id },
-        data: { 
-          token: await bcrypt.hash(exportToken, 10)
-        }
-      })
-      
-      siswaWithTokens.push({
-        nis: s.nis,
-        namaLengkap: s.namaLengkap,
-        kelas: s.kelas,
-        token: exportToken
-      })
-    }
-
-    // Generate Excel file
-    const worksheet = XLSX.utils.json_to_sheet(siswaWithTokens.map(s => ({
+    // Generate Excel file with plain tokens
+    const worksheet = XLSX.utils.json_to_sheet(allSiswa.map(s => ({
       'NIS': s.nis,
       'Nama Lengkap': s.namaLengkap,
       'Kelas': s.kelas,
-      'Token': s.token
+      'Token': s.plainToken
     })))
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, // NIS
+      { wch: 30 }, // Nama Lengkap
+      { wch: 15 }, // Kelas
+      { wch: 12 }  // Token
+    ]
 
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Tokens Siswa')

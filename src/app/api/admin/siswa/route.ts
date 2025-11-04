@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { siswa } from '@/lib/schema'
+import { eq, asc } from 'drizzle-orm'
+import bcrypt from 'bcryptjs'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const siswa = await db.siswa.findMany({
-      orderBy: [
-        { kelas: 'asc' },
-        { namaLengkap: 'asc' }
-      ]
-    })
+    const allSiswa = await db.select().from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
 
-    return NextResponse.json(siswa)
+    return NextResponse.json(allSiswa)
   } catch (error) {
     console.error('Error fetching siswa:', error)
     return NextResponse.json(
@@ -25,7 +22,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { nis, namaLengkap, kelas } = await request.json()
+    const { nis, namaLengkap, kelas, classroomId } = await request.json()
 
     if (!nis || !namaLengkap || !kelas) {
       return NextResponse.json(
@@ -35,9 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if NIS already exists
-    const existingSiswa = await db.siswa.findUnique({
-      where: { nis }
-    })
+    const [existingSiswa] = await db.select().from(siswa).where(eq(siswa.nis, nis)).limit(1)
 
     if (existingSiswa) {
       return NextResponse.json(
@@ -46,17 +41,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate random token
-    const token = Math.random().toString(36).substring(2, 8)
+    // Generate random token (plain for students to see)
+    const plainToken = Math.random().toString(36).substring(2, 8).toUpperCase()
+    // Hash token for security
+    const hashedToken = await bcrypt.hash(plainToken, 10)
     
-    const newSiswa = await db.siswa.create({
-      data: {
-        nis,
-        namaLengkap,
-        kelas,
-        token
-      }
-    })
+    const [newSiswa] = await db.insert(siswa).values({
+      nis,
+      namaLengkap,
+      kelas,
+      classroomId: classroomId ? parseInt(classroomId) : null,
+      token: hashedToken,
+      plainToken
+    }).returning()
 
     // Return student data without token
     const { token: _, ...siswaData } = newSiswa

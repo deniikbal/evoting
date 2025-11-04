@@ -18,11 +18,14 @@ interface QuickResultsProps {
 }
 
 export default function QuickResults({ kandidat, sudahMemilih, votingAktif }: QuickResultsProps) {
+  // Prevent rendering candidate data if voting is active (double protection)
+  const displayKandidat = votingAktif ? [] : kandidat
+
   return (
-    <Card>
+    <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl">Hasil Sementara</CardTitle>
-        <CardDescription className="text-sm">
+        <CardTitle className="text-lg sm:text-xl text-slate-800">Hasil Sementara</CardTitle>
+        <CardDescription className="text-sm text-slate-600">
           {votingAktif 
             ? "Hasil akan ditampilkan setelah voting selesai"
             : "Perolehan suara sementara untuk setiap kandidat"
@@ -32,37 +35,37 @@ export default function QuickResults({ kandidat, sudahMemilih, votingAktif }: Qu
       <CardContent>
         {votingAktif ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <Lock className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+              <Lock className="w-8 h-8 text-slate-400" />
             </div>
-            <p className="text-gray-700 font-medium mb-2">Hasil Disembunyikan</p>
-            <p className="text-sm text-gray-500">
+            <p className="font-medium mb-2 text-slate-800">Hasil Disembunyikan</p>
+            <p className="text-sm text-slate-600">
               Voting sedang berlangsung. Nonaktifkan voting untuk melihat hasil.
             </p>
           </div>
-        ) : kandidat.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">Belum ada kandidat</p>
+        ) : displayKandidat.length === 0 ? (
+          <p className="text-center text-slate-500 py-8">Belum ada kandidat</p>
         ) : (
           <div className="space-y-3 sm:space-y-4">
-            {kandidat.map((k) => {
+            {displayKandidat.map((k) => {
               const persentase = sudahMemilih > 0 
                 ? Math.round((k.jumlahSuara / sudahMemilih) * 100)
                 : 0
               
               return (
-                <div key={k.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div key={k.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-sm bg-slate-50 border border-slate-200">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <Badge variant="secondary" className="text-xs">No. {k.nomorUrut}</Badge>
-                    <span className="font-medium text-sm sm:text-base truncate">{k.namaCalon}</span>
+                    <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-200">No. {k.nomorUrut}</Badge>
+                    <span className="font-medium text-sm sm:text-base truncate text-slate-800">{k.namaCalon}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <div className="text-left sm:text-right">
-                      <span className="font-bold text-sm sm:text-base">{k.jumlahSuara} suara</span>
-                      <span className="text-xs sm:text-sm text-gray-500 sm:ml-2 block sm:inline">({persentase}%)</span>
+                      <span className="font-bold text-sm sm:text-base text-slate-900">{k.jumlahSuara} suara</span>
+                      <span className="text-xs sm:text-sm text-slate-500 sm:ml-2 block sm:inline">({persentase}%)</span>
                     </div>
-                    <div className="w-full sm:w-24 bg-gray-200 rounded-full h-2 sm:h-2">
+                    <div className="w-full sm:w-24 bg-slate-200 rounded-full h-2 sm:h-2">
                       <div 
-                        className="bg-gradient-to-r from-orange-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-indigo-400 to-indigo-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${persentase}%` }}
                       ></div>
                     </div>

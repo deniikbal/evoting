@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardHeader from '@/components/admin/DashboardHeader'
 import StatistikCards from '@/components/admin/StatistikCards'
-import VotingControl from '@/components/admin/VotingControl'
-import NavigationCards from '@/components/admin/NavigationCards'
 import QuickResults from '@/components/admin/QuickResults'
 
 interface Statistik {
@@ -37,7 +35,6 @@ export default function DashboardPage() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isTogglingVoting, setIsTogglingVoting] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -51,9 +48,15 @@ export default function DashboardPage() {
     const session = JSON.parse(sessionData)
     setAdmin(session)
 
-    // Fetch data
+    // Fetch statistik first
     fetchStatistik()
-    fetchKandidat()
+
+    // Auto refresh every 5 seconds to catch voting status changes
+    const interval = setInterval(() => {
+      fetchStatistik()
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [router])
 
   const fetchStatistik = async () => {
@@ -62,9 +65,19 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setStatistik(data)
+        
+        // Only fetch kandidat if voting is NOT active
+        if (!data.votingAktif) {
+          fetchKandidat()
+        } else {
+          // Clear kandidat data if voting is active
+          setKandidat([])
+          setIsLoading(false)
+        }
       }
     } catch (err) {
       console.error('Error fetching statistik:', err)
+      setIsLoading(false)
     }
   }
 
@@ -82,66 +95,30 @@ export default function DashboardPage() {
     }
   }
 
-  const toggleVoting = async () => {
-    setIsTogglingVoting(true)
-    try {
-      const response = await fetch('/api/admin/voting-toggle', {
-        method: 'POST',
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setStatistik(prev => ({ ...prev, votingAktif: data.votingAktif }))
-      }
-    } catch (err) {
-      console.error('Error toggling voting:', err)
-    } finally {
-      setIsTogglingVoting(false)
-    }
-  }
-
   const handleLogout = () => {
     localStorage.removeItem('adminSession')
     router.push('/login/admin')
   }
 
-  const persentaseMemilih = statistik.totalSiswa > 0 
-    ? Math.round((statistik.sudahMemilih / statistik.totalSiswa) * 100)
-    : 0
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-2">Memuat data...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-blue-900">Memuat data...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
       <DashboardHeader admin={admin} onLogout={handleLogout} />
       
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Voting Control */}
-        <div className="mb-8">
-          <VotingControl
-            votingAktif={statistik.votingAktif}
-            isTogglingVoting={isTogglingVoting}
-            onToggleVoting={toggleVoting}
-          />
-        </div>
-
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Statistik Cards */}
         <div className="mb-8">
           <StatistikCards statistik={statistik} />
-        </div>
-
-        {/* Navigation Cards */}
-        <div className="mb-8">
-          <NavigationCards />
         </div>
 
         {/* Quick Results */}

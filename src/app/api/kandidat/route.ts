@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { kandidat } from '@/lib/schema'
+import { asc } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const kandidat = await db.kandidat.findMany({
-      orderBy: [
-        { nomorUrut: 'asc' }
-      ]
-    })
+    const allKandidat = await db.select().from(kandidat).orderBy(asc(kandidat.nomorUrut))
 
-    return NextResponse.json(kandidat)
+    return NextResponse.json(allKandidat)
   } catch (error) {
     console.error('Error fetching kandidat:', error)
     return NextResponse.json(

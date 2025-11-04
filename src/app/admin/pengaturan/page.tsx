@@ -5,13 +5,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { 
-  Settings, ArrowLeft, RefreshCw, Save, Clock, Play, Square,
-  Users, Key, Shield
+  RefreshCw, Save, Play, Square, AlertTriangle
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import DashboardHeader from '@/components/admin/DashboardHeader'
+
+interface Admin {
+  id: number
+  username: string
+}
 
 interface Pengaturan {
   voting_aktif: string
@@ -27,8 +39,11 @@ export default function PengaturanPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [votingAction, setVotingAction] = useState<'start' | 'stop'>('start')
+  const [isToggling, setIsToggling] = useState(false)
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [admin, setAdmin] = useState<Admin | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -39,8 +54,15 @@ export default function PengaturanPage() {
       return
     }
 
+    const session = JSON.parse(sessionData)
+    setAdmin(session)
     fetchPengaturan()
   }, [router])
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminSession')
+    router.push('/login/admin')
+  }
 
   const fetchPengaturan = async () => {
     try {
@@ -49,10 +71,10 @@ export default function PengaturanPage() {
         const data = await response.json()
         setPengaturan(data)
       } else {
-        setError('Gagal memuat pengaturan')
+        toast.error('Gagal memuat pengaturan')
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat memuat pengaturan')
+      toast.error('Terjadi kesalahan saat memuat pengaturan')
     } finally {
       setIsLoading(false)
     }
@@ -61,8 +83,6 @@ export default function PengaturanPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
-    setError('')
-    setSuccess('')
 
     try {
       const response = await fetch('/api/admin/pengaturan', {
@@ -76,19 +96,31 @@ export default function PengaturanPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('Pengaturan berhasil disimpan')
+        toast.success('Pengaturan berhasil disimpan')
       } else {
-        setError(data.message || 'Gagal menyimpan pengaturan')
+        toast.error(data.message || 'Gagal menyimpan pengaturan')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const toggleVoting = async () => {
-    const newStatus = pengaturan.voting_aktif === 'true' ? 'false' : 'true'
+  const openConfirmDialog = (action: 'start' | 'stop') => {
+    setVotingAction(action)
+    setConfirmPassword('')
+    setShowConfirmDialog(true)
+  }
+
+  const handleConfirmToggle = async () => {
+    if (confirmPassword !== 'SmansabaHiber2025') {
+      toast.error('Password salah!')
+      return
+    }
+
+    const newStatus = votingAction === 'start' ? 'true' : 'false'
+    setIsToggling(true)
     
     try {
       const response = await fetch('/api/admin/pengaturan', {
@@ -106,62 +138,39 @@ export default function PengaturanPage() {
 
       if (response.ok) {
         setPengaturan(prev => ({ ...prev, voting_aktif: newStatus }))
-        setSuccess(`Voting berhasil ${newStatus === 'true' ? 'diaktifkan' : 'dinonaktifkan'}`)
+        toast.success(`Voting berhasil ${votingAction === 'start' ? 'dimulai' : 'dihentikan'}`)
+        setShowConfirmDialog(false)
+        setConfirmPassword('')
       } else {
-        setError(data.message || 'Gagal mengubah status voting')
+        toast.error(data.message || 'Gagal mengubah status voting')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setIsToggling(false)
     }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2">Memuat pengaturan...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-blue-900">Memuat pengaturan...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 py-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
-                <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Kembali</span>
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Pengaturan</h1>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">Konfigurasi sistem voting</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
+      <DashboardHeader admin={admin} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
 
         <div className="space-y-6">
           {/* Voting Control */}
-          <Card>
+          <Card className="rounded-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -189,7 +198,7 @@ export default function PengaturanPage() {
                   </div>
                   <Button
                     type="button"
-                    onClick={toggleVoting}
+                    onClick={() => openConfirmDialog(pengaturan.voting_aktif === 'true' ? 'stop' : 'start')}
                     variant={pengaturan.voting_aktif === 'true' ? "destructive" : "default"}
                     size="sm"
                     className="w-full sm:w-auto px-4"
@@ -263,85 +272,98 @@ export default function PengaturanPage() {
               </form>
             </CardContent>
           </Card>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Quick Links */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Aksi Cepat
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
-                  onClick={() => router.push('/admin/siswa')}
-                >
-                  <Users className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Kelola Siswa</span>
-                  <span className="sm:hidden">Siswa</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
-                  onClick={() => router.push('/admin/kandidat')}
-                >
-                  <Shield className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Kelola Kandidat</span>
-                  <span className="sm:hidden">Kandidat</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full justify-start text-xs sm:text-sm px-2 h-auto"
-                  onClick={() => router.push('/admin/hasil')}
-                >
-                  <Key className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Lihat Hasil</span>
-                  <span className="sm:hidden">Hasil</span>
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* System Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Informasi Sistem
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status Saat Ini:</span>
-                    <span className={`font-medium ${pengaturan.voting_aktif === 'true' ? 'text-green-600' : 'text-red-600'}`}>
-                      {pengaturan.voting_aktif === 'true' ? 'Aktif' : 'Non-Aktif'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Waktu Server:</span>
-                    <span className="font-medium">
-                      {new Date().toLocaleTimeString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tanggal:</span>
-                    <span className="font-medium">
-                      {new Date().toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </main>
+
+      {/* Confirm Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={(open) => {
+        setShowConfirmDialog(open)
+        if (!open) setConfirmPassword('')
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                votingAction === 'start' ? 'bg-blue-100' : 'bg-red-100'
+              }`}>
+                <AlertTriangle className={`w-6 h-6 ${
+                  votingAction === 'start' ? 'text-blue-600' : 'text-red-600'
+                }`} />
+              </div>
+            </div>
+            <DialogTitle className="text-xl">
+              {votingAction === 'start' ? 'Mulai Voting' : 'Hentikan Voting'}
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              {votingAction === 'start' 
+                ? 'Apakah Anda yakin ingin memulai voting? Siswa akan dapat melakukan pemilihan setelah voting dimulai.'
+                : 'Apakah Anda yakin ingin menghentikan voting? Siswa tidak akan dapat melakukan pemilihan setelah voting dihentikan.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password" className="text-sm font-medium">
+                Masukkan password untuk konfirmasi:
+              </Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="Masukkan password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isToggling) {
+                    handleConfirmToggle()
+                  }
+                }}
+                className="h-10"
+              />
+              <p className="text-xs text-gray-500">Password diperlukan untuk keamanan sistem</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-3 sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConfirmDialog(false)
+                setConfirmPassword('')
+              }}
+              disabled={isToggling}
+              className="flex-1 sm:flex-none"
+            >
+              Batal
+            </Button>
+            <Button
+              variant={votingAction === 'start' ? "default" : "destructive"}
+              onClick={handleConfirmToggle}
+              disabled={isToggling || !confirmPassword}
+              className="flex-1 sm:flex-none"
+            >
+              {isToggling ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  {votingAction === 'start' ? (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Ya, Mulai
+                    </>
+                  ) : (
+                    <>
+                      <Square className="w-4 h-4 mr-2" />
+                      Ya, Hentikan
+                    </>
+                  )}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

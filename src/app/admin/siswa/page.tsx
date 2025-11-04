@@ -7,36 +7,61 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Users, Plus, Download, Upload, Edit, Trash2, RefreshCw, 
   ArrowLeft, Search, Eye, EyeOff, CheckCircle, XCircle, 
-  ChevronLeft, ChevronRight 
+  ChevronLeft, ChevronRight, AlertTriangle, Key, Copy
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import DashboardHeader from '@/components/admin/DashboardHeader'
+import { toast } from 'sonner'
+
+interface Admin {
+  id: number
+  username: string
+}
 
 interface Siswa {
   id: number
   nis: string
   namaLengkap: string
   kelas: string
+  classroomId: number | null
+  plainToken: string
   sudahMemilih: boolean
   createdAt: string
+}
+
+interface Classroom {
+  id: number
+  name: string
+  angkatan: string
 }
 
 export default function SiswaManagementPage() {
   const [siswa, setSiswa] = useState<Siswa[]>([])
   const [filteredSiswa, setFilteredSiswa] = useState<Siswa[]>([])
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showTokenDialog, setShowTokenDialog] = useState(false)
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [admin, setAdmin] = useState<Admin | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
+  
+  // Selection and delete states
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteType, setDeleteType] = useState<'single' | 'bulk'>('single')
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -44,11 +69,12 @@ export default function SiswaManagementPage() {
   
   const router = useRouter()
 
-  // Form state for adding student
+  // Form state for adding/editing student
   const [formData, setFormData] = useState({
     nis: '',
     namaLengkap: '',
-    kelas: ''
+    kelas: '',
+    classroomId: ''
   })
 
   useEffect(() => {
@@ -59,8 +85,16 @@ export default function SiswaManagementPage() {
       return
     }
 
+    const session = JSON.parse(sessionData)
+    setAdmin(session)
     fetchSiswa()
+    fetchClassrooms()
   }, [router])
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminSession')
+    router.push('/login/admin')
+  }
 
   useEffect(() => {
     // Filter students based on search term
@@ -80,20 +114,31 @@ export default function SiswaManagementPage() {
         const data = await response.json()
         setSiswa(data)
       } else {
-        setError('Gagal memuat data siswa')
+        toast.error('Gagal memuat data siswa')
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat memuat data')
+      toast.error('Terjadi kesalahan saat memuat data')
     } finally {
       setIsLoading(false)
     }
   }
 
+  const fetchClassrooms = async () => {
+    try {
+      const response = await fetch('/api/admin/classroom')
+      if (response.ok) {
+        const data = await response.json()
+        setClassrooms(data)
+      }
+    } catch (err) {
+      console.error('Error fetching classrooms:', err)
+    }
+  }
+
   const handleAddSiswa = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
 
+    setIsAdding(true)
     try {
       const response = await fetch('/api/admin/siswa', {
         method: 'POST',
@@ -106,68 +151,257 @@ export default function SiswaManagementPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('Siswa berhasil ditambahkan')
-        setFormData({ nis: '', namaLengkap: '', kelas: '' })
+        toast.success('Siswa berhasil ditambahkan')
+        setFormData({ nis: '', namaLengkap: '', kelas: '', classroomId: '' })
         setShowAddDialog(false)
         fetchSiswa()
       } else {
-        setError(data.message || 'Gagal menambah siswa')
+        toast.error(data.message || 'Gagal menambah siswa')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setIsAdding(false)
     }
   }
 
-  const handleDeleteSiswa = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus siswa ini?')) return
+  const openEditDialog = (siswa: Siswa) => {
+    setSelectedSiswa(siswa)
+    setFormData({
+      nis: siswa.nis,
+      namaLengkap: siswa.namaLengkap,
+      kelas: siswa.kelas,
+      classroomId: siswa.classroomId ? siswa.classroomId.toString() : ''
+    })
+    setShowEditDialog(true)
+  }
 
+  const handleEditSiswa = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!selectedSiswa) return
+
+    setIsEditing(true)
     try {
-      const response = await fetch(`/api/admin/siswa/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/admin/siswa/${selectedSiswa.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        setSuccess('Siswa berhasil dihapus')
+        toast.success('Siswa berhasil diupdate')
+        setFormData({ nis: '', namaLengkap: '', kelas: '', classroomId: '' })
+        setShowEditDialog(false)
+        setSelectedSiswa(null)
         fetchSiswa()
       } else {
-        const data = await response.json()
-        setError(data.message || 'Gagal menghapus siswa')
+        toast.error(data.message || 'Gagal mengupdate siswa')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredSiswa.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentItems = filteredSiswa.slice(startIndex, endIndex)
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(currentItems.map(s => s.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleSelectOne = (id: number, checked: boolean) => {
+    if (checked) {
+      setSelectedIds([...selectedIds, id])
+    } else {
+      setSelectedIds(selectedIds.filter(selectedId => selectedId !== id))
+    }
+  }
+
+  const isAllSelected = currentItems.length > 0 && selectedIds.length === currentItems.length
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < currentItems.length
+
+  // Delete handlers
+  const openDeleteDialog = (id: number) => {
+    setDeleteType('single')
+    setDeleteTarget(id)
+    setShowDeleteDialog(true)
+  }
+
+  const openBulkDeleteDialog = () => {
+    setDeleteType('bulk')
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    try {
+      if (deleteType === 'single' && deleteTarget) {
+        const response = await fetch(`/api/admin/siswa/${deleteTarget}`, {
+          method: 'DELETE',
+        })
+
+        if (response.ok) {
+          toast.success('Siswa berhasil dihapus')
+          fetchSiswa()
+        } else {
+          const data = await response.json()
+          toast.error(data.message || 'Gagal menghapus siswa')
+        }
+      } else if (deleteType === 'bulk') {
+        let successCount = 0
+        let errorCount = 0
+
+        for (const id of selectedIds) {
+          try {
+            const response = await fetch(`/api/admin/siswa/${id}`, {
+              method: 'DELETE',
+            })
+            if (response.ok) {
+              successCount++
+            } else {
+              errorCount++
+            }
+          } catch {
+            errorCount++
+          }
+        }
+
+        if (successCount > 0) {
+          toast.success(`${successCount} siswa berhasil dihapus${errorCount > 0 ? `, ${errorCount} gagal` : ''}`)
+        } else {
+          toast.error('Gagal menghapus siswa')
+        }
+
+        setSelectedIds([])
+        fetchSiswa()
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setShowDeleteDialog(false)
+      setDeleteTarget(null)
     }
   }
 
   const handleResetStatus = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin mereset status pemilihan siswa ini?')) return
-
     try {
       const response = await fetch(`/api/admin/siswa/${id}/reset`, {
         method: 'POST',
       })
 
       if (response.ok) {
-        setSuccess('Status pemilihan berhasil direset')
+        toast.success('Status pemilihan berhasil direset')
         fetchSiswa()
       } else {
         const data = await response.json()
-        setError(data.message || 'Gagal mereset status')
+        toast.error(data.message || 'Gagal mereset status')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    }
+  }
+
+  const handleRegenerateToken = async (studentIds: number[]) => {
+    setRegeneratingIds(prev => [...prev, ...studentIds])
+    
+    try {
+      const response = await fetch('/api/admin/siswa/regenerate-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ studentIds }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(data.message)
+        fetchSiswa()
+      } else {
+        toast.error(data.message || 'Gagal generate ulang token')
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setRegeneratingIds(prev => prev.filter(id => !studentIds.includes(id)))
+    }
+  }
+
+  const handleCopyToken = async (token: string, nama: string) => {
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(token)
+        toast.success(`Token ${nama} berhasil disalin`)
+      } else {
+        // Fallback for non-HTTPS or older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = token
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        try {
+          document.execCommand('copy')
+          textArea.remove()
+          toast.success(`Token ${nama} berhasil disalin`)
+        } catch (err) {
+          textArea.remove()
+          toast.error('Gagal menyalin token. Silakan copy manual.')
+        }
+      }
+    } catch (err) {
+      console.error('Copy failed:', err)
+      toast.error('Gagal menyalin token. Silakan copy manual.')
+    }
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/admin/siswa/template')
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'template-import-siswa.xlsx'
+        a.click()
+        window.URL.revokeObjectURL(url)
+        toast.success('Template berhasil diunduh')
+      } else {
+        toast.error('Gagal mengunduh template')
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan saat mengunduh template')
     }
   }
 
   const handleImportCSV = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
 
     const formData = new FormData(e.currentTarget)
-    const file = formData.get('csvFile') as File
+    const file = formData.get('xlsFile') as File
 
     if (!file) {
-      setError('Pilih file CSV terlebih dahulu')
+      toast.error('Pilih file Excel terlebih dahulu')
       return
     }
 
@@ -180,14 +414,14 @@ export default function SiswaManagementPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess(`Berhasil mengimpor ${data.count} siswa`)
+        toast.success(`Berhasil mengimpor ${data.count} siswa`)
         setShowImportDialog(false)
         fetchSiswa()
       } else {
-        setError(data.message || 'Gagal mengimpor data')
+        toast.error(data.message || 'Gagal mengimpor data')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
     }
   }
 
@@ -202,21 +436,16 @@ export default function SiswaManagementPage() {
         a.download = 'tokens-siswa.xls'
         a.click()
         window.URL.revokeObjectURL(url)
-        setSuccess('Token berhasil diekspor dalam format Excel')
+        toast.success('Token berhasil diekspor dalam format Excel')
       } else {
-        setError('Gagal mengekspor token')
+        toast.error('Gagal mengekspor token')
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat mengekspor token')
+      toast.error('Terjadi kesalahan saat mengekspor token')
     }
   }
 
   // Pagination functions
-  const totalPages = Math.ceil(filteredSiswa.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentItems = filteredSiswa.slice(startIndex, endIndex)
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
@@ -228,136 +457,224 @@ export default function SiswaManagementPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-2">Memuat data siswa...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-blue-900">Memuat data siswa...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 py-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
-                <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Kembali</span>
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">Manajemen Siswa</h1>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">Kelola data siswa pemilih</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
+      <DashboardHeader admin={admin} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
-
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Actions */}
-        <Card className="mb-6">
+        <Card className="mb-6 rounded-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-              Data Siswa
-            </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              <span className="block sm:inline">Total {siswa.length} siswa terdaftar</span>
-              {filteredSiswa.length !== siswa.length && (
-                <span className="text-orange-600 block sm:inline ml-0 sm:ml-2">
-                  ({filteredSiswa.length} hasil filter)
-                </span>
-              )}
-              {filteredSiswa.length > 0 && (
-                <span className="text-gray-600 block sm:inline ml-0 sm:ml-2">
-                  Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredSiswa.length)} dari {filteredSiswa.length}
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Cari NIS, nama, atau kelas..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 text-sm sm:text-base"
-                  />
-                </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Data Siswa
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm mt-1">
+                  <span className="block sm:inline">Total {siswa.length} siswa terdaftar</span>
+                  {filteredSiswa.length !== siswa.length && (
+                    <span className="text-orange-600 block sm:inline ml-0 sm:ml-2">
+                      ({filteredSiswa.length} hasil filter)
+                    </span>
+                  )}
+                  {filteredSiswa.length > 0 && (
+                    <span className="text-gray-600 block sm:inline ml-0 sm:ml-2">
+                      Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredSiswa.length)} dari {filteredSiswa.length}
+                    </span>
+                  )}
+                </CardDescription>
               </div>
-              
-              <div className="grid grid-cols-2 sm:flex gap-2">
+              <div className="flex gap-2">
+                {selectedIds.length > 0 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleRegenerateToken(selectedIds)}
+                      disabled={regeneratingIds.length > 0}
+                    >
+                      <Key className="w-4 h-4 mr-1 sm:mr-2" />
+                      Generate Token ({selectedIds.length})
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={openBulkDeleteDialog}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1 sm:mr-2" />
+                      Hapus {selectedIds.length}
+                    </Button>
+                  </>
+                )}
+                
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="w-full sm:w-auto">
+                    <Button size="sm">
                       <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Tambah</span>
-                      <span className="sm:hidden">Add</span>
+                      Tambah
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md mx-4">
                     <DialogHeader>
-                      <DialogTitle className="text-lg">Tambah Siswa Baru</DialogTitle>
-                      <DialogDescription className="text-sm">
+                      <DialogTitle>Tambah Siswa Baru</DialogTitle>
+                      <DialogDescription>
                         Masukkan data siswa yang akan ditambahkan
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAddSiswa} className="space-y-4">
                       <div>
-                        <Label htmlFor="nis" className="text-sm">NIS</Label>
+                        <Label htmlFor="nis">NIS</Label>
                         <Input
                           id="nis"
                           value={formData.nis}
                           onChange={(e) => setFormData({...formData, nis: e.target.value})}
-                          className="text-sm"
+                          placeholder="Masukkan NIS"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="namaLengkap" className="text-sm">Nama Lengkap</Label>
+                        <Label htmlFor="namaLengkap">Nama Lengkap</Label>
                         <Input
                           id="namaLengkap"
                           value={formData.namaLengkap}
                           onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
-                          className="text-sm"
+                          placeholder="Masukkan nama lengkap"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="kelas" className="text-sm">Kelas</Label>
+                        <Label htmlFor="classroom">Kelas</Label>
+                        <Select
+                          value={formData.classroomId}
+                          onValueChange={(value) => {
+                            const selectedClass = classrooms.find(c => c.id.toString() === value)
+                            setFormData({
+                              ...formData, 
+                              classroomId: value,
+                              kelas: selectedClass ? selectedClass.name : ''
+                            })
+                          }}
+                          required
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih kelas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {classrooms.map((classroom) => (
+                              <SelectItem key={classroom.id} value={classroom.id.toString()}>
+                                {classroom.name} - {classroom.angkatan}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" className="flex-1" disabled={!formData.classroomId || isAdding}>
+                          {isAdding ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Menambahkan...
+                            </>
+                          ) : (
+                            'Tambah'
+                          )}
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)} disabled={isAdding}>
+                          Batal
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Dialog */}
+                <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+                  <DialogContent className="max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle>Edit Siswa</DialogTitle>
+                      <DialogDescription>
+                        Update data siswa
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSiswa} className="space-y-4">
+                      <div>
+                        <Label htmlFor="edit-nis">NIS</Label>
                         <Input
-                          id="kelas"
-                          value={formData.kelas}
-                          onChange={(e) => setFormData({...formData, kelas: e.target.value})}
-                          placeholder="Contoh: XII IPA 1"
-                          className="text-sm"
+                          id="edit-nis"
+                          value={formData.nis}
+                          onChange={(e) => setFormData({...formData, nis: e.target.value})}
+                          placeholder="Masukkan NIS"
                           required
                         />
                       </div>
+                      <div>
+                        <Label htmlFor="edit-namaLengkap">Nama Lengkap</Label>
+                        <Input
+                          id="edit-namaLengkap"
+                          value={formData.namaLengkap}
+                          onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
+                          placeholder="Masukkan nama lengkap"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-classroom">Kelas</Label>
+                        <Select
+                          value={formData.classroomId}
+                          onValueChange={(value) => {
+                            const selectedClass = classrooms.find(c => c.id.toString() === value)
+                            setFormData({
+                              ...formData, 
+                              classroomId: value,
+                              kelas: selectedClass ? selectedClass.name : ''
+                            })
+                          }}
+                          required
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih kelas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {classrooms.map((classroom) => (
+                              <SelectItem key={classroom.id} value={classroom.id.toString()}>
+                                {classroom.name} - {classroom.angkatan}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1">
-                          Tambah
+                        <Button type="submit" size="sm" className="flex-1" disabled={!formData.classroomId || isEditing}>
+                          {isEditing ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Mengupdate...
+                            </>
+                          ) : (
+                            'Update'
+                          )}
                         </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)}>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            setShowEditDialog(false)
+                            setSelectedSiswa(null)
+                            setFormData({ nis: '', namaLengkap: '', kelas: '', classroomId: '' })
+                          }}
+                          disabled={isEditing}
+                        >
                           Batal
                         </Button>
                       </div>
@@ -367,28 +684,49 @@ export default function SiswaManagementPage() {
 
                 <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Button variant="outline" size="sm">
                       <Upload className="w-4 h-4 mr-1 sm:mr-2" />
                       <span className="hidden sm:inline">Import</span>
-                      <span className="sm:hidden">Import</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md mx-4">
                     <DialogHeader>
-                      <DialogTitle className="text-lg">Import Data Siswa</DialogTitle>
-                      <DialogDescription className="text-sm">
-                        Upload file CSV dengan kolom: nis, nama_lengkap, kelas
+                      <DialogTitle>Import Data Siswa</DialogTitle>
+                      <DialogDescription>
+                        Upload file Excel dengan kolom: nis, nama_lengkap, kelas
                       </DialogDescription>
                     </DialogHeader>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-blue-900 mb-2">
+                        Belum punya template? Download template terlebih dahulu
+                      </p>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleDownloadTemplate}
+                        className="w-full"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Template Excel
+                      </Button>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-amber-800">
+                        <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
+                      </p>
+                    </div>
+
                     <form onSubmit={handleImportCSV} className="space-y-4">
                       <div>
-                        <Label htmlFor="csvFile" className="text-sm">File CSV</Label>
+                        <Label htmlFor="xlsFile">File Excel</Label>
                         <Input
-                          id="csvFile"
-                          name="csvFile"
+                          id="xlsFile"
+                          name="xlsFile"
                           type="file"
-                          accept=".csv"
-                          className="text-sm"
+                          accept=".xls,.xlsx"
                           required
                         />
                       </div>
@@ -404,17 +742,30 @@ export default function SiswaManagementPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" size="sm" onClick={handleExportTokens} className="w-full sm:w-auto border-orange-200 text-orange-600 hover:bg-orange-50">
+                <Button variant="outline" size="sm" onClick={handleExportTokens}>
                   <Download className="w-4 h-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Export</span>
-                  <span className="sm:hidden">Exp</span>
                 </Button>
 
-                <Button variant="outline" size="sm" onClick={fetchSiswa} className="w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={fetchSiswa}>
                   <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Refresh</span>
-                  <span className="sm:hidden">⟳</span>
                 </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Cari NIS, nama, atau kelas..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 text-sm sm:text-base"
+                  />
+                </div>
               </div>
             </div>
 
@@ -423,9 +774,17 @@ export default function SiswaManagementPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>NIS</TableHead>
                     <TableHead>Nama Lengkap</TableHead>
                     <TableHead>Kelas</TableHead>
+                    <TableHead>Token</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
@@ -433,16 +792,37 @@ export default function SiswaManagementPage() {
                 <TableBody>
                   {currentItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         {searchTerm ? 'Tidak ada siswa yang cocok dengan pencarian' : 'Belum ada data siswa'}
                       </TableCell>
                     </TableRow>
                   ) : (
                     currentItems.map((s) => (
                       <TableRow key={s.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(s.id)}
+                            onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
+                            aria-label={`Select ${s.namaLengkap}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{s.nis}</TableCell>
                         <TableCell>{s.namaLengkap}</TableCell>
                         <TableCell>{s.kelas}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <code className="px-2 py-1 bg-slate-100 rounded text-xs font-mono">
+                              {s.plainToken}
+                            </code>
+                            <button
+                              onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
+                              className="p-1 rounded hover:bg-slate-100 transition-colors"
+                              title="Copy token"
+                            >
+                              <Copy className="w-3 h-3 text-slate-500" />
+                            </button>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={s.sudahMemilih ? "default" : "secondary"}>
                             {s.sudahMemilih ? (
@@ -459,24 +839,42 @@ export default function SiswaManagementPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            {s.sudahMemilih && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleResetStatus(s.id)}
-                              >
-                                <RefreshCw className="w-3 h-3 mr-1" />
-                                Reset
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDeleteSiswa(s.id)}
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => openEditDialog(s)}
+                              className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 hover:scale-105"
+                              title="Edit siswa"
                             >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRegenerateToken([s.id])}
+                              disabled={regeneratingIds.includes(s.id)}
+                              className="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-700 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                              title="Generate ulang token"
+                            >
+                              {regeneratingIds.includes(s.id) ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Key className="w-4 h-4" />
+                              )}
+                            </button>
+                            {s.sudahMemilih && (
+                              <button
+                                onClick={() => handleResetStatus(s.id)}
+                                className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700 transition-all duration-200 hover:scale-105"
+                                title="Reset status pemilihan"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => openDeleteDialog(s.id)}
+                              className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105"
+                              title="Hapus siswa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -495,37 +893,73 @@ export default function SiswaManagementPage() {
               ) : (
                 currentItems.map((s) => (
                   <div key={s.id} className="bg-white rounded-lg border p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">{s.namaLengkap}</p>
-                        <p className="text-xs text-gray-500">NIS: {s.nis}</p>
-                        <p className="text-xs text-gray-500">Kelas: {s.kelas}</p>
+                    <div className="flex gap-3 items-start">
+                      <Checkbox
+                        checked={selectedIds.includes(s.id)}
+                        onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
+                        aria-label={`Select ${s.namaLengkap}`}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm">{s.namaLengkap}</p>
+                            <p className="text-xs text-gray-500">NIS: {s.nis}</p>
+                            <p className="text-xs text-gray-500">Kelas: {s.kelas}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <code className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">
+                                {s.plainToken}
+                              </code>
+                              <button
+                                onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
+                                className="p-1 rounded hover:bg-slate-100"
+                              >
+                                <Copy className="w-3 h-3 text-slate-500" />
+                              </button>
+                            </div>
+                          </div>
+                          <Badge variant={s.sudahMemilih ? "default" : "secondary"} className="text-xs flex-shrink-0">
+                            {s.sudahMemilih ? 'Sudah' : 'Belum'}
+                          </Badge>
+                        </div>
                       </div>
-                      <Badge variant={s.sudahMemilih ? "default" : "secondary"} className="text-xs">
-                        {s.sudahMemilih ? 'Sudah' : 'Belum'}
-                      </Badge>
                     </div>
-                    <div className="flex gap-2">
-                      {s.sudahMemilih && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleResetStatus(s.id)}
-                          className="text-xs px-2 py-1 h-auto"
-                        >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Reset
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteSiswa(s.id)}
-                        className="text-xs px-2 py-1 h-auto"
+                    <div className="flex gap-2 ml-8 flex-wrap">
+                      <button
+                        onClick={() => openEditDialog(s)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 text-xs font-medium"
                       >
-                        <Trash2 className="w-3 h-3 mr-1" />
+                        <Edit className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleRegenerateToken([s.id])}
+                        disabled={regeneratingIds.includes(s.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-700 transition-all duration-200 text-xs font-medium disabled:opacity-50"
+                      >
+                        {regeneratingIds.includes(s.id) ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Key className="w-3.5 h-3.5" />
+                        )}
+                        Token
+                      </button>
+                      {s.sudahMemilih && (
+                        <button
+                          onClick={() => handleResetStatus(s.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700 transition-all duration-200 text-xs font-medium"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          Reset
+                        </button>
+                      )}
+                      <button
+                        onClick={() => openDeleteDialog(s.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 text-xs font-medium"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                         Hapus
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 ))
@@ -548,7 +982,7 @@ export default function SiswaManagementPage() {
                       <ChevronLeft className="w-3 h-3" />
                     </Button>
                     
-                    <span className="text-xs text-gray-600 px-2">
+                    <span className="text-xs text-muted-foreground px-2">
                       Hal {currentPage} dari {totalPages}
                     </span>
                     
@@ -688,7 +1122,7 @@ export default function SiswaManagementPage() {
                     </Button>
                   </div>
 
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     Halaman {currentPage} dari {totalPages}
                   </div>
                 </div>
@@ -696,6 +1130,43 @@ export default function SiswaManagementPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="max-w-md mx-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                Konfirmasi Hapus
+              </DialogTitle>
+              <DialogDescription>
+                {deleteType === 'single' 
+                  ? 'Apakah Anda yakin ingin menghapus siswa ini? Tindakan ini tidak dapat dibatalkan.'
+                  : `Apakah Anda yakin ingin menghapus ${selectedIds.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-3 sm:gap-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowDeleteDialog(false)}
+                className="flex-1 sm:flex-none"
+              >
+                Batal
+              </Button>
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={handleDeleteConfirm}
+                className="flex-1 sm:flex-none"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Ya, Hapus
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   )

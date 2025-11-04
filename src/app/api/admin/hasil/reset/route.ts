@@ -1,24 +1,16 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { kandidat, siswa } from '@/lib/schema'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function POST() {
   try {
     // Reset jumlah suara semua kandidat menjadi 0
-    await db.kandidat.updateMany({
-      data: {
-        jumlahSuara: 0
-      }
-    })
+    await db.update(kandidat).set({ jumlahSuara: 0 })
 
     // Reset status sudahMemilih semua siswa
-    await db.siswa.updateMany({
-      data: {
-        sudahMemilih: false
-      }
-    })
+    await db.update(siswa).set({ sudahMemilih: false })
 
     return NextResponse.json({
       message: 'Semua hasil voting berhasil direset',

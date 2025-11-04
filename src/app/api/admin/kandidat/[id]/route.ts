@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { kandidat } from '@/lib/schema'
+import { eq, ne, and } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
     const { nomorUrut, namaCalon, visi, misi, fotoUrl } = await request.json()
 
     if (isNaN(id)) {
@@ -27,9 +29,7 @@ export async function PUT(
     }
 
     // Check if candidate exists
-    const existingKandidat = await db.kandidat.findUnique({
-      where: { id }
-    })
+    const [existingKandidat] = await db.select().from(kandidat).where(eq(kandidat.id, id)).limit(1)
 
     if (!existingKandidat) {
       return NextResponse.json(
@@ -39,12 +39,9 @@ export async function PUT(
     }
 
     // Check if nomor urut is used by another candidate
-    const duplicateNomorUrut = await db.kandidat.findFirst({
-      where: {
-        nomorUrut,
-        id: { not: id }
-      }
-    })
+    const [duplicateNomorUrut] = await db.select().from(kandidat)
+      .where(and(eq(kandidat.nomorUrut, nomorUrut), ne(kandidat.id, id)))
+      .limit(1)
 
     if (duplicateNomorUrut) {
       return NextResponse.json(
@@ -53,16 +50,16 @@ export async function PUT(
       )
     }
 
-    const updatedKandidat = await db.kandidat.update({
-      where: { id },
-      data: {
+    const [updatedKandidat] = await db.update(kandidat)
+      .set({
         nomorUrut,
         namaCalon,
         visi: visi || null,
         misi: misi || null,
         fotoUrl: fotoUrl || null
-      }
-    })
+      })
+      .where(eq(kandidat.id, id))
+      .returning()
 
     return NextResponse.json({
       message: 'Kandidat berhasil diperbarui',
@@ -80,10 +77,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id)
+    const { id: idParam } = await params
+    const id = parseInt(idParam)
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -93,9 +91,7 @@ export async function DELETE(
     }
 
     // Check if candidate exists
-    const existingKandidat = await db.kandidat.findUnique({
-      where: { id }
-    })
+    const [existingKandidat] = await db.select().from(kandidat).where(eq(kandidat.id, id)).limit(1)
 
     if (!existingKandidat) {
       return NextResponse.json(
@@ -104,9 +100,7 @@ export async function DELETE(
       )
     }
 
-    await db.kandidat.delete({
-      where: { id }
-    })
+    await db.delete(kandidat).where(eq(kandidat.id, id))
 
     return NextResponse.json({
       message: 'Kandidat berhasil dihapus'

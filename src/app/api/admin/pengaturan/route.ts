@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { pengaturan } from '@/lib/schema'
+import { inArray, eq } from 'drizzle-orm'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const pengaturan = await db.pengaturan.findMany({
-      where: {
-        namaPengaturan: {
-          in: ['voting_aktif', 'waktu_mulai_voting', 'waktu_selesai_voting']
-        }
-      }
-    })
+    const allPengaturan = await db.select().from(pengaturan).where(
+      inArray(pengaturan.namaPengaturan, ['voting_aktif', 'waktu_mulai_voting', 'waktu_selesai_voting'])
+    )
 
     // Convert to key-value object
     const pengaturanObj: any = {
@@ -21,7 +18,7 @@ export async function GET() {
       waktu_selesai_voting: ''
     }
 
-    pengaturan.forEach(p => {
+    allPengaturan.forEach(p => {
       pengaturanObj[p.namaPengaturan] = p.nilai
     })
 
@@ -48,18 +45,18 @@ export async function PUT(request: NextRequest) {
     ]
 
     for (const setting of settings) {
-      await db.pengaturan.upsert({
-        where: {
-          namaPengaturan: setting.namaPengaturan
-        },
-        update: {
-          nilai: setting.nilai
-        },
-        create: {
+      const [existing] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, setting.namaPengaturan)).limit(1)
+      
+      if (existing) {
+        await db.update(pengaturan)
+          .set({ nilai: setting.nilai })
+          .where(eq(pengaturan.namaPengaturan, setting.namaPengaturan))
+      } else {
+        await db.insert(pengaturan).values({
           namaPengaturan: setting.namaPengaturan,
           nilai: setting.nilai
-        }
-      })
+        })
+      }
     }
 
     return NextResponse.json({

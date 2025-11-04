@@ -1,4 +1,7 @@
+import 'dotenv/config'
 import { db } from '../src/lib/db'
+import { admin, pengaturan, kandidat, siswa } from '../src/lib/schema'
+import { eq, count } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 
 async function main() {
@@ -7,16 +10,12 @@ async function main() {
   // Create default admin
   const hashedPassword = await bcrypt.hash('admin123', 10)
   
-  const existingAdmin = await db.admin.findFirst({
-    where: { username: 'admin' }
-  })
+  const [existingAdmin] = await db.select().from(admin).where(eq(admin.username, 'admin')).limit(1)
 
   if (!existingAdmin) {
-    await db.admin.create({
-      data: {
-        username: 'admin',
-        password: hashedPassword
-      }
+    await db.insert(admin).values({
+      username: 'admin',
+      password: hashedPassword
     })
     console.log('✓ Default admin created (username: admin, password: admin123)')
   }
@@ -29,20 +28,16 @@ async function main() {
   ]
 
   for (const setting of settings) {
-    const existingSetting = await db.pengaturan.findUnique({
-      where: { namaPengaturan: setting.namaPengaturan }
-    })
+    const [existingSetting] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, setting.namaPengaturan)).limit(1)
 
     if (!existingSetting) {
-      await db.pengaturan.create({
-        data: setting
-      })
+      await db.insert(pengaturan).values(setting)
       console.log(`✓ Setting ${setting.namaPengaturan} created`)
     }
   }
 
   // Create sample candidates
-  const existingCandidates = await db.kandidat.count()
+  const [{ total: existingCandidates }] = await db.select({ total: count() }).from(kandidat)
   if (existingCandidates === 0) {
     const candidates = [
       {
@@ -65,16 +60,12 @@ async function main() {
       }
     ]
 
-    for (const candidate of candidates) {
-      await db.kandidat.create({
-        data: candidate
-      })
-    }
+    await db.insert(kandidat).values(candidates)
     console.log('✓ Sample candidates created')
   }
 
   // Create sample students
-  const existingStudents = await db.siswa.count()
+  const [{ total: existingStudents }] = await db.select({ total: count() }).from(siswa)
   if (existingStudents === 0) {
     const students = []
     const classes = ['XII IPA 1', 'XII IPA 2', 'XII IPS 1', 'XII IPS 2', 'XI IPA 1', 'XI IPA 2']
@@ -92,11 +83,7 @@ async function main() {
       })
     }
 
-    for (const student of students) {
-      await db.siswa.create({
-        data: student
-      })
-    }
+    await db.insert(siswa).values(students)
     console.log('✓ Sample students created')
   }
 
@@ -104,11 +91,11 @@ async function main() {
 }
 
 main()
-  .then(async () => {
-    await db.$disconnect()
+  .then(() => {
+    console.log('Done!')
+    process.exit(0)
   })
-  .catch(async (e) => {
+  .catch((e) => {
     console.error(e)
-    await db.$disconnect()
     process.exit(1)
   })

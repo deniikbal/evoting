@@ -47,3 +47,5 @@ test
 prompt
 
 server.log
+# uploads
+/public/uploads/

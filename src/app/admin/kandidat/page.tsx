@@ -7,13 +7,20 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { 
-  Trophy, Plus, Edit, Trash2, RefreshCw, ArrowLeft, Upload, User,
-  Eye, EyeOff
+  Trophy, Plus, Edit, Trash2, RefreshCw, User,
+  AlertTriangle, X
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import Image from 'next/image'
+import DashboardHeader from '@/components/admin/DashboardHeader'
+
+interface Admin {
+  id: number
+  username: string
+}
 
 interface Kandidat {
   id: number
@@ -31,9 +38,13 @@ export default function KandidatManagementPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [selectedKandidat, setSelectedKandidat] = useState<Kandidat | null>(null)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [admin, setAdmin] = useState<Admin | null>(null)
   const router = useRouter()
 
   // Form state
@@ -53,8 +64,15 @@ export default function KandidatManagementPage() {
       return
     }
 
+    const session = JSON.parse(sessionData)
+    setAdmin(session)
     fetchKandidat()
   }, [router])
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminSession')
+    router.push('/login/admin')
+  }
 
   const fetchKandidat = async () => {
     try {
@@ -63,21 +81,98 @@ export default function KandidatManagementPage() {
         const data = await response.json()
         setKandidat(data)
       } else {
-        setError('Gagal memuat data kandidat')
+        toast.error('Gagal memuat data kandidat')
       }
     } catch (err) {
-      setError('Terjadi kesalahan saat memuat data')
+      toast.error('Terjadi kesalahan saat memuat data')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleAddKandidat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccess('')
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('Tipe file tidak valid. Gunakan JPG, PNG, atau WebP')
+        return
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ukuran file terlalu besar. Maksimal 5MB')
+        return
+      }
+      setImageFile(file)
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null
 
     try {
+      setIsUploading(true)
+      const formData = new FormData()
+      formData.append('image', imageFile)
+
+      const response = await fetch('/api/admin/kandidat/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        return data.url
+      } else {
+        toast.error(data.message || 'Gagal mengupload gambar')
+        return null
+      }
+    } catch (error) {
+      toast.error('Gagal mengupload gambar')
+      return null
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const formatMisiWithNumbers = (text: string): string => {
+    if (!text) return text
+    
+    const lines = text.split('\n').filter(line => line.trim())
+    return lines.map((line, index) => {
+      // Remove existing numbers/bullets at the start
+      const cleaned = line.replace(/^[\d\.\-\*\)\s]+/, '').trim()
+      return `${index + 1}. ${cleaned}`
+    }).join('\n')
+  }
+
+  const handleMisiChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData({...formData, misi: e.target.value})
+  }
+
+  const handleAddKandidat = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      // Upload image first if exists
+      let imageUrl = formData.fotoUrl
+      if (imageFile) {
+        const uploadedUrl = await uploadImage()
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl
+        }
+      }
+
+      // Format misi with numbering
+      const formattedMisi = formatMisiWithNumbers(formData.misi)
+
       const response = await fetch('/api/admin/kandidat', {
         method: 'POST',
         headers: {
@@ -85,14 +180,16 @@ export default function KandidatManagementPage() {
         },
         body: JSON.stringify({
           ...formData,
-          nomorUrut: parseInt(formData.nomorUrut)
+          nomorUrut: parseInt(formData.nomorUrut),
+          misi: formattedMisi,
+          fotoUrl: imageUrl
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('Kandidat berhasil ditambahkan')
+        toast.success('Kandidat berhasil ditambahkan')
         setFormData({
           nomorUrut: '',
           namaCalon: '',
@@ -100,13 +197,15 @@ export default function KandidatManagementPage() {
           misi: '',
           fotoUrl: ''
         })
+        setImageFile(null)
+        setImagePreview('')
         setShowAddDialog(false)
         fetchKandidat()
       } else {
-        setError(data.message || 'Gagal menambah kandidat')
+        toast.error(data.message || 'Gagal menambah kandidat')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
     }
   }
 
@@ -114,10 +213,19 @@ export default function KandidatManagementPage() {
     e.preventDefault()
     if (!selectedKandidat) return
 
-    setError('')
-    setSuccess('')
-
     try {
+      // Upload image first if exists
+      let imageUrl = formData.fotoUrl
+      if (imageFile) {
+        const uploadedUrl = await uploadImage()
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl
+        }
+      }
+
+      // Format misi with numbering
+      const formattedMisi = formatMisiWithNumbers(formData.misi)
+
       const response = await fetch(`/api/admin/kandidat/${selectedKandidat.id}`, {
         method: 'PUT',
         headers: {
@@ -125,42 +233,54 @@ export default function KandidatManagementPage() {
         },
         body: JSON.stringify({
           ...formData,
-          nomorUrut: parseInt(formData.nomorUrut)
+          nomorUrut: parseInt(formData.nomorUrut),
+          misi: formattedMisi,
+          fotoUrl: imageUrl
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSuccess('Kandidat berhasil diperbarui')
+        toast.success('Kandidat berhasil diperbarui')
         setShowEditDialog(false)
         setSelectedKandidat(null)
+        setImageFile(null)
+        setImagePreview('')
         fetchKandidat()
       } else {
-        setError(data.message || 'Gagal memperbarui kandidat')
+        toast.error(data.message || 'Gagal memperbarui kandidat')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
     }
   }
 
-  const handleDeleteKandidat = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus kandidat ini?')) return
+  const openDeleteDialog = (id: number) => {
+    setDeleteTarget(id)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
 
     try {
-      const response = await fetch(`/api/admin/kandidat/${id}`, {
+      const response = await fetch(`/api/admin/kandidat/${deleteTarget}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
-        setSuccess('Kandidat berhasil dihapus')
+        toast.success('Kandidat berhasil dihapus')
         fetchKandidat()
       } else {
         const data = await response.json()
-        setError(data.message || 'Gagal menghapus kandidat')
+        toast.error(data.message || 'Gagal menghapus kandidat')
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.')
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setShowDeleteDialog(false)
+      setDeleteTarget(null)
     }
   }
 
@@ -173,55 +293,29 @@ export default function KandidatManagementPage() {
       misi: k.misi || '',
       fotoUrl: k.fotoUrl || ''
     })
+    setImageFile(null)
+    setImagePreview(k.fotoUrl || '')
     setShowEditDialog(true)
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2">Memuat data kandidat...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-blue-900">Memuat data kandidat...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 py-4">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
-                <ArrowLeft className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Kembali</span>
-              </Button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Manajemen Kandidat</h1>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">Kelola data kandidat OSIS</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
+      <DashboardHeader admin={admin} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
-
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Actions */}
-        <Card className="mb-6">
+        <Card className="rounded-sm mb-6">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
               <div>
@@ -242,75 +336,92 @@ export default function KandidatManagementPage() {
                       <span className="sm:hidden">Add</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md sm:max-w-2xl mx-4 sm:mx-auto">
+                  <DialogContent className="max-w-lg mx-4">
                     <DialogHeader>
-                      <DialogTitle className="text-lg sm:text-xl">Tambah Kandidat Baru</DialogTitle>
-                      <DialogDescription className="text-sm">
-                        Masukkan data kandidat yang akan ditambahkan
-                      </DialogDescription>
+                      <DialogTitle>Tambah Kandidat Baru</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleAddKandidat} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <form onSubmit={handleAddKandidat} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label htmlFor="nomorUrut" className="text-sm">Nomor Urut</Label>
+                          <Label htmlFor="nomorUrut" className="text-xs">Nomor Urut</Label>
                           <Input
                             id="nomorUrut"
                             type="number"
                             value={formData.nomorUrut}
                             onChange={(e) => setFormData({...formData, nomorUrut: e.target.value})}
-                            className="text-sm"
+                            className="text-sm h-9"
                             required
                           />
                         </div>
                         <div>
-                          <Label htmlFor="namaCalon" className="text-sm">Nama Calon</Label>
+                          <Label htmlFor="namaCalon" className="text-xs">Nama Calon</Label>
                           <Input
                             id="namaCalon"
                             value={formData.namaCalon}
                             onChange={(e) => setFormData({...formData, namaCalon: e.target.value})}
-                            className="text-sm"
+                            className="text-sm h-9"
                             required
                           />
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="fotoUrl" className="text-sm">URL Foto (opsional)</Label>
+                        <Label htmlFor="foto" className="text-xs">Foto (opsional)</Label>
                         <Input
-                          id="fotoUrl"
-                          type="url"
-                          value={formData.fotoUrl}
-                          onChange={(e) => setFormData({...formData, fotoUrl: e.target.value})}
-                          placeholder="https://example.com/foto.jpg"
-                          className="text-sm"
+                          id="foto"
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleImageChange}
+                          className="text-sm h-9"
                         />
+                        {imagePreview && (
+                          <div className="mt-2 relative w-20 h-20 mx-auto">
+                            <Image
+                              src={imagePreview}
+                              alt="Preview"
+                              width={80}
+                              height={80}
+                              className="w-full h-full object-cover rounded-lg border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImageFile(null)
+                                setImagePreview('')
+                              }}
+                              className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <Label htmlFor="visi" className="text-sm">Visi</Label>
+                        <Label htmlFor="visi" className="text-xs">Visi</Label>
                         <Textarea
                           id="visi"
                           value={formData.visi}
                           onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                          rows={3}
+                          rows={2}
                           placeholder="Visi kandidat..."
-                          className="text-sm"
+                          className="text-sm resize-none"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="misi" className="text-sm">Misi</Label>
+                        <Label htmlFor="misi" className="text-xs">Misi (per baris, numbering otomatis)</Label>
                         <Textarea
                           id="misi"
                           value={formData.misi}
-                          onChange={(e) => setFormData({...formData, misi: e.target.value})}
+                          onChange={handleMisiChange}
                           rows={3}
-                          placeholder="Misi kandidat..."
-                          className="text-sm"
+                          placeholder="Meningkatkan kualitas pendidikan&#10;Mengembangkan ekstrakurikuler&#10;Membangun kerjasama antar siswa"
+                          className="text-sm resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button type="submit" size="sm" className="w-full">
-                          Tambah
+                      <div className="flex gap-2 pt-2">
+                        <Button type="submit" size="sm" className="flex-1 h-9" disabled={isUploading}>
+                          {isUploading ? 'Mengupload...' : 'Tambah'}
                         </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)}>
+                        <Button type="button" variant="outline" size="sm" className="flex-1 h-9" onClick={() => setShowAddDialog(false)} disabled={isUploading}>
                           Batal
                         </Button>
                       </div>
@@ -337,9 +448,9 @@ export default function KandidatManagementPage() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {kandidat.map((k) => (
-                  <Card key={k.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={k.id} className="rounded-sm hover:shadow-lg transition-shadow">
                     <CardHeader className="text-center pb-3 sm:pb-6">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gray-200 rounded-full flex items-center justify-center">
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-3 sm:mb-4 bg-gray-200 rounded-full flex items-center justify-center">
                         {k.fotoUrl ? (
                           <img 
                             src={k.fotoUrl} 
@@ -347,50 +458,55 @@ export default function KandidatManagementPage() {
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
-                          <User className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                          <User className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
                         )}
                       </div>
                       <Badge variant="secondary" className="w-fit mx-auto mb-2 text-xs sm:text-sm">
                         Nomor {k.nomorUrut}
                       </Badge>
                       <CardTitle className="text-base sm:text-lg truncate px-2">{k.namaCalon}</CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
-                        {k.jumlahSuara} suara
-                      </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0 sm:pt-6">
-                      <div className="space-y-2 mb-4">
+                      <div className="space-y-3 mb-4">
                         <div className="text-xs sm:text-sm">
-                          <p className="font-semibold">Visi:</p>
-                          <p className="text-gray-600 line-clamp-2">
+                          <p className="font-semibold mb-1">Visi:</p>
+                          <p className="text-gray-600 line-clamp-2 text-xs">
                             {k.visi || 'Belum ada visi'}
                           </p>
                         </div>
                         <div className="text-xs sm:text-sm">
-                          <p className="font-semibold">Misi:</p>
-                          <p className="text-gray-600 line-clamp-2">
-                            {k.misi || 'Belum ada misi'}
-                          </p>
+                          <p className="font-semibold mb-1">Misi:</p>
+                          {k.misi ? (
+                            <ol className="text-gray-600 space-y-1 text-xs">
+                              {k.misi.split('\n').filter(line => line.trim()).slice(0, 3).map((line, idx) => (
+                                <li key={idx} className="line-clamp-1">
+                                  {line}
+                                </li>
+                              ))}
+                              {k.misi.split('\n').filter(line => line.trim()).length > 3 && (
+                                <li className="text-gray-400 italic">...</li>
+                              )}
+                            </ol>
+                          ) : (
+                            <p className="text-gray-600 text-xs">Belum ada misi</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <button
                           onClick={() => openEditDialog(k)}
-                          className="flex-1 text-xs px-2 py-1 h-auto"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 text-xs font-medium"
                         >
-                          <Edit className="w-3 h-3 mr-1" />
+                          <Edit className="w-3.5 h-3.5" />
                           Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteKandidat(k.id)}
-                          className="text-xs px-2 py-1 h-auto"
+                        </button>
+                        <button
+                          onClick={() => openDeleteDialog(k.id)}
+                          className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105"
+                          title="Hapus kandidat"
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -403,79 +519,130 @@ export default function KandidatManagementPage() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md sm:max-w-2xl mx-4 sm:mx-auto">
+        <DialogContent className="max-w-lg mx-4">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Kandidat</DialogTitle>
-            <DialogDescription className="text-sm">
-              Perbarui data kandidat
-            </DialogDescription>
+            <DialogTitle>Edit Kandidat</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEditKandidat} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleEditKandidat} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="editNomorUrut" className="text-sm">Nomor Urut</Label>
+                <Label htmlFor="editNomorUrut" className="text-xs">Nomor Urut</Label>
                 <Input
                   id="editNomorUrut"
                   type="number"
                   value={formData.nomorUrut}
                   onChange={(e) => setFormData({...formData, nomorUrut: e.target.value})}
-                  className="text-sm"
+                  className="text-sm h-9"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="editNamaCalon" className="text-sm">Nama Calon</Label>
+                <Label htmlFor="editNamaCalon" className="text-xs">Nama Calon</Label>
                 <Input
                   id="editNamaCalon"
                   value={formData.namaCalon}
                   onChange={(e) => setFormData({...formData, namaCalon: e.target.value})}
-                  className="text-sm"
+                  className="text-sm h-9"
                   required
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="editFotoUrl" className="text-sm">URL Foto (opsional)</Label>
+              <Label htmlFor="editFoto" className="text-xs">Foto (opsional)</Label>
               <Input
-                id="editFotoUrl"
-                type="url"
-                value={formData.fotoUrl}
-                onChange={(e) => setFormData({...formData, fotoUrl: e.target.value})}
-                placeholder="https://example.com/foto.jpg"
-                className="text-sm"
+                id="editFoto"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="text-sm h-9"
               />
+              {imagePreview && (
+                <div className="mt-2 relative w-20 h-20 mx-auto">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null)
+                      setImagePreview('')
+                    }}
+                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
             <div>
-              <Label htmlFor="editVisi" className="text-sm">Visi</Label>
+              <Label htmlFor="editVisi" className="text-xs">Visi</Label>
               <Textarea
                 id="editVisi"
                 value={formData.visi}
                 onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                rows={3}
+                rows={2}
                 placeholder="Visi kandidat..."
-                className="text-sm"
+                className="text-sm resize-none"
               />
             </div>
             <div>
-              <Label htmlFor="editMisi" className="text-sm">Misi</Label>
+              <Label htmlFor="editMisi" className="text-xs">Misi (per baris, numbering otomatis)</Label>
               <Textarea
                 id="editMisi"
                 value={formData.misi}
-                onChange={(e) => setFormData({...formData, misi: e.target.value})}
+                onChange={handleMisiChange}
                 rows={3}
-                placeholder="Misi kandidat..."
-                className="text-sm"
+                placeholder="Meningkatkan kualitas pendidikan&#10;Mengembangkan ekstrakurikuler&#10;Membangun kerjasama antar siswa"
+                className="text-sm resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="submit" size="sm" className="w-full">
-                Perbarui
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" size="sm" className="flex-1 h-9" disabled={isUploading}>
+                {isUploading ? 'Mengupload...' : 'Perbarui'}
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowEditDialog(false)}>
+              <Button type="button" variant="outline" size="sm" className="flex-1 h-9" onClick={() => setShowEditDialog(false)} disabled={isUploading}>
                 Batal
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Konfirmasi Hapus
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus kandidat ini? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:gap-3">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+              className="flex-1 sm:flex-none"
+            >
+              Batal
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+              className="flex-1 sm:flex-none"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Ya, Hapus
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

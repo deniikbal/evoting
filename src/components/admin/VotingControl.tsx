@@ -27,7 +27,7 @@ export default function VotingControl({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
             <p className="font-medium text-sm sm:text-base">Status Voting</p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {votingAktif 
                 ? 'Voting sedang aktif, siswa dapat melakukan login dan memilih'
                 : 'Voting tidak aktif, siswa tidak dapat melakukan voting'

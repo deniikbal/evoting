@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { admin } from '@/lib/schema'
+import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 
-export const runtime = 'edge';
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
@@ -17,11 +18,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Cari admin berdasarkan username
-    const admin = await db.admin.findUnique({
-      where: { username }
-    })
+    const [adminData] = await db.select().from(admin).where(eq(admin.username, username)).limit(1)
 
-    if (!admin) {
+    if (!adminData) {
       return NextResponse.json(
         { message: 'Username atau password salah' },
         { status: 401 }
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifikasi password
-    const isPasswordValid = await bcrypt.compare(password, admin.password)
+    const isPasswordValid = await bcrypt.compare(password, adminData.password)
     
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -39,11 +38,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Login berhasil, kembalikan data admin (tanpa password)
-    const { password: _, ...adminData } = admin
+    const { password: _, ...adminResponse } = adminData
     
     return NextResponse.json({
       message: 'Login berhasil',
-      admin: adminData
+      admin: adminResponse
     })
 
   } catch (error) {
