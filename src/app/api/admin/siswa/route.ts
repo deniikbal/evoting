@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { eq, asc } from 'drizzle-orm'
-import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
 
 export async function GET() {
   try {
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Generate random token (plain for students to see)
     const plainToken = Math.random().toString(36).substring(2, 8).toUpperCase()
     // Hash token for security
-    const hashedToken = await bcrypt.hash(plainToken, 10)
+    const hashedToken = hashToken(plainToken)
     
     const [newSiswa] = await db.insert(siswa).values({
       nis,

@@ -24,11 +24,11 @@ export default function QuickResults({ kandidat, sudahMemilih, votingAktif }: Qu
   return (
     <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
       <CardHeader>
-        <CardTitle className="text-lg sm:text-xl text-slate-800">Hasil Sementara</CardTitle>
+        <CardTitle className="text-lg sm:text-xl text-slate-800">Hasil Akhir Perolehan Akhir Pemilihan Ketua OSIS</CardTitle>
         <CardDescription className="text-sm text-slate-600">
           {votingAktif 
             ? "Hasil akan ditampilkan setelah voting selesai"
-            : "Perolehan suara sementara untuk setiap kandidat"
+            : "Perolehan Akhir Pemilihan Ketua OSIS"
           }
         </CardDescription>
       </CardHeader>

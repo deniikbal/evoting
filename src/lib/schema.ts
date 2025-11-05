@@ -43,3 +43,10 @@ export const admin = pgTable('admin', {
   password: varchar('password').notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
+
+export const vote = pgTable('vote', {
+  id: serial('id').primaryKey(),
+  siswaId: integer('siswa_id').notNull(),
+  kandidatId: integer('kandidat_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+})

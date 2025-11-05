@@ -48,6 +48,7 @@ export default function SiswaManagementPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'sudah' | 'belum'>('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -58,6 +59,8 @@ export default function SiswaManagementPage() {
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, message: '' })
   const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
   
   // Selection and delete states
@@ -100,15 +103,23 @@ export default function SiswaManagementPage() {
   }
 
   useEffect(() => {
-    // Filter students based on search term
-    const filtered = siswa.filter(s => 
+    // Filter students based on search term and status
+    let filtered = siswa.filter(s => 
       s.nis.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.kelas.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    // Apply status filter
+    if (statusFilter === 'sudah') {
+      filtered = filtered.filter(s => s.sudahMemilih)
+    } else if (statusFilter === 'belum') {
+      filtered = filtered.filter(s => !s.sudahMemilih)
+    }
+
     setFilteredSiswa(filtered)
-    setCurrentPage(1) // Reset to first page when search changes
-  }, [siswa, searchTerm])
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [siswa, searchTerm, statusFilter])
 
   const fetchSiswa = async () => {
     try {
@@ -408,7 +419,12 @@ export default function SiswaManagementPage() {
       return
     }
 
+    setIsImporting(true)
+    setImportProgress({ current: 0, total: 0, message: 'Membaca file...' })
+
     try {
+      setImportProgress({ current: 0, total: 0, message: 'Mengunggah dan memproses data...' })
+      
       const response = await fetch('/api/admin/siswa/import', {
         method: 'POST',
         body: formData,
@@ -417,14 +433,29 @@ export default function SiswaManagementPage() {
       const data = await response.json()
 
       if (response.ok) {
+        setImportProgress({ 
+          current: data.count, 
+          total: data.count, 
+          message: `Selesai! ${data.count} siswa berhasil diimpor` 
+        })
+        
         toast.success(`Berhasil mengimpor ${data.count} siswa`)
-        setShowImportDialog(false)
-        fetchSiswa()
+        
+        setTimeout(() => {
+          setShowImportDialog(false)
+          setIsImporting(false)
+          setImportProgress({ current: 0, total: 0, message: '' })
+          fetchSiswa()
+        }, 1500)
       } else {
         toast.error(data.message || 'Gagal mengimpor data')
+        setIsImporting(false)
+        setImportProgress({ current: 0, total: 0, message: '' })
       }
     } catch (err) {
       toast.error('Terjadi kesalahan. Silakan coba lagi.')
+      setIsImporting(false)
+      setImportProgress({ current: 0, total: 0, message: '' })
     }
   }
 
@@ -698,7 +729,14 @@ export default function SiswaManagementPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+                <Dialog open={showImportDialog} onOpenChange={(open) => {
+                  if (!isImporting) {
+                    setShowImportDialog(open)
+                    if (!open) {
+                      setImportProgress({ current: 0, total: 0, message: '' })
+                    }
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                       <Upload className="w-4 h-4 mr-1 sm:mr-2" />
@@ -713,48 +751,88 @@ export default function SiswaManagementPage() {
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                      <p className="text-sm text-blue-900 mb-2">
-                        Belum punya template? Download template terlebih dahulu
-                      </p>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleDownloadTemplate}
-                        className="w-full"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Template Excel
-                      </Button>
-                    </div>
+                    {!isImporting ? (
+                      <>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                          <p className="text-sm text-blue-900 mb-2">
+                            Belum punya template? Download template terlebih dahulu
+                          </p>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleDownloadTemplate}
+                            className="w-full"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Template Excel
+                          </Button>
+                        </div>
 
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                      <p className="text-xs text-amber-800">
-                        <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
-                      </p>
-                    </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                          <p className="text-xs text-amber-800">
+                            <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
+                          </p>
+                        </div>
 
-                    <form onSubmit={handleImportCSV} className="space-y-4">
-                      <div>
-                        <Label htmlFor="xlsFile">File Excel</Label>
-                        <Input
-                          id="xlsFile"
-                          name="xlsFile"
-                          type="file"
-                          accept=".xls,.xlsx"
-                          required
-                        />
+                        <form onSubmit={handleImportCSV} className="space-y-4">
+                          <div>
+                            <Label htmlFor="xlsFile">File Excel</Label>
+                            <Input
+                              id="xlsFile"
+                              name="xlsFile"
+                              type="file"
+                              accept=".xls,.xlsx"
+                              required
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="flex-1" disabled={isImporting}>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Import
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
+                              Batal
+                            </Button>
+                          </div>
+                        </form>
+                      </>
+                    ) : (
+                      <div className="space-y-4 py-4">
+                        <div className="flex items-center justify-center">
+                          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Progress</span>
+                            {importProgress.total > 0 && (
+                              <span className="font-medium text-blue-600">
+                                {importProgress.current} / {importProgress.total}
+                              </span>
+                            )}
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-300 ease-out"
+                              style={{ 
+                                width: importProgress.total > 0 
+                                  ? `${(importProgress.current / importProgress.total) * 100}%`
+                                  : '100%',
+                                animation: importProgress.total === 0 ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+                              }}
+                            ></div>
+                          </div>
+                          <p className="text-center text-sm text-gray-600 mt-2">
+                            {importProgress.message || 'Memproses data...'}
+                          </p>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <p className="text-xs text-blue-800 text-center">
+                            Mohon tunggu, jangan tutup dialog ini...
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1">
-                          Import
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)}>
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
+                    )}
                   </DialogContent>
                 </Dialog>
 
@@ -834,7 +912,7 @@ export default function SiswaManagementPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -845,6 +923,21 @@ export default function SiswaManagementPage() {
                     className="pl-10 text-sm sm:text-base"
                   />
                 </div>
+              </div>
+              <div className="w-full sm:w-48">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
+                >
+                  <SelectTrigger className="text-sm sm:text-base">
+                    <SelectValue placeholder="Filter Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="sudah">Sudah Memilih</SelectItem>
+                    <SelectItem value="belum">Belum Memilih</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1274,15 +1367,31 @@ export default function SiswaManagementPage() {
             
             .print-page {
               page-break-after: always;
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              grid-template-rows: repeat(5, auto);
-              gap: 6px;
               width: 100%;
             }
             
             .print-page:last-child {
               page-break-after: auto;
+            }
+            
+            .print-header {
+              text-align: center;
+              margin-bottom: 10px;
+              padding: 10px;
+              border-bottom: 2px solid #333;
+            }
+            
+            .print-header h2 {
+              margin: 0;
+              font-size: 18px;
+              font-weight: bold;
+            }
+            
+            .print-cards-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 6px;
+              width: 100%;
             }
             
             .voter-card {
@@ -1302,18 +1411,32 @@ export default function SiswaManagementPage() {
           {(() => {
             const siswaList = getFilteredSiswaForPrint()
             const pages = []
-            const cardsPerPage = 20 // 4 kolom x 5 baris
             
-            for (let i = 0; i < siswaList.length; i += cardsPerPage) {
-              const pageCards = siswaList.slice(i, i + cardsPerPage)
+            // Group students by kelas
+            const groupedByKelas: { [key: string]: typeof siswaList } = {}
+            siswaList.forEach(s => {
+              if (!groupedByKelas[s.kelas]) {
+                groupedByKelas[s.kelas] = []
+              }
+              groupedByKelas[s.kelas].push(s)
+            })
+            
+            // Create one page per kelas
+            Object.keys(groupedByKelas).sort().forEach(kelas => {
+              const kelasStudents = groupedByKelas[kelas]
               pages.push(
-                <div key={i} className="print-page">
-                  {pageCards.map((s) => (
-                    <VoterCard key={s.id} siswa={s} />
-                  ))}
+                <div key={kelas} className="print-page">
+                  <div className="print-header">
+                    <h2>KARTU PEMILIHAN KELAS {kelas}</h2>
+                  </div>
+                  <div className="print-cards-grid">
+                    {kelasStudents.map((s) => (
+                      <VoterCard key={s.id} siswa={s} />
+                    ))}
+                  </div>
                 </div>
               )
-            }
+            })
             
             return pages
           })()}

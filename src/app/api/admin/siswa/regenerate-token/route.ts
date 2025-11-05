@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { eq, inArray } from 'drizzle-orm'
-import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
 
 // POST - Regenerate token for single or multiple students
 export async function POST(request: NextRequest) {
@@ -20,11 +24,19 @@ export async function POST(request: NextRequest) {
 
     const updatedStudents = []
 
-    for (const id of studentIds) {
-      // Generate new plain token
-      const plainToken = Math.random().toString(36).substring(2, 8).toUpperCase()
-      // Hash token for security
-      const hashedToken = await bcrypt.hash(plainToken, 10)
+    // Generate and hash all tokens in parallel
+    const tokenPairs = await Promise.all(
+      studentIds.map(async () => {
+        const plainToken = Math.random().toString(36).substring(2, 8).toUpperCase()
+        const hashedToken = hashToken(plainToken)
+        return { plainToken, hashedToken }
+      })
+    )
+
+    // Update each student with new token
+    for (let i = 0; i < studentIds.length; i++) {
+      const id = studentIds[i]
+      const { plainToken, hashedToken } = tokenPairs[i]
 
       const [updated] = await db
         .update(siswa)

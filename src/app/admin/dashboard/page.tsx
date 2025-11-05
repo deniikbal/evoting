@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import DashboardHeader from '@/components/admin/DashboardHeader'
 import StatistikCards from '@/components/admin/StatistikCards'
 import QuickResults from '@/components/admin/QuickResults'
+import StatistikCharts from '@/components/admin/StatistikCharts'
 
 interface Statistik {
   totalSiswa: number
@@ -127,6 +128,11 @@ export default function DashboardPage() {
           sudahMemilih={statistik.sudahMemilih}
           votingAktif={statistik.votingAktif}
         />
+
+        {/* Statistik Charts */}
+        <div className="mt-8">
+          <StatistikCharts votingAktif={statistik.votingAktif} />
+        </div>
       </main>
     </div>
   )

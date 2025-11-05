@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { siswa, kandidat } from '@/lib/schema'
+import { siswa, kandidat, vote } from '@/lib/schema'
 import { eq, sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -29,13 +29,19 @@ export async function POST(request: NextRequest) {
         throw new Error('Siswa sudah melakukan voting')
       }
 
-      // 2. Tambah jumlah suara kandidat
+      // 2. Simpan vote ke tabel vote
+      await tx.insert(vote).values({
+        siswaId,
+        kandidatId
+      })
+
+      // 3. Tambah jumlah suara kandidat
       const [updatedKandidat] = await tx.update(kandidat)
         .set({ jumlahSuara: sql`${kandidat.jumlahSuara} + 1` })
         .where(eq(kandidat.id, kandidatId))
         .returning()
 
-      // 3. Update status siswa sudah memilih
+      // 4. Update status siswa sudah memilih
       await tx.update(siswa)
         .set({ sudahMemilih: true })
         .where(eq(siswa.id, siswaId))

@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, pengaturan } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
-import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,9 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Verifikasi token
-    const isTokenValid = await bcrypt.compare(token, siswaData.token)
+    const hashedInputToken = hashToken(token)
     
-    if (!isTokenValid) {
+    if (hashedInputToken !== siswaData.token) {
       return NextResponse.json(
         { message: 'Token salah' },
         { status: 401 }
