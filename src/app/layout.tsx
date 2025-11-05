@@ -18,6 +18,17 @@ export const metadata: Metadata = {
   description: "Sistem pemilihan elektronik OSIS SMAN 1 Bantarujeg yang modern, aman, dan transparan.",
   keywords: ["E-Voting", "OSIS", "SMAN 1 Bantarujeg", "SMANSABA", "Pemilihan Online"],
   authors: [{ name: "SMAN 1 Bantarujeg" }],
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({

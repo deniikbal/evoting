@@ -17,8 +17,20 @@ import {
   Trophy,
   BookOpen,
   Target,
-  Zap
+  Zap,
+  Menu,
+  X
 } from 'lucide-react'
+
+interface Kandidat {
+  id: number
+  nomorUrut: number
+  namaCalon: string
+  visi: string | null
+  misi: string | null
+  fotoUrl: string | null
+  jumlahSuara: number
+}
 
 export default function LandingPage() {
   const [stats, setStats] = useState({
@@ -26,7 +38,9 @@ export default function LandingPage() {
     totalKandidat: 0,
     votingAktif: false
   })
+  const [kandidatList, setKandidatList] = useState<Kandidat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -50,6 +64,7 @@ export default function LandingPage() {
 
       if (kandidatResponse.ok) {
         const kandidatData = await kandidatResponse.json()
+        setKandidatList(kandidatData)
         setStats(prev => ({
           ...prev,
           totalKandidat: kandidatData.length
@@ -74,19 +89,87 @@ export default function LandingPage() {
               </div>
               <h1 className="text-lg sm:text-xl font-bold text-gray-800">E-Voting OSIS</h1>
             </div>
-            <nav className="flex items-center gap-2 sm:gap-4">
-              <Button size="sm" onClick={() => window.location.href = '/login'} className="text-xs sm:text-sm px-2 sm:px-4">
-                <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Login Siswa</span>
-                <span className="sm:hidden">Login</span>
-              </Button>
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-4 lg:gap-6">
+              <a href="#beranda" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                Beranda
+              </a>
+              <a href="#kandidat" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                Kandidat
+              </a>
+              <a href="#statistik" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                Statistik
+              </a>
+              <a href="#fitur" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                Fitur
+              </a>
+              <a href="#kontak" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+                Kontak
+              </a>
             </nav>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700" />
+              )}
+            </button>
           </div>
+
+          {/* Mobile Navigation */}
+          {isMobileMenuOpen && (
+            <nav className="md:hidden py-4 border-t">
+              <div className="flex flex-col space-y-3">
+                <a 
+                  href="#beranda" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                >
+                  Beranda
+                </a>
+                <a 
+                  href="#kandidat" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                >
+                  Kandidat
+                </a>
+                <a 
+                  href="#statistik" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                >
+                  Statistik
+                </a>
+                <a 
+                  href="#fitur" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                >
+                  Fitur
+                </a>
+                <a 
+                  href="#kontak" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                >
+                  Kontak
+                </a>
+              </div>
+            </nav>
+          )}
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-12 sm:py-16 px-4">
+      <section id="beranda" className="py-12 sm:py-16 px-4 border-b-2 border-gray-200">
         <div className="max-w-7xl mx-auto text-center">
           <div className="mb-8">
             <Badge className="mb-4 bg-gradient-to-r from-orange-500 to-pink-500">
@@ -117,8 +200,89 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Kandidat Section */}
+      <section id="kandidat" className="py-16 sm:py-20 px-4 bg-white shadow-inner border-b-2 border-gray-200">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <Badge className="mb-4 bg-gradient-to-r from-orange-500 to-pink-500">
+              Kandidat OSIS 2025
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">
+              Kenali Kandidat Anda
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Pelajari visi dan misi setiap kandidat untuk membuat pilihan yang tepat
+            </p>
+          </div>
+
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Memuat data kandidat...</p>
+            </div>
+          ) : kandidatList.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Belum ada kandidat yang terdaftar.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {kandidatList.map((kandidat) => (
+                <Card key={kandidat.id} className="hover:shadow-xl transition-shadow overflow-hidden">
+                  <CardHeader className="p-0">
+                    <div className="relative h-64 bg-gradient-to-br from-orange-100 to-pink-100">
+                      {kandidat.fotoUrl ? (
+                        <img 
+                          src={kandidat.fotoUrl} 
+                          alt={kandidat.namaCalon}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-24 h-24 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="absolute top-4 left-4">
+                        <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-4 py-2">
+                          Nomor {kandidat.nomorUrut}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <CardTitle className="text-2xl mb-4 text-center">
+                      {kandidat.namaCalon}
+                    </CardTitle>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-orange-500" />
+                          <h4 className="font-semibold text-gray-800">Visi</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {kandidat.visi || 'Visi belum ditambahkan'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <BookOpen className="w-5 h-5 text-pink-500" />
+                          <h4 className="font-semibold text-gray-800">Misi</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                          {kandidat.misi || 'Misi belum ditambahkan'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Stats Section */}
-      <section className="py-8 sm:py-12 px-4 bg-white/50">
+      <section id="statistik" className="py-16 sm:py-20 px-4 bg-gradient-to-b from-orange-50/30 to-pink-50/30 border-b-2 border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center">
@@ -155,7 +319,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4">
+      <section id="fitur" className="py-20 px-4 bg-white shadow-inner border-b-2 border-gray-200">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">
@@ -237,7 +401,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-orange-500 to-pink-500">
+      <section className="py-20 px-4 bg-gradient-to-r from-orange-500 to-pink-500 shadow-lg border-y-2 border-orange-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Siap untuk Memberikan Suaramu?
@@ -259,7 +423,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-12 px-4">
+      <footer id="kontak" className="bg-gray-800 text-white py-12 px-4 border-t-4 border-gray-700 shadow-2xl">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>

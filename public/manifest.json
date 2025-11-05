@@ -1,0 +1,23 @@
+{
+  "name": "E-Voting OSIS SMANSABA",
+  "short_name": "E-Voting",
+  "description": "Sistem pemilihan elektronik OSIS SMAN 1 Bantarujeg yang modern, aman, dan transparan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
