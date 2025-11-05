@@ -13,10 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Users, Plus, Download, Upload, Edit, Trash2, RefreshCw, 
   ArrowLeft, Search, Eye, EyeOff, CheckCircle, XCircle, 
-  ChevronLeft, ChevronRight, AlertTriangle, Key, Copy
+  ChevronLeft, ChevronRight, AlertTriangle, Key, Copy, Printer
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import DashboardHeader from '@/components/admin/DashboardHeader'
+import VoterCard from '@/components/admin/VoterCard'
 import { toast } from 'sonner'
 
 interface Admin {
@@ -24,7 +25,7 @@ interface Admin {
   username: string
 }
 
-interface Siswa {
+export interface Siswa {
   id: number
   nis: string
   namaLengkap: string
@@ -51,7 +52,9 @@ export default function SiswaManagementPage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showTokenDialog, setShowTokenDialog] = useState(false)
+  const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null)
+  const [selectedClassForPrint, setSelectedClassForPrint] = useState<string>('all')
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -455,6 +458,19 @@ export default function SiswaManagementPage() {
     setCurrentPage(1) // Reset to first page
   }
 
+  const handlePrintCards = () => {
+    window.print()
+  }
+
+  const getFilteredSiswaForPrint = () => {
+    if (selectedClassForPrint === 'all') {
+      return siswa
+    }
+    return siswa.filter(s => s.kelas === selectedClassForPrint)
+  }
+
+  const uniqueClasses = Array.from(new Set(siswa.map(s => s.kelas))).sort()
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
@@ -498,18 +514,18 @@ export default function SiswaManagementPage() {
                 {selectedIds.length > 0 && (
                   <>
                     <Button 
-                      variant="outline" 
                       size="sm" 
                       onClick={() => handleRegenerateToken(selectedIds)}
                       disabled={regeneratingIds.length > 0}
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
                     >
                       <Key className="w-4 h-4 mr-1 sm:mr-2" />
                       Generate Token ({selectedIds.length})
                     </Button>
                     <Button 
-                      variant="destructive" 
                       size="sm" 
                       onClick={openBulkDeleteDialog}
+                      className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
                     >
                       <Trash2 className="w-4 h-4 mr-1 sm:mr-2" />
                       Hapus {selectedIds.length}
@@ -519,7 +535,7 @@ export default function SiswaManagementPage() {
                 
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                       <Plus className="w-4 h-4 mr-1 sm:mr-2" />
                       Tambah
                     </Button>
@@ -684,7 +700,7 @@ export default function SiswaManagementPage() {
 
                 <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                       <Upload className="w-4 h-4 mr-1 sm:mr-2" />
                       <span className="hidden sm:inline">Import</span>
                     </Button>
@@ -742,12 +758,75 @@ export default function SiswaManagementPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Button variant="outline" size="sm" onClick={handleExportTokens}>
+                <Button size="sm" onClick={handleExportTokens} className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                   <Download className="w-4 h-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Export</span>
                 </Button>
 
-                <Button variant="outline" size="sm" onClick={fetchSiswa}>
+                <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
+                      <Printer className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Cetak Kartu</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md mx-4">
+                    <DialogHeader>
+                      <DialogTitle>Cetak Kartu Pemilih</DialogTitle>
+                      <DialogDescription>
+                        Pilih kelas yang akan dicetak kartunya
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="print-class">Pilih Kelas</Label>
+                        <Select
+                          value={selectedClassForPrint}
+                          onValueChange={setSelectedClassForPrint}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih kelas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Semua Kelas ({siswa.length} siswa)</SelectItem>
+                            {uniqueClasses.map((kelas) => {
+                              const count = siswa.filter(s => s.kelas === kelas).length
+                              return (
+                                <SelectItem key={kelas} value={kelas}>
+                                  {kelas} ({count} siswa)
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900">
+                          <strong>Preview:</strong> {getFilteredSiswaForPrint().length} kartu akan dicetak
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          type="button" 
+                          className="flex-1" 
+                          onClick={handlePrintCards}
+                        >
+                          <Printer className="w-4 h-4 mr-2" />
+                          Cetak
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowPrintDialog(false)}
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Button size="sm" onClick={fetchSiswa} className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                   <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Refresh</span>
                 </Button>
@@ -842,7 +921,7 @@ export default function SiswaManagementPage() {
                           <div className="flex gap-1">
                             <button
                               onClick={() => openEditDialog(s)}
-                              className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 hover:scale-105"
+                              className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
                               title="Edit siswa"
                             >
                               <Edit className="w-4 h-4" />
@@ -850,7 +929,7 @@ export default function SiswaManagementPage() {
                             <button
                               onClick={() => handleRegenerateToken([s.id])}
                               disabled={regeneratingIds.includes(s.id)}
-                              className="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-700 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                              className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
                               title="Generate ulang token"
                             >
                               {regeneratingIds.includes(s.id) ? (
@@ -862,7 +941,7 @@ export default function SiswaManagementPage() {
                             {s.sudahMemilih && (
                               <button
                                 onClick={() => handleResetStatus(s.id)}
-                                className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700 transition-all duration-200 hover:scale-105"
+                                className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
                                 title="Reset status pemilihan"
                               >
                                 <RefreshCw className="w-4 h-4" />
@@ -870,7 +949,7 @@ export default function SiswaManagementPage() {
                             )}
                             <button
                               onClick={() => openDeleteDialog(s.id)}
-                              className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105"
+                              className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
                               title="Hapus siswa"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -927,7 +1006,7 @@ export default function SiswaManagementPage() {
                     <div className="flex gap-2 ml-8 flex-wrap">
                       <button
                         onClick={() => openEditDialog(s)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 text-xs font-medium"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
                       >
                         <Edit className="w-3.5 h-3.5" />
                         Edit
@@ -935,7 +1014,7 @@ export default function SiswaManagementPage() {
                       <button
                         onClick={() => handleRegenerateToken([s.id])}
                         disabled={regeneratingIds.includes(s.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-700 transition-all duration-200 text-xs font-medium disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium disabled:opacity-50"
                       >
                         {regeneratingIds.includes(s.id) ? (
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -947,7 +1026,7 @@ export default function SiswaManagementPage() {
                       {s.sudahMemilih && (
                         <button
                           onClick={() => handleResetStatus(s.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700 transition-all duration-200 text-xs font-medium"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                           Reset
@@ -955,7 +1034,7 @@ export default function SiswaManagementPage() {
                       )}
                       <button
                         onClick={() => openDeleteDialog(s.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 text-xs font-medium"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Hapus
@@ -1168,6 +1247,78 @@ export default function SiswaManagementPage() {
           </DialogContent>
         </Dialog>
       </main>
+
+      {/* Print Area - Hidden on screen, visible on print */}
+      <div className="print-only">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+            
+            body * {
+              visibility: hidden;
+            }
+            
+            .print-only, .print-only * {
+              visibility: visible;
+            }
+            
+            .print-only {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            
+            .print-page {
+              page-break-after: always;
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              grid-template-rows: repeat(5, auto);
+              gap: 6px;
+              width: 100%;
+            }
+            
+            .print-page:last-child {
+              page-break-after: auto;
+            }
+            
+            .voter-card {
+              page-break-inside: avoid;
+              width: 100%;
+            }
+          }
+          
+          @media screen {
+            .print-only {
+              display: none;
+            }
+          }
+        `}</style>
+        
+        <div>
+          {(() => {
+            const siswaList = getFilteredSiswaForPrint()
+            const pages = []
+            const cardsPerPage = 20 // 4 kolom x 5 baris
+            
+            for (let i = 0; i < siswaList.length; i += cardsPerPage) {
+              const pageCards = siswaList.slice(i, i + cardsPerPage)
+              pages.push(
+                <div key={i} className="print-page">
+                  {pageCards.map((s) => (
+                    <VoterCard key={s.id} siswa={s} />
+                  ))}
+                </div>
+              )
+            }
+            
+            return pages
+          })()}
+        </div>
+      </div>
     </div>
   )
 }
