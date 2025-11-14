@@ -518,6 +518,59 @@ export default function SiswaManagementPage() {
       <DashboardHeader admin={admin} onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Statistik Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Siswa</CardTitle>
+              <Users className="h-4 w-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900">{siswa.length}</div>
+              <p className="text-xs text-slate-500 mt-1">Terdaftar</p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700">Sudah Memilih</CardTitle>
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-emerald-900">{siswa.filter(s => s.sudahMemilih).length}</div>
+              <p className="text-xs text-emerald-600 mt-1">
+                {siswa.length > 0 ? Math.round((siswa.filter(s => s.sudahMemilih).length / siswa.length) * 100) : 0}% partisipasi
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-amber-700">Belum Memilih</CardTitle>
+              <XCircle className="h-4 w-4 text-amber-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-amber-900">{siswa.filter(s => !s.sudahMemilih).length}</div>
+              <p className="text-xs text-amber-600 mt-1">
+                {siswa.length > 0 ? Math.round((siswa.filter(s => !s.sudahMemilih).length / siswa.length) * 100) : 0}% belum
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-indigo-700">Tingkat Partisipasi</CardTitle>
+              <Users className="h-4 w-4 text-indigo-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-indigo-900">
+                {siswa.length > 0 ? Math.round((siswa.filter(s => s.sudahMemilih).length / siswa.length) * 100) : 0}%
+              </div>
+              <p className="text-xs text-indigo-600 mt-1">Dari total siswa</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Actions */}
         <Card className="mb-6 rounded-sm">
           <CardHeader>
