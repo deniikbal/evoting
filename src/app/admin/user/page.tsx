@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Plus, Trash2, Edit, RefreshCw, Shield } from 'lucide-react'
+import { Plus, Trash2, Edit, RefreshCw, Shield, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 
 interface Admin {
@@ -191,26 +192,35 @@ export default function UserManagementPage() {
       <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
                 <Shield className="w-8 h-8 text-blue-600" />
                 Manajemen Admin
               </h1>
               <p className="text-sm text-slate-600 mt-1">
-                {admin?.role === 'superadmin' ? '🔓 Anda login sebagai SuperAdmin' : '🔐 Anda login sebagai Admin'}
+                {admin?.role === 'superadmin' ? '🔓 Anda login sebagai SuperAdmin' : admin?.role === 'admin' ? '🔐 Anda login sebagai Admin' : '👤 Role tidak terdeteksi'}
               </p>
             </div>
-            {admin?.role === 'superadmin' && (
-              <Button
-                onClick={handleAddNew}
-                className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Admin
-              </Button>
-            )}
+            <Button
+              onClick={handleAddNew}
+              disabled={admin?.role !== 'superadmin'}
+              className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title={admin?.role !== 'superadmin' ? 'Hanya SuperAdmin yang bisa menambah admin' : ''}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tambah Admin
+            </Button>
           </div>
+          
+          {admin?.role !== 'superadmin' && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                Anda login sebagai {admin?.role || 'user tanpa role'}. Hanya SuperAdmin yang dapat menambah, mengedit, atau menghapus admin. Hubungi SuperAdmin untuk mengubah role Anda.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {/* Table */}
