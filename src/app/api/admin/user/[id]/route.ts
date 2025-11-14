@@ -12,7 +12,7 @@ export async function PUT(
 ) {
   try {
     const id = parseInt(params.id)
-    const { role } = await request.json()
+    const { nama, role } = await request.json()
 
     if (!['admin', 'superadmin'].includes(role)) {
       return NextResponse.json(
@@ -21,12 +21,19 @@ export async function PUT(
       )
     }
 
+    const updateData: any = {
+      role,
+      updatedAt: new Date(),
+    }
+
+    // Include nama if provided
+    if (nama) {
+      updateData.nama = nama
+    }
+
     const [updated] = await db
       .update(admin)
-      .set({
-        role,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(admin.id, id))
       .returning()
 
@@ -42,6 +49,7 @@ export async function PUT(
       data: {
         id: updated.id,
         username: updated.username,
+        nama: updated.nama,
         role: updated.role,
       },
     })

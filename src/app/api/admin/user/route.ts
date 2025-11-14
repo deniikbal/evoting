@@ -12,6 +12,7 @@ export async function GET() {
       .select({
         id: admin.id,
         username: admin.username,
+        nama: admin.nama,
         role: admin.role,
         createdAt: admin.createdAt,
       })
@@ -29,11 +30,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password, role } = await request.json()
+    const { username, nama, password, role } = await request.json()
 
-    if (!username || !password || !role) {
+    if (!username || !nama || !password || !role) {
       return NextResponse.json(
-        { message: 'Username, password, dan role harus diisi' },
+        { message: 'Username, nama, password, dan role harus diisi' },
         { status: 400 }
       )
     }
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       .insert(admin)
       .values({
         username,
+        nama,
         password: hashedPassword,
         role,
       })
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: newAdmin.id,
         username: newAdmin.username,
+        nama: newAdmin.nama,
         role: newAdmin.role,
       },
     })
