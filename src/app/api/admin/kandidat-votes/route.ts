@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, pegawai, kandidat, vote, classroom } from '@/lib/schema'
-import { eq, count, and, inArray, or } from 'drizzle-orm'
+import { eq, count, inArray, or } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,19 +66,58 @@ export async function GET(request: NextRequest) {
       filteredSiswaIds = siswaList.map(s => s.id)
     }
 
+    // Get pegawai IDs that match the filter (for angkatan/kelas filtering)
+    let filteredPegawaiIds: number[] = []
+    
+    if (filterType === 'angkatan' || filterType === 'kelas') {
+      // Get pegawai linked to filtered classrooms/kelas
+      if (filterType === 'angkatan') {
+        const classrooms = await db
+          .select({ id: classroom.id })
+          .from(classroom)
+          .where(eq(classroom.angkatan, filterValue))
+        
+        const classroomIds = classrooms.map(c => c.id)
+        
+        if (classroomIds.length > 0) {
+          const pegawaiList = await db
+            .select({ id: pegawai.id })
+            .from(pegawai)
+            .where(inArray(pegawai.classroomId, classroomIds))
+          
+          filteredPegawaiIds = pegawaiList.map(p => p.id)
+        }
+      } else if (filterType === 'kelas') {
+        const pegawaiList = await db
+          .select({ id: pegawai.id })
+          .from(pegawai)
+          .where(eq(pegawai.kelas, filterValue))
+        
+        filteredPegawaiIds = pegawaiList.map(p => p.id)
+      }
+    }
+
     // Get votes from both siswa and pegawai
-    // Build WHERE clause based on whether we have filtered siswa
+    // Build WHERE clause based on whether we have filtered siswa/pegawai
     let whereCondition
     
-    if (filteredSiswaIds.length > 0) {
-      // Have siswa: include both siswa and all pegawai
+    if (filteredSiswaIds.length > 0 && filteredPegawaiIds.length > 0) {
+      // Have both siswa and pegawai: include both
       whereCondition = or(
         inArray(vote.siswaId, filteredSiswaIds),
-        // Include all pegawai votes (voterType = 'guru' or 'tu')
+        inArray(vote.pegawaiId, filteredPegawaiIds)
+      )
+    } else if (filteredSiswaIds.length > 0) {
+      // Only have siswa: include siswa + all pegawai from other sources
+      whereCondition = or(
+        inArray(vote.siswaId, filteredSiswaIds),
         or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu'))
       )
+    } else if (filteredPegawaiIds.length > 0) {
+      // Only have pegawai: only include filtered pegawai
+      whereCondition = inArray(vote.pegawaiId, filteredPegawaiIds)
     } else {
-      // No siswa found: only include pegawai votes
+      // No filtering: include all pegawai votes
       whereCondition = or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu'))
     }
 

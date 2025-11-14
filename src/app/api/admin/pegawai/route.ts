@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { nama, email, role, nip, nomorInduk, status } = await request.json()
+    const { nama, email, role, nip, nomorInduk, kelas, classroomId, status } = await request.json()
 
     if (!nama || !email || !role) {
       return NextResponse.json(
@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
         role,
         nip: nip || null,
         nomorInduk: nomorInduk || null,
+        kelas: kelas || null,
+        classroomId: classroomId ? parseInt(classroomId) : null,
         status: status || 'aktif',
       })
       .returning()
