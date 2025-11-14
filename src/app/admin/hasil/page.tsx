@@ -267,7 +267,7 @@ export default function HasilVotingPage() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={fetchData}
+                      onClick={() => fetchDataWithRole(adminRole)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-sm font-medium"
                     >
                       <RefreshCw className="w-4 h-4" />
