@@ -347,11 +347,6 @@ export default function PegawaiPage() {
     return () => clearTimeout(timer)
   }, [searchQuery, roleFilter])
 
-  const totalPegawai = pegawaiList.length
-  const totalGuru = pegawaiList.filter(p => p.role === 'guru').length
-  const totalTu = pegawaiList.filter(p => p.role === 'tu').length
-  const sudahVote = pegawaiList.filter(p => p.sudahMemilih).length
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
       <DashboardHeader admin={admin} onLogout={handleLogout} />
