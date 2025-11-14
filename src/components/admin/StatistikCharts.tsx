@@ -75,14 +75,19 @@ export default function StatistikCharts({ votingAktif }: StatistikChartsProps) {
       const response = await fetch('/api/admin/statistik-chart')
       if (response.ok) {
         const data = await response.json()
+        console.log('Chart data received:', data)
         setChartData(data)
         // Set default selections
-        if (data.byAngkatan.length > 0) {
+        if (data.byAngkatan && data.byAngkatan.length > 0) {
+          console.log('Setting default angkatan:', data.byAngkatan[0])
           setSelectedAngkatan(data.byAngkatan[0].angkatan)
         }
-        if (data.byKelas.length > 0) {
+        if (data.byKelas && data.byKelas.length > 0) {
+          console.log('Setting default kelas:', data.byKelas[0])
           setSelectedKelas(data.byKelas[0].name)
         }
+      } else {
+        console.error('Chart data response not ok:', response.status)
       }
     } catch (err) {
       console.error('Error fetching chart data:', err)
@@ -104,14 +109,18 @@ export default function StatistikCharts({ votingAktif }: StatistikChartsProps) {
         url += `&role=${encodeURIComponent(role)}`
       }
       
+      console.log(`Fetching ${type} votes:`, url)
       const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
+        console.log(`${type} votes data:`, data)
         if (type === 'angkatan') {
           setAngkatanKandidatVotes(data.kandidatVotes)
         } else {
           setKelasKandidatVotes(data.kandidatVotes)
         }
+      } else {
+        console.error(`${type} votes response not ok:`, response.status)
       }
     } catch (err) {
       console.error('Error fetching kandidat votes:', err)
