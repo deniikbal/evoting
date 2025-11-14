@@ -315,7 +315,7 @@ export default function PegawaiPage() {
             .voter-card .flex-1 { flex: 1; }
             .voter-card .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .voter-card .flex-items-center { display: flex; align-items: center; margin-top: 4px; padding-top: 2px; border-top: 1px solid #d1d5db; }
-            .token-span { font-size: 6px; font-weight: bold; letter-spacing: 0.05em; }
+            .token-span { font-size: 7px; font-weight: bold; letter-spacing: 0.05em; }
             .card-footer { margin-top: 2px; padding-top: 2px; border-top: 1px solid #d1d5db; font-size: 4px; color: #6b7280; text-align: center; line-height: 1; }
             @media print { body { margin: 0; } }
           </style>
