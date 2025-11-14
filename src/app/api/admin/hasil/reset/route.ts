@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { kandidat, siswa, pegawai, vote } from '@/lib/schema'
 import { sql } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -8,16 +7,16 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   try {
     // 1. Reset jumlah suara semua kandidat menjadi 0
-    await db.update(kandidat).set({ jumlahSuara: 0 })
+    await db.execute(sql`UPDATE "kandidat" SET "jumlah_suara" = 0`)
 
     // 2. Reset status sudahMemilih semua siswa
-    await db.update(siswa).set({ sudahMemilih: false })
+    await db.execute(sql`UPDATE "siswa" SET "sudah_memilih" = false`)
 
     // 3. Reset status sudahMemilih semua pegawai (guru/tu)
-    await db.update(pegawai).set({ sudahMemilih: false })
+    await db.execute(sql`UPDATE "pegawai" SET "sudah_memilih" = false`)
 
     // 4. Delete all voting records
-    await db.delete(vote)
+    await db.execute(sql`DELETE FROM "vote"`)
 
     return NextResponse.json({
       message: 'Semua hasil voting berhasil direset',
