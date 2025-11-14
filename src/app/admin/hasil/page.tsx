@@ -71,6 +71,7 @@ export default function HasilVotingPage() {
   const [resetPassword, setResetPassword] = useState('')
   const [isResetting, setIsResetting] = useState(false)
   const [admin, setAdmin] = useState<Admin | null>(null)
+  const [adminRole, setAdminRole] = useState<string>('')
   const router = useRouter()
 
   useEffect(() => {
@@ -83,36 +84,14 @@ export default function HasilVotingPage() {
 
     const session = JSON.parse(sessionData)
     setAdmin(session)
+    setAdminRole(session.role || 'admin')
     
     // Check if admin is regular admin (not superadmin)
     // If voting is active, redirect regular admin to dashboard
-    fetchData()
+    fetchDataWithRole(session.role)
   }, [router])
 
-  // Fetch statistik to check voting status
-  const fetchStatistik = async () => {
-    try {
-      const response = await fetch('/api/admin/statistik')
-      if (response.ok) {
-        const data = await response.json()
-        // If voting is active and user is regular admin, show error and redirect
-        if (data.votingAktif && admin?.role === 'admin') {
-          toast.error('Hasil voting tidak bisa dilihat saat voting berlangsung')
-          router.push('/admin/dashboard')
-        }
-        return data
-      }
-    } catch (err) {
-      console.error('Error fetching statistik:', err)
-    }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
-  }
-
-  const fetchData = async () => {
+  const fetchDataWithRole = async (userRole?: string) => {
     try {
       const [kandidatResponse, statistikResponse] = await Promise.all([
         fetch('/api/kandidat'),
@@ -127,12 +106,24 @@ export default function HasilVotingPage() {
       if (statistikResponse.ok) {
         const statistikData = await statistikResponse.json()
         setStatistik(statistikData)
+        
+        // Check access: If voting is active and user is regular admin, show error and redirect
+        if (statistikData.votingAktif && userRole === 'admin') {
+          toast.error('Hasil voting tidak bisa dilihat saat voting berlangsung')
+          router.push('/admin/dashboard')
+          return
+        }
       }
     } catch (err) {
       console.error('Error fetching data:', err)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminSession')
+    router.push('/login/admin')
   }
 
   const handleResetVoting = async () => {
@@ -150,7 +141,7 @@ export default function HasilVotingPage() {
       if (response.ok) {
         setShowResetDialog(false)
         setResetPassword('')
-        fetchData()
+        fetchDataWithRole(adminRole)
         toast.success('Semua hasil voting berhasil dihapus!')
       } else {
         toast.error('Gagal menghapus hasil voting')
