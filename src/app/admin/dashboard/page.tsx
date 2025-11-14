@@ -63,16 +63,38 @@ export default function DashboardPage() {
     const session = JSON.parse(sessionData)
     setAdmin(session)
 
-    // Fetch statistik first
-    fetchStatistik()
+    // Fetch statistik first with admin role from session
+    fetchStatistikWithRole(session.role)
 
     // Auto refresh every 5 seconds to catch voting status changes
     const interval = setInterval(() => {
-      fetchStatistik()
+      fetchStatistikWithRole(session.role)
     }, 5000)
 
     return () => clearInterval(interval)
   }, [router])
+
+  const fetchStatistikWithRole = async (adminRole?: string) => {
+    try {
+      const response = await fetch('/api/admin/statistik')
+      if (response.ok) {
+        const data = await response.json()
+        setStatistik(data)
+        
+        // Fetch kandidat if voting is NOT active, OR if admin is SuperAdmin
+        if (!data.votingAktif || adminRole === 'superadmin') {
+          fetchKandidat()
+        } else {
+          // Clear kandidat data if voting is active and user is not SuperAdmin
+          setKandidat([])
+          setIsLoading(false)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching statistik:', err)
+      setIsLoading(false)
+    }
+  }
 
   const fetchStatistik = async () => {
     try {
