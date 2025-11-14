@@ -189,28 +189,54 @@ export default function HasilVotingPage() {
           </Card>
         ) : (
           <>
-            {/* Winner Announcement */}
-            {winner && winner.jumlahSuara > 0 && (
-              <Card className="rounded-sm mb-6 bg-gradient-to-br from-amber-100 via-yellow-100 to-amber-100 border-2 border-yellow-300 shadow-xl">
-                <CardContent className="pt-8 pb-8 text-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/20 to-amber-200/20"></div>
-                  <div className="relative">
-                    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-xl animate-pulse">
-                      <Trophy className="w-10 h-10 text-white" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-amber-900 mb-4">🎉 Pemenang Pemilihan 🎉</h2>
-                    <div className="inline-block px-4 py-1 bg-white/60 backdrop-blur rounded-full mb-3">
-                      <span className="text-sm font-semibold text-amber-800">Nomor Urut {winner.nomorUrut}</span>
-                    </div>
-                    <h3 className="text-2xl font-bold text-amber-900 mb-3">{winner.namaCalon}</h3>
-                    <div className="inline-flex items-baseline gap-2 px-6 py-2 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full shadow-lg">
-                      <span className="text-3xl font-bold text-white">{winner.jumlahSuara}</span>
-                      <span className="text-lg text-white/90">suara</span>
-                      <span className="text-sm text-white/80">({totalSuara > 0 ? Math.round((winner.jumlahSuara / totalSuara) * 100) : 0}%)</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Winner Announcement - 2 Columns */}
+            {sortedKandidat.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {['mitratama', 'mitramuda'].map((roleType) => {
+                  const roleWinner = sortedKandidat.find(k => k.role === roleType)
+                  const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+                  const bgColor = roleType === 'mitramuda' 
+                    ? 'from-blue-100 via-cyan-100 to-blue-100 border-cyan-300'
+                    : 'from-purple-100 via-pink-100 to-purple-100 border-pink-300'
+                  const accentColor = roleType === 'mitramuda'
+                    ? 'from-blue-400 to-cyan-500'
+                    : 'from-purple-400 to-pink-500'
+                  
+                  return (
+                    <Card key={roleType} className={`rounded-sm bg-gradient-to-br ${bgColor} border-2 shadow-xl`}>
+                      <CardContent className="pt-8 pb-8 text-center relative overflow-hidden">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${roleType === 'mitramuda' ? 'from-cyan-200/20 to-blue-200/20' : 'from-pink-200/20 to-purple-200/20'}`}></div>
+                        <div className="relative">
+                          <div className={`text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block ${roleType === 'mitramuda' ? 'bg-cyan-200 text-cyan-800' : 'bg-pink-200 text-pink-800'}`}>
+                            {roleLabel}
+                          </div>
+                          <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${accentColor} rounded-full flex items-center justify-center shadow-xl animate-pulse`}>
+                            <Trophy className="w-8 h-8 text-white" />
+                          </div>
+                          {roleWinner && roleWinner.jumlahSuara > 0 ? (
+                            <>
+                              <h2 className={`text-lg font-bold mb-3 ${roleType === 'mitramuda' ? 'text-cyan-900' : 'text-purple-900'}`}>🏆 Pemenang 🏆</h2>
+                              <div className={`inline-block px-3 py-1 ${roleType === 'mitramuda' ? 'bg-blue-100/80' : 'bg-purple-100/80'} backdrop-blur rounded-full mb-3`}>
+                                <span className={`text-xs font-semibold ${roleType === 'mitramuda' ? 'text-blue-800' : 'text-purple-800'}`}>No. {roleWinner.nomorUrut}</span>
+                              </div>
+                              <h3 className={`text-xl font-bold mb-3 ${roleType === 'mitramuda' ? 'text-cyan-900' : 'text-purple-900'}`}>{roleWinner.namaCalon}</h3>
+                              <div className={`inline-flex items-baseline gap-2 px-4 py-2 bg-gradient-to-r ${accentColor} rounded-full shadow-lg`}>
+                                <span className="text-2xl font-bold text-white">{roleWinner.jumlahSuara}</span>
+                                <span className="text-sm text-white/90">suara</span>
+                                <span className="text-xs text-white/80">({totalSuara > 0 ? Math.round((roleWinner.jumlahSuara / totalSuara) * 100) : 0}%)</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className={`py-6 ${roleType === 'mitramuda' ? 'text-cyan-600' : 'text-purple-600'}`}>
+                              <p className="font-semibold">Belum ada data</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
             )}
 
             {/* Results Table */}
