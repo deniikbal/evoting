@@ -23,12 +23,13 @@ interface QuickResultsProps {
   sudahMemilih: number
   votingAktif: boolean
   admin?: Admin
+  adminRole?: string
 }
 
-export default function QuickResults({ kandidat, sudahMemilih, votingAktif, admin }: QuickResultsProps) {
+export default function QuickResults({ kandidat, sudahMemilih, votingAktif, admin, adminRole }: QuickResultsProps) {
   // Show results if voting is not active, OR if user is superadmin
   // Hide results if voting is active AND user is not superadmin
-  const displayKandidat = (votingAktif && admin?.role !== 'superadmin') ? [] : kandidat
+  const displayKandidat = (votingAktif && adminRole !== 'superadmin') ? [] : kandidat
 
   const renderKandidatByRole = (role: 'mitratama' | 'mitramuda') => {
     const roleKandidat = displayKandidat.filter(k => k.role === role).sort((a, b) => b.jumlahSuara - a.jumlahSuara)

@@ -49,6 +49,7 @@ export default function DashboardPage() {
   })
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [admin, setAdmin] = useState<Admin | null>(null)
+  const [adminRole, setAdminRole] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
@@ -62,6 +63,7 @@ export default function DashboardPage() {
 
     const session = JSON.parse(sessionData)
     setAdmin(session)
+    setAdminRole(session.role || 'admin')
 
     // Fetch statistik first with admin role from session
     fetchStatistikWithRole(session.role)
@@ -96,27 +98,7 @@ export default function DashboardPage() {
     }
   }
 
-  const fetchStatistik = async () => {
-    try {
-      const response = await fetch('/api/admin/statistik')
-      if (response.ok) {
-        const data = await response.json()
-        setStatistik(data)
-        
-        // Fetch kandidat if voting is NOT active, OR if admin is SuperAdmin
-        if (!data.votingAktif || admin?.role === 'superadmin') {
-          fetchKandidat()
-        } else {
-          // Clear kandidat data if voting is active and user is not SuperAdmin
-          setKandidat([])
-          setIsLoading(false)
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching statistik:', err)
-      setIsLoading(false)
-    }
-  }
+
 
   const fetchKandidat = async () => {
     try {
@@ -164,6 +146,7 @@ export default function DashboardPage() {
           sudahMemilih={statistik.sudahMemilih}
           votingAktif={statistik.votingAktif}
           admin={admin}
+          adminRole={adminRole}
         />
 
         {/* Statistik Charts */}
