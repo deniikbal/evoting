@@ -912,7 +912,6 @@ export default function PegawaiPage() {
                       <SelectValue placeholder="Pilih kelas..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tidak ada</SelectItem>
                       {loadingClassrooms ? (
                         <SelectItem value="loading" disabled>
                           Memuat...
