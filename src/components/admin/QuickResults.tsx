@@ -101,7 +101,8 @@ export default function QuickResults({ kandidat, sudahMemilih, votingAktif, admi
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {votingAktif ? (
+        {/* Show lock message only if voting is active AND user is NOT superadmin */}
+        {votingAktif && adminRole !== 'superadmin' ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
               <Lock className="w-8 h-8 text-slate-400" />
