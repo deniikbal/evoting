@@ -46,25 +46,16 @@ export async function GET(request: NextRequest) {
 
       const classroomIds = classrooms.map(c => c.id)
 
-      if (classroomIds.length === 0) {
-        return NextResponse.json({
-          kandidatVotes: allKandidat.map(k => ({
-            id: k.id,
-            nomorUrut: k.nomorUrut,
-            namaCalon: k.namaCalon,
-            jumlahSuara: 0,
-            role: k.role
-          }))
-        })
+      // Get siswa IDs from these classrooms (if any exist)
+      if (classroomIds.length > 0) {
+        const siswaList = await db
+          .select({ id: siswa.id })
+          .from(siswa)
+          .where(inArray(siswa.classroomId, classroomIds))
+
+        filteredSiswaIds = siswaList.map(s => s.id)
       }
-
-      // Get siswa IDs from these classrooms
-      const siswaList = await db
-        .select({ id: siswa.id })
-        .from(siswa)
-        .where(inArray(siswa.classroomId, classroomIds))
-
-      filteredSiswaIds = siswaList.map(s => s.id)
+      // Note: even if no siswa found, we'll still count pegawai votes
     } else if (filterType === 'kelas') {
       // Get siswa IDs from this kelas
       const siswaList = await db
@@ -75,37 +66,29 @@ export async function GET(request: NextRequest) {
       filteredSiswaIds = siswaList.map(s => s.id)
     }
 
-    if (filteredSiswaIds.length === 0) {
-      return NextResponse.json({
-        kandidatVotes: filteredKandidat.map(k => ({
-          id: k.id,
-          nomorUrut: k.nomorUrut,
-          namaCalon: k.namaCalon,
-          jumlahSuara: 0,
-          role: k.role
-        }))
-      })
+    // Get votes from both siswa and pegawai
+    // Build WHERE clause based on whether we have filtered siswa
+    let whereCondition
+    
+    if (filteredSiswaIds.length > 0) {
+      // Have siswa: include both siswa and all pegawai
+      whereCondition = or(
+        inArray(vote.siswaId, filteredSiswaIds),
+        // Include all pegawai votes (voterType = 'guru' or 'tu')
+        or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu'))
+      )
+    } else {
+      // No siswa found: only include pegawai votes
+      whereCondition = or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu'))
     }
 
-    // Get votes from both siswa and pegawai
-    // For siswa: filter by siswaId
-    // For pegawai: all pegawai votes are included (no class-based filtering)
     const votes = await db
       .select({
         kandidatId: vote.kandidatId,
         count: count()
       })
       .from(vote)
-      .where(
-        or(
-          inArray(vote.siswaId, filteredSiswaIds),
-          // Include all pegawai votes (voterType = 'guru' or 'tu')
-          and(
-            or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu')),
-            // voterType is not null (it's a pegawai vote)
-          )
-        )
-      )
+      .where(whereCondition)
       .groupBy(vote.kandidatId)
 
     // Map votes to kandidat (using filtered kandidat based on role)
