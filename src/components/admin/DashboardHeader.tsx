@@ -7,12 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, ChevronDown, Users2, Trophy, BarChart3, Settings, LayoutDashboard, School, User } from 'lucide-react'
+import { LogOut, ChevronDown, Users2, Trophy, BarChart3, Settings, LayoutDashboard, School, User, Shield } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Admin {
   id: number
   username: string
+  role?: 'admin' | 'superadmin'
 }
 
 interface DashboardHeaderProps {
@@ -96,6 +97,19 @@ export default function DashboardHeader({ admin, onLogout }: DashboardHeaderProp
                 <Settings className="mr-1 h-4 w-4" />
                 Pengaturan
               </Button>
+
+              {/* User Management (SuperAdmin Only) */}
+              {admin?.role === 'superadmin' && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => router.push('/admin/user')}
+                  className="text-gray-700 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Shield className="mr-1 h-4 w-4" />
+                  User
+                </Button>
+              )}
             </nav>
           </div>
 
@@ -167,6 +181,18 @@ export default function DashboardHeader({ admin, onLogout }: DashboardHeaderProp
             <Settings className="mr-1 h-3 w-3" />
             Pengaturan
           </Button>
+
+          {admin?.role === 'superadmin' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => router.push('/admin/user')}
+              className="text-xs text-gray-700"
+            >
+              <Shield className="mr-1 h-3 w-3" />
+              User
+            </Button>
+          )}
         </nav>
       </div>
     </header>
