@@ -12,15 +12,23 @@ interface Kandidat {
   role: string
 }
 
+interface Admin {
+  id: number
+  username: string
+  role?: 'admin' | 'superadmin'
+}
+
 interface QuickResultsProps {
   kandidat: Kandidat[]
   sudahMemilih: number
   votingAktif: boolean
+  admin?: Admin
 }
 
-export default function QuickResults({ kandidat, sudahMemilih, votingAktif }: QuickResultsProps) {
-  // Prevent rendering candidate data if voting is active (double protection)
-  const displayKandidat = votingAktif ? [] : kandidat
+export default function QuickResults({ kandidat, sudahMemilih, votingAktif, admin }: QuickResultsProps) {
+  // Show results if voting is not active, OR if user is superadmin
+  // Hide results if voting is active AND user is not superadmin
+  const displayKandidat = (votingAktif && admin?.role !== 'superadmin') ? [] : kandidat
 
   const renderKandidatByRole = (role: 'mitratama' | 'mitramuda') => {
     const roleKandidat = displayKandidat.filter(k => k.role === role).sort((a, b) => b.jumlahSuara - a.jumlahSuara)

@@ -163,6 +163,7 @@ export default function DashboardPage() {
           kandidat={kandidat} 
           sudahMemilih={statistik.sudahMemilih}
           votingAktif={statistik.votingAktif}
+          admin={admin}
         />
 
         {/* Statistik Charts */}
