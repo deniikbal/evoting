@@ -54,7 +54,6 @@ export const pegawai = pgTable('pegawai', {
   role: varchar('role', { length: 50 }).notNull(), // 'guru' atau 'tu'
   nip: varchar('nip'),
   nomorInduk: varchar('nomor_induk'),
-  kelas: varchar('kelas'), // 'X-1', 'X-2', 'XI-1', etc. (optional)
   classroomId: integer('classroom_id'), // link ke classroom table (optional)
   status: varchar('status', { length: 50 }).notNull().default('aktif'), // 'aktif' atau 'non-aktif'
   sudahMemilih: boolean('sudah_memilih').notNull().default(false),
