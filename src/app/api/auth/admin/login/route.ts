@@ -18,17 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Cari admin berdasarkan username
-    const [adminData] = await db
-      .select({
-        id: admin.id,
-        username: admin.username,
-        nama: admin.nama,
-        role: admin.role,
-        createdAt: admin.createdAt,
-      })
-      .from(admin)
-      .where(eq(admin.username, username))
-      .limit(1)
+    const [adminData] = await db.select().from(admin).where(eq(admin.username, username)).limit(1)
 
     if (!adminData) {
       return NextResponse.json(
