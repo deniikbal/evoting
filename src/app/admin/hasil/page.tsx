@@ -25,6 +25,7 @@ import DashboardHeader from '@/components/admin/DashboardHeader'
 interface Admin {
   id: number
   username: string
+  role?: 'admin' | 'superadmin'
 }
 
 interface Kandidat {
@@ -82,8 +83,29 @@ export default function HasilVotingPage() {
 
     const session = JSON.parse(sessionData)
     setAdmin(session)
+    
+    // Check if admin is regular admin (not superadmin)
+    // If voting is active, redirect regular admin to dashboard
     fetchData()
   }, [router])
+
+  // Fetch statistik to check voting status
+  const fetchStatistik = async () => {
+    try {
+      const response = await fetch('/api/admin/statistik')
+      if (response.ok) {
+        const data = await response.json()
+        // If voting is active and user is regular admin, show error and redirect
+        if (data.votingAktif && admin?.role === 'admin') {
+          toast.error('Hasil voting tidak bisa dilihat saat voting berlangsung')
+          router.push('/admin/dashboard')
+        }
+        return data
+      }
+    } catch (err) {
+      console.error('Error fetching statistik:', err)
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('adminSession')
