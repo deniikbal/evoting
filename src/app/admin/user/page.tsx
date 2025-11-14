@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 interface Admin {
   id: number
   username: string
+  nama: string
   role: 'admin' | 'superadmin'
   createdAt: string
 }
@@ -47,11 +48,13 @@ export default function UserManagementPage() {
 
   const [formData, setFormData] = useState({
     username: '',
+    nama: '',
     password: '',
     role: 'admin' as 'admin' | 'superadmin',
   })
 
   const [editFormData, setEditFormData] = useState({
+    nama: '',
     role: 'admin' as 'admin' | 'superadmin',
   })
 
@@ -103,14 +106,14 @@ export default function UserManagementPage() {
   }
 
   const handleAddNew = () => {
-    setFormData({ username: '', password: '', role: 'admin' })
+    setFormData({ username: '', nama: '', password: '', role: 'admin' })
     setShowAddDialog(true)
   }
 
   const handleSubmitAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.username || !formData.password) {
-      toast.error('Username dan password harus diisi')
+    if (!formData.username || !formData.nama || !formData.password) {
+      toast.error('Username, nama, dan password harus diisi')
       return
     }
 
@@ -140,7 +143,7 @@ export default function UserManagementPage() {
 
   const handleEdit = (adminItem: Admin) => {
     setSelectedAdmin(adminItem)
-    setEditFormData({ role: adminItem.role })
+    setEditFormData({ nama: adminItem.nama, role: adminItem.role })
     setShowEditDialog(true)
   }
 
@@ -344,6 +347,7 @@ export default function UserManagementPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Username</TableHead>
+                    <TableHead>Nama</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Dibuat</TableHead>
                     {admin?.role === 'superadmin' && <TableHead>Aksi</TableHead>}
@@ -360,6 +364,7 @@ export default function UserManagementPage() {
                     paginatedData.map((adm) => (
                       <TableRow key={adm.id}>
                         <TableCell className="font-medium">{adm.username}</TableCell>
+                        <TableCell>{adm.nama}</TableCell>
                         <TableCell>
                           <Badge
                             className={adm.role === 'superadmin' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}
@@ -455,6 +460,14 @@ export default function UserManagementPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Nama Lengkap</Label>
+              <Input
+                value={formData.nama}
+                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                placeholder="Masukkan nama lengkap"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Password</Label>
               <Input
                 type="password"
@@ -500,11 +513,19 @@ export default function UserManagementPage() {
           </DialogHeader>
           <form onSubmit={handleSubmitEdit} className="space-y-4">
             <div className="space-y-2">
+              <Label>Nama Lengkap</Label>
+              <Input
+                value={editFormData.nama}
+                onChange={(e) => setEditFormData({ ...editFormData, nama: e.target.value })}
+                placeholder="Masukkan nama lengkap"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Role</Label>
               <Select
                 value={editFormData.role}
                 onValueChange={(value) =>
-                  setEditFormData({ role: value as 'admin' | 'superadmin' })
+                  setEditFormData({ ...editFormData, role: value as 'admin' | 'superadmin' })
                 }
               >
                 <SelectTrigger>

@@ -42,6 +42,7 @@ export const admin = pgTable('admin', {
   id: serial('id').primaryKey(),
   username: varchar('username').notNull().unique(),
   password: varchar('password').notNull(),
+  nama: varchar('nama').notNull(),
   role: varchar('role', { length: 50 }).notNull().default('admin'), // 'admin' atau 'superadmin'
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
