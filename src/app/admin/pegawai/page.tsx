@@ -865,7 +865,7 @@ export default function PegawaiPage() {
                       })
                     }
                   >
-                    <SelectTrigger className="h-8 text-sm">
+                    <SelectTrigger className="h-8 text-sm w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -883,7 +883,7 @@ export default function PegawaiPage() {
                       setClassroomSearch('')
                     }}
                   >
-                    <SelectTrigger className="h-8 text-sm">
+                    <SelectTrigger className="h-8 text-sm w-full">
                       <SelectValue placeholder="Pilih kelas..." />
                     </SelectTrigger>
                     <SelectContent className="max-h-64">
@@ -965,7 +965,7 @@ export default function PegawaiPage() {
                     })
                   }
                 >
-                  <SelectTrigger className="h-8 text-sm">
+                  <SelectTrigger className="h-8 text-sm w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
