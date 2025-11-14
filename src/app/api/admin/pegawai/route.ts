@@ -103,8 +103,7 @@ export async function POST(request: NextRequest) {
       },
       credentials: {
         email: newPegawai.email,
-        password_plain: plainPassword,
-        token: tokenPlain, // return plain token
+        password: plainPassword,
       },
     })
   } catch (error) {

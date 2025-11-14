@@ -124,6 +124,12 @@ export default function LoginPage() {
 
               {/* Siswa Login */}
               <TabsContent value="siswa">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs sm:text-sm text-orange-900">
+                    <strong>Login untuk Siswa:</strong> Gunakan NIS dan token (6 karakter) yang diberikan oleh sekolah
+                  </p>
+                </div>
+                
                 <form onSubmit={handleSiswaLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="nis">Nomor Induk Siswa (NIS)</Label>
@@ -142,7 +148,7 @@ export default function LoginPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="token">Token</Label>
+                    <Label htmlFor="token">Token (6 karakter, bukan password)</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
@@ -182,6 +188,12 @@ export default function LoginPage() {
 
               {/* Pegawai Login */}
               <TabsContent value="pegawai">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs sm:text-sm text-blue-900">
+                    <strong>Login untuk Guru & TU:</strong> Gunakan email dan password yang diberikan oleh admin
+                  </p>
+                </div>
+                
                 <form onSubmit={handlePegawaiLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -200,7 +212,7 @@ export default function LoginPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Password (bukan Token)</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input

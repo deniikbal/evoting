@@ -44,7 +44,7 @@ export async function POST(
       .returning()
 
     return NextResponse.json({
-      message: 'Token & password berhasil di-regenerate',
+      message: 'Password berhasil di-regenerate',
       pegawai: {
         id: updatedPegawai.id,
         nama: updatedPegawai.nama,
@@ -52,8 +52,7 @@ export async function POST(
       },
       credentials: {
         email: updatedPegawai.email,
-        password_plain: plainPassword,
-        token: tokenPlain, // return plain token
+        password: plainPassword,
       },
     })
   } catch (error) {

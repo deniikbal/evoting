@@ -56,8 +56,7 @@ interface Pegawai {
 
 interface Credentials {
   email: string
-  password_plain: string
-  token: string
+  password: string
 }
 
 interface FormData {
@@ -887,9 +886,9 @@ export default function PegawaiPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <Card className="w-full max-w-md bg-white rounded-sm">
               <CardHeader>
-                <CardTitle>Akun Baru Dibuat</CardTitle>
+                <CardTitle>Akun Pegawai Dibuat</CardTitle>
                 <CardDescription>
-                  Bagikan kredensial berikut ke pegawai
+                  Bagikan email & password untuk login di halaman voting (tab: Guru & TU)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -917,7 +916,7 @@ export default function PegawaiPage() {
                   <p className="text-sm font-medium mb-2">Password</p>
                   <div className="flex gap-2">
                     <Input
-                      value={credentials.password_plain}
+                      value={credentials.password}
                       readOnly
                       className="text-xs"
                     />
@@ -925,29 +924,10 @@ export default function PegawaiPage() {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        handleCopyCredential(credentials.password_plain, 'password')
+                        handleCopyCredential(credentials.password, 'password')
                       }
                     >
                       {copiedField === 'password' ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Token */}
-                <div>
-                  <p className="text-sm font-medium mb-2">Token</p>
-                  <div className="flex gap-2">
-                    <Input value={credentials.token} readOnly className="text-xs" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyCredential(credentials.token, 'token')}
-                    >
-                      {copiedField === 'token' ? (
                         <Check className="w-4 h-4" />
                       ) : (
                         <Copy className="w-4 h-4" />
