@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 interface Admin {
   id: number
   username: string
+  nama?: string
   role?: 'admin' | 'superadmin'
 }
 
@@ -114,7 +115,9 @@ export default function DashboardHeader({ admin, onLogout }: DashboardHeaderProp
 
           {/* User Info & Logout */}
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm text-gray-600">Admin: {admin?.username}</span>
+            <span className="hidden sm:inline text-sm text-gray-600">
+              {admin?.nama} {admin?.role && `(${admin.role === 'superadmin' ? 'SuperAdmin' : 'Admin'})`}
+            </span>
             <Button variant="outline" onClick={onLogout} size="default" className="text-blue-600 border-blue-200 hover:bg-blue-50">
               <LogOut className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Logout</span>
