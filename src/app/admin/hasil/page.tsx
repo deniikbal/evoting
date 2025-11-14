@@ -107,12 +107,9 @@ export default function HasilVotingPage() {
         const statistikData = await statistikResponse.json()
         setStatistik(statistikData)
         
-        // Check access: If voting is active and user is regular admin, show error and redirect
-        if (statistikData.votingAktif && userRole === 'admin') {
-          toast.error('Hasil voting tidak bisa dilihat saat voting berlangsung')
-          router.push('/admin/dashboard')
-          return
-        }
+        // Access Control: Admin can only view results when voting is NOT active
+        // SuperAdmin can always view results
+        // But we don't redirect - just show notice instead
       }
     } catch (err) {
       console.error('Error fetching data:', err)
