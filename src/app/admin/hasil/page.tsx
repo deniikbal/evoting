@@ -40,7 +40,13 @@ interface Kandidat {
 }
 
 interface Statistik {
+  totalVoters: number
   totalSiswa: number
+  siswaMemilih: number
+  siswaBelumMemilih: number
+  totalPegawai: number
+  pegawaiMemilih: number
+  pegawaiBelumMemilih: number
   sudahMemilih: number
   belumMemilih: number
   votingAktif: boolean
@@ -49,7 +55,13 @@ interface Statistik {
 export default function HasilVotingPage() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [statistik, setStatistik] = useState<Statistik>({
+    totalVoters: 0,
     totalSiswa: 0,
+    siswaMemilih: 0,
+    siswaBelumMemilih: 0,
+    totalPegawai: 0,
+    pegawaiMemilih: 0,
+    pegawaiBelumMemilih: 0,
     sudahMemilih: 0,
     belumMemilih: 0,
     votingAktif: false
@@ -164,8 +176,8 @@ export default function HasilVotingPage() {
                 <p className="text-sm font-medium text-blue-100">Total Pemilih</p>
                 <Users className="h-5 w-5 text-blue-100" />
               </div>
-              <div className="text-3xl font-bold mb-1">{statistik.totalSiswa}</div>
-              <p className="text-xs text-blue-100">Terdaftar dalam sistem</p>
+              <div className="text-3xl font-bold mb-1">{statistik.totalVoters}</div>
+              <p className="text-xs text-blue-100">Siswa ({statistik.totalSiswa}) + Pegawai ({statistik.totalPegawai})</p>
             </CardContent>
           </Card>
 
@@ -177,7 +189,7 @@ export default function HasilVotingPage() {
               </div>
               <div className="text-3xl font-bold mb-1">{statistik.sudahMemilih}</div>
               <p className="text-xs text-emerald-100">
-                {statistik.totalSiswa > 0 ? Math.round((statistik.sudahMemilih / statistik.totalSiswa) * 100) : 0}% partisipasi
+                {statistik.totalVoters > 0 ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100) : 0}% partisipasi
               </p>
             </CardContent>
           </Card>
@@ -223,7 +235,7 @@ export default function HasilVotingPage() {
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/60 backdrop-blur rounded-full">
                 <Users className="w-5 h-5 text-blue-600" />
                 <span className="font-semibold text-blue-900">
-                  {statistik.sudahMemilih} dari {statistik.totalSiswa} siswa sudah memilih
+                  {statistik.sudahMemilih} dari {statistik.totalVoters} pemilih sudah memilih
                 </span>
               </div>
               <p className="text-sm text-blue-600 mt-4">

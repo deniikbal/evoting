@@ -5,7 +5,13 @@ import { Badge } from '@/components/ui/badge'
 import { Users, UserCheck, UserX, BarChart3 } from 'lucide-react'
 
 interface Statistik {
+  totalVoters: number
   totalSiswa: number
+  siswaMemilih: number
+  siswaBelumMemilih: number
+  totalPegawai: number
+  pegawaiMemilih: number
+  pegawaiBelumMemilih: number
   sudahMemilih: number
   belumMemilih: number
   votingAktif: boolean
@@ -16,21 +22,21 @@ interface StatistikCardsProps {
 }
 
 export default function StatistikCards({ statistik }: StatistikCardsProps) {
-  const persentaseMemilih = statistik.totalSiswa > 0 
-    ? Math.round((statistik.sudahMemilih / statistik.totalSiswa) * 100)
+  const persentaseMemilih = statistik.totalVoters > 0 
+    ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100)
     : 0
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
       <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Siswa</CardTitle>
+          <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Pemilih</CardTitle>
           <Users className="h-4 w-4 text-slate-400" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900">{statistik.totalSiswa}</div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900">{statistik.totalVoters}</div>
           <p className="text-xs text-slate-500">
-            Terdaftar dalam sistem
+            Siswa ({statistik.totalSiswa}) + Pegawai ({statistik.totalPegawai})
           </p>
         </CardContent>
       </Card>
