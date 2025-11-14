@@ -31,6 +31,7 @@ interface Kandidat {
 interface Admin {
   id: number
   username: string
+  role?: 'admin' | 'superadmin'
 }
 
 export default function DashboardPage() {
@@ -80,11 +81,11 @@ export default function DashboardPage() {
         const data = await response.json()
         setStatistik(data)
         
-        // Only fetch kandidat if voting is NOT active
-        if (!data.votingAktif) {
+        // Fetch kandidat if voting is NOT active, OR if admin is SuperAdmin
+        if (!data.votingAktif || admin?.role === 'superadmin') {
           fetchKandidat()
         } else {
-          // Clear kandidat data if voting is active
+          // Clear kandidat data if voting is active and user is not SuperAdmin
           setKandidat([])
           setIsLoading(false)
         }
