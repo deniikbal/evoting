@@ -140,12 +140,14 @@ export default function DashboardPage() {
       <DashboardHeader admin={admin} onLogout={handleLogout} />
       
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-        {/* Access Control Info */}
-        <AccessControlInfo 
-          adminRole={adminRole}
-          votingAktif={statistik.votingAktif}
-          canViewResults={!statistik.votingAktif || adminRole === 'superadmin'}
-        />
+        {/* Access Control Info - Show only for Admin role */}
+        {adminRole !== 'superadmin' && (
+          <AccessControlInfo 
+            adminRole={adminRole}
+            votingAktif={statistik.votingAktif}
+            canViewResults={!statistik.votingAktif || adminRole === 'superadmin'}
+          />
+        )}
 
         {/* Statistik Cards */}
         <div className="mb-8">
