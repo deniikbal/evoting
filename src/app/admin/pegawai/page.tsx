@@ -59,13 +59,19 @@ interface Credentials {
   token: string
 }
 
+interface Classroom {
+  id: number
+  name: string
+  angkatan: string
+}
+
 interface FormData {
   nama: string
   email: string
   role: 'guru' | 'tu'
   nip: string
   nomorInduk: string
-  kelas: string
+  classroomId: string
   status: 'aktif' | 'non-aktif'
 }
 
@@ -89,10 +95,12 @@ export default function PegawaiPage() {
     role: 'guru',
     nip: '',
     nomorInduk: '',
-    kelas: '',
+    classroomId: '',
     status: 'aktif',
   })
   const [formError, setFormError] = useState('')
+  const [classrooms, setClassrooms] = useState<Classroom[]>([])
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false)
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -105,6 +113,7 @@ export default function PegawaiPage() {
   useEffect(() => {
     checkAdminSession()
     fetchPegawai()
+    fetchClassrooms()
   }, [])
 
   useEffect(() => {
@@ -164,6 +173,21 @@ export default function PegawaiPage() {
     }
   }
 
+  const fetchClassrooms = async () => {
+    try {
+      setLoadingClassrooms(true)
+      const response = await fetch('/api/admin/classroom')
+      if (response.ok) {
+        const data = await response.json()
+        setClassrooms(data)
+      }
+    } catch (err) {
+      console.error('Error fetching classrooms:', err)
+    } finally {
+      setLoadingClassrooms(false)
+    }
+  }
+
   const handleAddNew = () => {
     setFormError('')
     setFormData({
@@ -172,6 +196,7 @@ export default function PegawaiPage() {
       role: 'guru',
       nip: '',
       nomorInduk: '',
+      classroomId: '',
       status: 'aktif',
     })
     setShowAddModal(true)
@@ -212,7 +237,7 @@ export default function PegawaiPage() {
           role: 'guru',
           nip: '',
           nomorInduk: '',
-          kelas: '',
+          classroomId: '',
           status: 'aktif',
         })
         setShowAddModal(false)
@@ -775,7 +800,7 @@ export default function PegawaiPage() {
                 role: 'guru',
                 nip: '',
                 nomorInduk: '',
-                kelas: '',
+                classroomId: '',
                 status: 'aktif',
               })
               setFormError('')
@@ -876,16 +901,35 @@ export default function PegawaiPage() {
               {/* Row 4: Kelas & Status */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="kelas" className="text-xs">Kelas</Label>
-                  <Input
-                    id="kelas"
-                    placeholder="X-1"
-                    value={formData.kelas}
-                    onChange={(e) =>
-                      setFormData({ ...formData, kelas: e.target.value })
+                  <Label htmlFor="classroomId" className="text-xs">Kelas</Label>
+                  <Select
+                    value={formData.classroomId}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, classroomId: value })
                     }
-                    className="h-8 text-sm"
-                  />
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Pilih kelas..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Tidak ada</SelectItem>
+                      {loadingClassrooms ? (
+                        <SelectItem value="loading" disabled>
+                          Memuat...
+                        </SelectItem>
+                      ) : classrooms.length > 0 ? (
+                        classrooms.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name} ({c.angkatan})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="empty" disabled>
+                          Tidak ada kelas
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="status" className="text-xs">Status</Label>
