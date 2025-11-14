@@ -101,6 +101,7 @@ export default function PegawaiPage() {
   const [formError, setFormError] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
+  const [classroomSearch, setClassroomSearch] = useState('')
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -179,7 +180,10 @@ export default function PegawaiPage() {
       const response = await fetch('/api/admin/classroom')
       if (response.ok) {
         const data = await response.json()
+        console.log('Classrooms loaded:', data)
         setClassrooms(data)
+      } else {
+        console.error('Failed to fetch classrooms:', response.status)
       }
     } catch (err) {
       console.error('Error fetching classrooms:', err)
@@ -819,22 +823,20 @@ export default function PegawaiPage() {
                 </div>
               )}
 
-              {/* Row 1: Nama */}
-              <div className="space-y-1">
-                <Label htmlFor="nama" className="text-xs">Nama *</Label>
-                <Input
-                  id="nama"
-                  placeholder="Nama lengkap"
-                  value={formData.nama}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nama: e.target.value })
-                  }
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              {/* Row 2: Email & Role */}
+              {/* Row 1: Nama & Email */}
               <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="nama" className="text-xs">Nama *</Label>
+                  <Input
+                    id="nama"
+                    placeholder="Nama lengkap"
+                    value={formData.nama}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nama: e.target.value })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs">Email *</Label>
                   <Input
@@ -848,6 +850,10 @@ export default function PegawaiPage() {
                     className="h-8 text-sm"
                   />
                 </div>
+              </div>
+
+              {/* Row 2: Role & Kelas */}
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="role" className="text-xs">Role *</Label>
                   <Select
@@ -865,6 +871,55 @@ export default function PegawaiPage() {
                     <SelectContent>
                       <SelectItem value="guru">Guru</SelectItem>
                       <SelectItem value="tu">TU</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="classroomId" className="text-xs">Kelas</Label>
+                  <Select
+                    value={formData.classroomId}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, classroomId: value })
+                      setClassroomSearch('')
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Pilih kelas..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      <div className="p-2 sticky top-0 bg-white border-b z-50">
+                        <Input
+                          placeholder="Cari kelas..."
+                          value={classroomSearch}
+                          onChange={(e) => setClassroomSearch(e.target.value)}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                      {loadingClassrooms ? (
+                        <div className="p-2 text-xs text-gray-500 text-center">Memuat...</div>
+                      ) : classrooms
+                          .filter((c) =>
+                            `${c.name} ${c.angkatan}`
+                              .toLowerCase()
+                              .includes(classroomSearch.toLowerCase())
+                          )
+                          .length > 0 ? (
+                        classrooms
+                          .filter((c) =>
+                            `${c.name} ${c.angkatan}`
+                              .toLowerCase()
+                              .includes(classroomSearch.toLowerCase())
+                          )
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.name} ({c.angkatan})
+                            </SelectItem>
+                          ))
+                      ) : (
+                        <div className="p-2 text-xs text-gray-500 text-center">
+                          Tidak ada kelas
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -898,58 +953,26 @@ export default function PegawaiPage() {
                 </div>
               </div>
 
-              {/* Row 4: Kelas & Status */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="classroomId" className="text-xs">Kelas</Label>
-                  <Select
-                    value={formData.classroomId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, classroomId: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Pilih kelas..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingClassrooms ? (
-                        <SelectItem value="loading" disabled>
-                          Memuat...
-                        </SelectItem>
-                      ) : classrooms.length > 0 ? (
-                        classrooms.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>
-                            {c.name} ({c.angkatan})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="empty" disabled>
-                          Tidak ada kelas
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="status" className="text-xs">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        status: value as 'aktif' | 'non-aktif',
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aktif">Aktif</SelectItem>
-                      <SelectItem value="non-aktif">Non-Aktif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Row 4: Status */}
+              <div className="space-y-1">
+                <Label htmlFor="status" className="text-xs">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      status: value as 'aktif' | 'non-aktif',
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aktif">Aktif</SelectItem>
+                    <SelectItem value="non-aktif">Non-Aktif</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <DialogFooter className="pt-2">
