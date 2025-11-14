@@ -8,7 +8,13 @@ import QuickResults from '@/components/admin/QuickResults'
 import StatistikCharts from '@/components/admin/StatistikCharts'
 
 interface Statistik {
+  totalVoters: number
   totalSiswa: number
+  siswaMemilih: number
+  siswaBelumMemilih: number
+  totalPegawai: number
+  pegawaiMemilih: number
+  pegawaiBelumMemilih: number
   sudahMemilih: number
   belumMemilih: number
   votingAktif: boolean
@@ -29,7 +35,13 @@ interface Admin {
 
 export default function DashboardPage() {
   const [statistik, setStatistik] = useState<Statistik>({
+    totalVoters: 0,
     totalSiswa: 0,
+    siswaMemilih: 0,
+    siswaBelumMemilih: 0,
+    totalPegawai: 0,
+    pegawaiMemilih: 0,
+    pegawaiBelumMemilih: 0,
     sudahMemilih: 0,
     belumMemilih: 0,
     votingAktif: false

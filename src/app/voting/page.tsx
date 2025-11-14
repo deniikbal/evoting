@@ -28,9 +28,22 @@ interface Siswa {
   sudahMemilih: boolean
 }
 
+interface Pegawai {
+  id: number
+  nama: string
+  email: string
+  role: 'guru' | 'tu'
+  sudahMemilih: boolean
+}
+
+interface User {
+  type: 'siswa' | 'guru' | 'tu'
+  data: Siswa | Pegawai
+}
+
 export default function VotingPage() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
-  const [siswa, setSiswa] = useState<Siswa | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [selectedMitraTama, setSelectedMitraTama] = useState<Kandidat | null>(null)
   const [selectedMitraMuda, setSelectedMitraMuda] = useState<Kandidat | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -40,18 +53,32 @@ export default function VotingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check session
-    const sessionData = localStorage.getItem('siswaSession')
-    if (!sessionData) {
-      router.push('/login')
+    // Check siswa session
+    const siswaSessionData = localStorage.getItem('siswaSession')
+    if (siswaSessionData) {
+      const siswaSession = JSON.parse(siswaSessionData)
+      setUser({
+        type: 'siswa',
+        data: siswaSession
+      })
+      fetchKandidat()
       return
     }
 
-    const session = JSON.parse(sessionData)
-    setSiswa(session)
+    // Check pegawai session
+    const pegawaiSessionData = localStorage.getItem('pegawaiSession')
+    if (pegawaiSessionData) {
+      const pegawaiSession = JSON.parse(pegawaiSessionData)
+      setUser({
+        type: pegawaiSession.role === 'guru' ? 'guru' : 'tu',
+        data: pegawaiSession
+      })
+      fetchKandidat()
+      return
+    }
 
-    // Fetch kandidat data
-    fetchKandidat()
+    // No session found
+    router.push('/login')
   }, [router])
 
   const fetchKandidat = async () => {
@@ -71,12 +98,25 @@ export default function VotingPage() {
   }
 
   const handleVote = async () => {
-    if (!selectedMitraTama || !selectedMitraMuda || !siswa) return
+    if (!selectedMitraTama || !selectedMitraMuda || !user) return
 
     setIsVoting(true)
     setError('')
 
     try {
+      // Prepare vote payload
+      const votePayload = user.type === 'siswa' 
+        ? {
+            kandidatId: selectedMitraTama.id,
+            siswaId: (user.data as Siswa).id,
+            voterType: 'siswa'
+          }
+        : {
+            kandidatId: selectedMitraTama.id,
+            pegawaiId: (user.data as Pegawai).id,
+            voterType: user.type
+          }
+
       // Submit both votes
       const responses = await Promise.all([
         fetch('/api/voting', {
@@ -84,10 +124,7 @@ export default function VotingPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            kandidatId: selectedMitraTama.id,
-            siswaId: siswa.id
-          }),
+          body: JSON.stringify(votePayload),
         }),
         fetch('/api/voting', {
           method: 'POST',
@@ -95,8 +132,11 @@ export default function VotingPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            ...(user.type === 'siswa' 
+              ? { siswaId: (user.data as Siswa).id, voterType: 'siswa' }
+              : { pegawaiId: (user.data as Pegawai).id, voterType: user.type }
+            ),
             kandidatId: selectedMitraMuda.id,
-            siswaId: siswa.id
           }),
         })
       ])
@@ -107,12 +147,20 @@ export default function VotingPage() {
       if (allSuccess) {
         // Clear session and redirect to thank you page
         localStorage.removeItem('siswaSession')
+        localStorage.removeItem('pegawaiSession')
         router.push('/terima-kasih')
       } else {
-        setError('Gagal melakukan voting. Silakan coba lagi.')
+        const errorRes = responses.find(res => !res.ok)
+        if (errorRes) {
+          const errorData = await errorRes.json()
+          setError(errorData.message || 'Gagal melakukan voting. Silakan coba lagi.')
+        } else {
+          setError('Gagal melakukan voting. Silakan coba lagi.')
+        }
         setShowConfirmDialog(false)
       }
     } catch (err) {
+      console.error('Vote error:', err)
       setError('Terjadi kesalahan. Silakan coba lagi.')
       setShowConfirmDialog(false)
     } finally {
@@ -145,8 +193,8 @@ export default function VotingPage() {
     )
   }
 
-  // Jika siswa sudah voting, tampilkan ucapan terimakasih
-  if (siswa?.sudahMemilih) {
+  // Jika user sudah voting, tampilkan ucapan terimakasih
+  if (user?.data.sudahMemilih) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 flex items-center justify-center p-3 sm:p-4">
         <div className="w-full max-w-md">
@@ -171,6 +219,7 @@ export default function VotingPage() {
                 <Button 
                   onClick={() => {
                     localStorage.removeItem('siswaSession')
+                    localStorage.removeItem('pegawaiSession')
                     router.push('/')
                   }}
                   className="w-full h-10 sm:h-11 text-sm sm:text-base"
@@ -197,8 +246,16 @@ export default function VotingPage() {
             </div>
             <div className="text-left sm:text-right">
               <p className="text-xs sm:text-sm text-gray-500">Pemilih:</p>
-              <p className="font-semibold text-sm sm:text-base truncate">{siswa?.namaLengkap}</p>
-              <p className="text-xs sm:text-sm text-gray-600">{siswa?.kelas}</p>
+              <p className="font-semibold text-sm sm:text-base truncate">
+                {user?.type === 'siswa' 
+                  ? (user.data as Siswa).namaLengkap 
+                  : (user?.data as Pegawai).nama}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600">
+                {user?.type === 'siswa' 
+                  ? (user.data as Siswa).kelas 
+                  : `${user?.type === 'guru' ? 'Guru' : 'TU'}`}
+              </p>
             </div>
           </div>
         </div>

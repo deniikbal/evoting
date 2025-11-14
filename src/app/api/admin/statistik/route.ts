@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { siswa, pengaturan } from '@/lib/schema'
+import { siswa, pegawai, pengaturan } from '@/lib/schema'
 import { eq, count } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -11,10 +11,24 @@ export async function GET() {
     const [{ total: totalSiswa }] = await db.select({ total: count() }).from(siswa)
 
     // Get siswa yang sudah memilih
-    const [{ total: sudahMemilih }] = await db.select({ total: count() }).from(siswa).where(eq(siswa.sudahMemilih, true))
+    const [{ total: siswaMemilih }] = await db.select({ total: count() }).from(siswa).where(eq(siswa.sudahMemilih, true))
 
     // Get siswa yang belum memilih
-    const belumMemilih = totalSiswa - sudahMemilih
+    const siswaBelumMemilih = totalSiswa - siswaMemilih
+
+    // Get total pegawai (guru & TU)
+    const [{ total: totalPegawai }] = await db.select({ total: count() }).from(pegawai)
+
+    // Get pegawai yang sudah memilih
+    const [{ total: pegawaiMemilih }] = await db.select({ total: count() }).from(pegawai).where(eq(pegawai.sudahMemilih, true))
+
+    // Get pegawai yang belum memilih
+    const pegawaiBelumMemilih = totalPegawai - pegawaiMemilih
+
+    // Calculate totals
+    const totalVoters = totalSiswa + totalPegawai
+    const totalSudahMemilih = siswaMemilih + pegawaiMemilih
+    const totalBelumMemilih = siswaBelumMemilih + pegawaiBelumMemilih
 
     // Get voting status
     const [votingAktifSetting] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, 'voting_aktif')).limit(1)
@@ -22,9 +36,15 @@ export async function GET() {
     const votingAktif = votingAktifSetting?.nilai === 'true'
 
     return NextResponse.json({
+      totalVoters,
       totalSiswa,
-      sudahMemilih,
-      belumMemilih,
+      siswaMemilih,
+      siswaBelumMemilih,
+      totalPegawai,
+      pegawaiMemilih,
+      pegawaiBelumMemilih,
+      sudahMemilih: totalSudahMemilih,
+      belumMemilih: totalBelumMemilih,
       votingAktif
     })
 
