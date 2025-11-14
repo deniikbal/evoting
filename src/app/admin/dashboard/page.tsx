@@ -163,7 +163,7 @@ export default function DashboardPage() {
 
         {/* Statistik Charts */}
         <div className="mt-8">
-          <StatistikCharts votingAktif={statistik.votingAktif} />
+          <StatistikCharts votingAktif={statistik.votingAktif} adminRole={adminRole} />
         </div>
       </main>
     </div>

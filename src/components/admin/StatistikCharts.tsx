@@ -29,11 +29,12 @@ interface KandidatVote {
 
 interface StatistikChartsProps {
   votingAktif: boolean
+  adminRole?: string
 }
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#ef4444']
 
-export default function StatistikCharts({ votingAktif }: StatistikChartsProps) {
+export default function StatistikCharts({ votingAktif, adminRole }: StatistikChartsProps) {
   const [chartData, setChartData] = useState<ChartData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAngkatan, setSelectedAngkatan] = useState<string>('')
@@ -50,25 +51,34 @@ export default function StatistikCharts({ votingAktif }: StatistikChartsProps) {
   const [loadingMitraMudaVotes, setLoadingMitraMudaVotes] = useState(false)
 
   useEffect(() => {
-    if (!votingAktif) {
+    // Fetch data if voting is NOT active, OR if admin is SuperAdmin
+    const shouldFetchData = !votingAktif || adminRole === 'superadmin'
+    
+    if (shouldFetchData) {
       fetchChartData()
       fetchRoleVotes()
     } else {
       setIsLoading(false)
     }
-  }, [votingAktif])
+  }, [votingAktif, adminRole])
 
   useEffect(() => {
-    if (selectedAngkatan && !votingAktif) {
+    // Fetch selectedAngkatan data if voting is NOT active, OR if admin is SuperAdmin
+    const shouldFetchData = !votingAktif || adminRole === 'superadmin'
+    
+    if (selectedAngkatan && shouldFetchData) {
       fetchKandidatVotes('angkatan', selectedAngkatan, selectedAngkatanRole)
     }
-  }, [selectedAngkatan, selectedAngkatanRole, votingAktif])
+  }, [selectedAngkatan, selectedAngkatanRole, votingAktif, adminRole])
 
   useEffect(() => {
-    if (selectedKelas && !votingAktif) {
+    // Fetch selectedKelas data if voting is NOT active, OR if admin is SuperAdmin
+    const shouldFetchData = !votingAktif || adminRole === 'superadmin'
+    
+    if (selectedKelas && shouldFetchData) {
       fetchKandidatVotes('kelas', selectedKelas, selectedKelasRole)
     }
-  }, [selectedKelas, selectedKelasRole, votingAktif])
+  }, [selectedKelas, selectedKelasRole, votingAktif, adminRole])
 
   const fetchChartData = async () => {
     try {
@@ -181,7 +191,10 @@ export default function StatistikCharts({ votingAktif }: StatistikChartsProps) {
     )
   }
 
-  if (votingAktif) {
+  // Show lock message only if voting is active AND user is NOT superadmin
+  const shouldShowCharts = !votingAktif || adminRole === 'superadmin'
+
+  if (!shouldShowCharts) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
