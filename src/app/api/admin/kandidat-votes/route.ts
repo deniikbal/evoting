@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     let filteredPegawaiIds: number[] = []
     
     if (filterType === 'angkatan' || filterType === 'kelas') {
-      // Get pegawai linked to filtered classrooms/kelas
+      // Get pegawai linked to filtered classrooms
       if (filterType === 'angkatan') {
         const classrooms = await db
           .select({ id: classroom.id })
@@ -88,12 +88,20 @@ export async function GET(request: NextRequest) {
           filteredPegawaiIds = pegawaiList.map(p => p.id)
         }
       } else if (filterType === 'kelas') {
-        const pegawaiList = await db
-          .select({ id: pegawai.id })
-          .from(pegawai)
-          .where(eq(pegawai.kelas, filterValue))
+        // For kelas filter, find the classroom with this name, then get pegawai
+        const classroomData = await db
+          .select({ id: classroom.id })
+          .from(classroom)
+          .where(eq(classroom.name, filterValue))
         
-        filteredPegawaiIds = pegawaiList.map(p => p.id)
+        if (classroomData.length > 0) {
+          const pegawaiList = await db
+            .select({ id: pegawai.id })
+            .from(pegawai)
+            .where(eq(pegawai.classroomId, classroomData[0].id))
+          
+          filteredPegawaiIds = pegawaiList.map(p => p.id)
+        }
       }
     }
 
