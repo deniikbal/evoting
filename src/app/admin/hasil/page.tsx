@@ -178,8 +178,8 @@ export default function HasilVotingPage() {
       <DashboardHeader admin={admin} onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-        {/* Voting Active Notice */}
-        {statistik.votingAktif ? (
+        {/* Voting Active Notice - Show only if voting active AND user is NOT superadmin */}
+        {statistik.votingAktif && adminRole !== 'superadmin' ? (
           <Card className="rounded-sm mb-6 bg-gradient-to-br from-blue-100 to-cyan-100 border-2 border-blue-300 shadow-lg">
             <CardContent className="pt-8 pb-8 text-center">
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
