@@ -401,7 +401,6 @@ export default function HasilVotingPage() {
                 }}
                 className="h-10"
               />
-              <p className="text-xs text-gray-500">Hint: Password default adalah "smansaba"</p>
             </div>
           </div>
           <DialogFooter className="gap-3 sm:gap-3">

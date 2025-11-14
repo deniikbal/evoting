@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2, 
-  Edit, Key, Search, ChevronLeft, ChevronRight, AlertTriangle
+  Edit, Key, Search, ChevronLeft, ChevronRight, AlertTriangle, Printer
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
+import PegawaiCard from '@/components/admin/PegawaiCard'
 
 interface Admin {
   id: number
@@ -101,6 +102,7 @@ export default function PegawaiPage() {
   const [formError, setFormError] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
+  const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [classroomSearch, setClassroomSearch] = useState('')
   
   // Pagination
@@ -277,6 +279,92 @@ export default function PegawaiPage() {
     }
   }
 
+  const handlePrintCards = () => {
+    const printWindow = window.open('', '', 'width=800,height=600')
+    if (!printWindow) return
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Cetak Kartu Pegawai</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 10px; }
+            .print-header { text-align: center; margin-bottom: 20px; font-size: 18px; font-weight: bold; }
+            .print-cards-grid { 
+              display: grid; 
+              grid-template-columns: repeat(2, 1fr); 
+              gap: 10px;
+              margin-bottom: 20px;
+            }
+            .voter-card {
+              border: 1px solid #1f2937;
+              border-radius: 4px;
+              padding: 6px;
+              background: white;
+              break-inside: avoid;
+              width: 100%;
+              box-sizing: border-box;
+            }
+            .print-header { text-align: center; margin-bottom: 4px; padding-bottom: 2px; border-bottom: 1px solid #1f2937; }
+            .print-header h2 { font-size: 8px; font-weight: bold; color: #111827; margin: 0; line-height: 1; }
+            .voter-card .space-y-0-5 { display: flex; flex-direction: column; gap: 2px; }
+            .voter-card .flex { display: flex; font-size: 6px; line-height: 1; }
+            .voter-card .w-16 { width: 64px; font-weight: 600; color: #374151; }
+            .voter-card .flex-1 { flex: 1; }
+            .voter-card .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .voter-card .flex-items-center { display: flex; align-items: center; margin-top: 4px; padding-top: 2px; border-top: 1px solid #d1d5db; }
+            .token-span { font-size: 8px; font-weight: bold; letter-spacing: 0.05em; }
+            .card-footer { margin-top: 2px; padding-top: 2px; border-top: 1px solid #d1d5db; font-size: 4px; color: #6b7280; text-align: center; line-height: 1; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <h2>KARTU PEMILIHAN KETUA OSIS - PEGAWAI</h2>
+          </div>
+          <div class="print-cards-grid">
+            ${pegawaiList
+              .filter(p => p.status === 'aktif')
+              .map(p => `
+              <div class="voter-card">
+                <div class="print-header">
+                  <h2>PEMILIHAN KETUA OSIS</h2>
+                </div>
+                <div class="space-y-0-5">
+                  <div class="flex">
+                    <span class="w-16">JABATAN</span>
+                    <span class="flex-1">: ${p.role === 'guru' ? 'GURU' : 'TENAGA KEPENDIDIKAN'}</span>
+                  </div>
+                  <div class="flex">
+                    <span class="w-16">NAMA</span>
+                    <span class="flex-1 truncate">: ${p.nama}</span>
+                  </div>
+                  <div class="flex">
+                    <span class="w-16">EMAIL</span>
+                    <span class="flex-1 truncate" style="font-size: 5px;">: ${p.email}</span>
+                  </div>
+                  <div class="flex-items-center">
+                    <span class="w-16">TOKEN</span>
+                    <span class="flex-1">: <span class="token-span">${p.tokenPlain}</span></span>
+                  </div>
+                </div>
+                <div class="card-footer">Simpan kartu ini dengan baik</div>
+              </div>
+            `).join('')}
+          </div>
+        </body>
+      </html>
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+    printWindow.onload = () => {
+      printWindow.print()
+    }
+  }
+
   const handleDelete = async (id: number) => {
     try {
       const response = await fetch(`/api/admin/pegawai/${id}`, {
@@ -447,6 +535,14 @@ export default function PegawaiPage() {
                   >
                     <Upload className="w-4 h-4 mr-1 sm:mr-2" />
                     <span className="hidden sm:inline">Import</span>
+                  </Button>
+                  <Button
+                    onClick={() => setShowPrintDialog(true)}
+                    size="sm"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
+                  >
+                    <Printer className="w-4 h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Cetak Kartu</span>
                   </Button>
                   <Button
                     onClick={handleAddNew}
@@ -1089,6 +1185,42 @@ export default function PegawaiPage() {
             </div>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Print Dialog */}
+        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+          <DialogContent className="max-w-md mx-4">
+            <DialogHeader>
+              <DialogTitle>Cetak Kartu Pegawai</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-gray-600">
+                Pilih pegawai yang akan dicetak kartunya. Hanya pegawai dengan status "Aktif" yang akan ditampilkan.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                <p className="text-xs text-blue-700">
+                  💡 <strong>Info:</strong> Kartu akan ditampilkan dalam 2 kolom dan siap untuk dicetak.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPrintDialog(false)}
+              >
+                Batal
+              </Button>
+              <Button 
+                type="button" 
+                className="flex-1" 
+                onClick={handlePrintCards}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Cetak
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
