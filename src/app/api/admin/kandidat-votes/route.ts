@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { siswa, kandidat, vote, classroom } from '@/lib/schema'
-import { eq, count, and, inArray } from 'drizzle-orm'
+import { siswa, pegawai, kandidat, vote, classroom } from '@/lib/schema'
+import { eq, count, and, inArray, or } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,10 +30,11 @@ export async function GET(request: NextRequest) {
       filteredKandidat = filteredKandidat.filter(k => k.role === roleFilter)
     }
 
-    // Handle role filter (mitratama or mitramuda)
+    // Handle filter based on type
     if (filterType === 'role') {
+      // For role filter, get all siswa and pegawai
       filteredKandidat = allKandidat.filter(k => k.role === filterValue)
-      // Get all siswa (no class filtering for role)
+      
       const allSiswa = await db.select({ id: siswa.id }).from(siswa)
       filteredSiswaIds = allSiswa.map(s => s.id)
     } else if (filterType === 'angkatan') {
@@ -86,14 +87,25 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get votes from these siswa
+    // Get votes from both siswa and pegawai
+    // For siswa: filter by siswaId
+    // For pegawai: all pegawai votes are included (no class-based filtering)
     const votes = await db
       .select({
         kandidatId: vote.kandidatId,
         count: count()
       })
       .from(vote)
-      .where(inArray(vote.siswaId, filteredSiswaIds))
+      .where(
+        or(
+          inArray(vote.siswaId, filteredSiswaIds),
+          // Include all pegawai votes (voterType = 'guru' or 'tu')
+          and(
+            or(eq(vote.voterType, 'guru'), eq(vote.voterType, 'tu')),
+            // voterType is not null (it's a pegawai vote)
+          )
+        )
+      )
       .groupBy(vote.kandidatId)
 
     // Map votes to kandidat (using filtered kandidat based on role)
