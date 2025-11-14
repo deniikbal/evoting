@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Plus, Trash2, Edit, RefreshCw, Shield, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Edit, RefreshCw, Shield, AlertCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 
@@ -32,6 +32,7 @@ interface AdminSession {
 export default function UserManagementPage() {
   const router = useRouter()
   const [adminData, setAdminData] = useState<Admin[]>([])
+  const [filteredAdminData, setFilteredAdminData] = useState<Admin[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [admin, setAdmin] = useState<AdminSession | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -39,6 +40,10 @@ export default function UserManagementPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'superadmin'>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   const [formData, setFormData] = useState({
     username: '',
@@ -61,6 +66,26 @@ export default function UserManagementPage() {
     setAdmin(session)
     fetchAdmins()
   }, [router])
+
+  useEffect(() => {
+    // Filter data
+    let filtered = adminData
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(adm =>
+        adm.username.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(adm => adm.role === roleFilter)
+    }
+
+    setFilteredAdminData(filtered)
+    setCurrentPage(1) // Reset to first page
+  }, [adminData, searchTerm, roleFilter])
 
   const fetchAdmins = async () => {
     try {
@@ -177,6 +202,12 @@ export default function UserManagementPage() {
     router.push('/login/admin')
   }
 
+  // Pagination
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedData = filteredAdminData.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredAdminData.length / itemsPerPage)
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
@@ -189,51 +220,124 @@ export default function UserManagementPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
       <DashboardHeader admin={admin} onLogout={handleLogout} />
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="w-8 h-8 text-blue-600" />
-                Manajemen Admin
-              </h1>
-              <p className="text-sm text-slate-600 mt-1">
-                {admin?.role === 'superadmin' ? '🔓 Anda login sebagai SuperAdmin' : admin?.role === 'admin' ? '🔐 Anda login sebagai Admin' : '👤 Role tidak terdeteksi'}
-              </p>
-            </div>
-            <Button
-              onClick={handleAddNew}
-              disabled={admin?.role !== 'superadmin'}
-              className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title={admin?.role !== 'superadmin' ? 'Hanya SuperAdmin yang bisa menambah admin' : ''}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Tambah Admin
-            </Button>
-          </div>
-          
-          {admin?.role !== 'superadmin' && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
-                Anda login sebagai {admin?.role || 'user tanpa role'}. Hanya SuperAdmin yang dapat menambah, mengedit, atau menghapus admin. Hubungi SuperAdmin untuk mengubah role Anda.
-              </AlertDescription>
-            </Alert>
-          )}
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Statistik Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Admin</CardTitle>
+              <Shield className="h-4 w-4 text-slate-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-slate-900">{adminData.length}</div>
+              <p className="text-xs text-slate-500 mt-1">Akun admin terdaftar</p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-red-50 to-rose-50 border-red-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-red-700">SuperAdmin</CardTitle>
+              <Shield className="h-4 w-4 text-red-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-red-900">{adminData.filter(a => a.role === 'superadmin').length}</div>
+              <p className="text-xs text-red-600 mt-1">🔓 Full access</p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-blue-700">Admin</CardTitle>
+              <Shield className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-blue-900">{adminData.filter(a => a.role === 'admin').length}</div>
+              <p className="text-xs text-blue-600 mt-1">🔐 Limited access</p>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium text-indigo-700">Pencarian</CardTitle>
+              <Search className="h-4 w-4 text-indigo-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold text-indigo-900">{filteredAdminData.length}</div>
+              <p className="text-xs text-indigo-600 mt-1">Hasil filter</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Table */}
-        <Card className="bg-white border-slate-200 rounded-sm">
+        {admin?.role !== 'superadmin' && (
+          <Alert className="border-amber-200 bg-amber-50 mb-6">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Anda login sebagai {admin?.role || 'user tanpa role'}. Hanya SuperAdmin yang dapat menambah, mengedit, atau menghapus admin. Hubungi SuperAdmin untuk mengubah role Anda.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Data Admin */}
+        <Card className="bg-white border-slate-200 rounded-sm mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="w-5 h-5" />
-              Daftar Admin ({adminData.length})
-            </CardTitle>
-            <CardDescription>
-              Kelola admin dan superadmin sistem e-voting
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Daftar Admin
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm mt-1">
+                  <span className="block sm:inline">Total {adminData.length} admin terdaftar</span>
+                  {filteredAdminData.length !== adminData.length && (
+                    <span className="text-orange-600 block sm:inline ml-0 sm:ml-2">
+                      ({filteredAdminData.length} hasil filter)
+                    </span>
+                  )}
+                  {filteredAdminData.length > 0 && (
+                    <span className="text-gray-600 block sm:inline ml-0 sm:ml-2">
+                      Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredAdminData.length)} dari {filteredAdminData.length}
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              {admin?.role === 'superadmin' && (
+                <Button
+                  onClick={handleAddNew}
+                  className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Admin
+                </Button>
+              )}
+            </div>
           </CardHeader>
+
+          {/* Search & Filter */}
+          <div className="px-6 pb-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <Input
+                  placeholder="Cari username..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="rounded-sm"
+                  icon={<Search className="w-4 h-4" />}
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={(value: any) => setRoleFilter(value)}>
+                <SelectTrigger className="w-full sm:w-48 rounded-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="admin">🔐 Admin</SelectItem>
+                  <SelectItem value="superadmin">🔓 SuperAdmin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Table */}
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
@@ -246,14 +350,14 @@ export default function UserManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {adminData.length === 0 ? (
+                  {paginatedData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={admin?.role === 'superadmin' ? 4 : 3} className="text-center py-8">
                         <p className="text-slate-500">Tidak ada data admin</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    adminData.map((adm) => (
+                    paginatedData.map((adm) => (
                       <TableRow key={adm.id}>
                         <TableCell className="font-medium">{adm.username}</TableCell>
                         <TableCell>
@@ -302,6 +406,35 @@ export default function UserManagementPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
+                <p className="text-sm text-slate-600">
+                  Halaman {currentPage} dari {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-sm"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-sm"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
