@@ -65,6 +65,7 @@ interface FormData {
   role: 'guru' | 'tu'
   nip: string
   nomorInduk: string
+  kelas: string
   status: 'aktif' | 'non-aktif'
 }
 
@@ -88,6 +89,7 @@ export default function PegawaiPage() {
     role: 'guru',
     nip: '',
     nomorInduk: '',
+    kelas: '',
     status: 'aktif',
   })
   const [formError, setFormError] = useState('')
@@ -204,6 +206,15 @@ export default function PegawaiPage() {
 
       if (response.ok) {
         setCredentials(data.credentials)
+        setFormData({
+          nama: '',
+          email: '',
+          role: 'guru',
+          nip: '',
+          nomorInduk: '',
+          kelas: '',
+          status: 'aktif',
+        })
         setShowAddModal(false)
         await fetchPegawai()
       } else {
@@ -754,20 +765,38 @@ export default function PegawaiPage() {
         </Card>
 
         {/* Add Pegawai Modal */}
-        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-w-md rounded-sm">
-            <DialogHeader>
-              <DialogTitle>Tambah Pegawai Baru</DialogTitle>
+        <Dialog
+          open={showAddModal}
+          onOpenChange={(open) => {
+            if (!open) {
+              setFormData({
+                nama: '',
+                email: '',
+                role: 'guru',
+                nip: '',
+                nomorInduk: '',
+                kelas: '',
+                status: 'aktif',
+              })
+              setFormError('')
+            }
+            setShowAddModal(open)
+          }}
+        >
+          <DialogContent className="max-w-sm rounded-sm">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-lg">Tambah Pegawai Baru</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmitForm} className="space-y-4">
+            <form onSubmit={handleSubmitForm} className="space-y-3">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-xs">
                   {formError}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="nama">Nama *</Label>
+              {/* Row 1: Nama */}
+              <div className="space-y-1">
+                <Label htmlFor="nama" className="text-xs">Nama *</Label>
                 <Input
                   id="nama"
                   placeholder="Nama lengkap"
@@ -775,102 +804,126 @@ export default function PegawaiPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, nama: e.target.value })
                   }
+                  className="h-8 text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@sekolah.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                />
+              {/* Row 2: Email & Role */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="email" className="text-xs">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="email@sekolah"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="role" className="text-xs">Role *</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        role: value as 'guru' | 'tu',
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="guru">Guru</SelectItem>
+                      <SelectItem value="tu">TU</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Role *</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      role: value as 'guru' | 'tu',
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="guru">Guru</SelectItem>
-                    <SelectItem value="tu">TU</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Row 3: NIP & Nomor Induk */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="nip" className="text-xs">NIP</Label>
+                  <Input
+                    id="nip"
+                    placeholder="123456789"
+                    value={formData.nip}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nip: e.target.value })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="nomorInduk" className="text-xs">No. Induk</Label>
+                  <Input
+                    id="nomorInduk"
+                    placeholder="G001"
+                    value={formData.nomorInduk}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nomorInduk: e.target.value })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nip">NIP (Opsional)</Label>
-                <Input
-                  id="nip"
-                  placeholder="Nomor Induk Pegawai"
-                  value={formData.nip}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nip: e.target.value })
-                  }
-                />
+              {/* Row 4: Kelas & Status */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="kelas" className="text-xs">Kelas</Label>
+                  <Input
+                    id="kelas"
+                    placeholder="X-1"
+                    value={formData.kelas}
+                    onChange={(e) =>
+                      setFormData({ ...formData, kelas: e.target.value })
+                    }
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="status" className="text-xs">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        status: value as 'aktif' | 'non-aktif',
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="aktif">Aktif</SelectItem>
+                      <SelectItem value="non-aktif">Non-Aktif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nomorInduk">Nomor Induk (Opsional)</Label>
-                <Input
-                  id="nomorInduk"
-                  placeholder="G001 atau TU001"
-                  value={formData.nomorInduk}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomorInduk: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      status: value as 'aktif' | 'non-aktif',
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="aktif">Aktif</SelectItem>
-                    <SelectItem value="non-aktif">Non-Aktif</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <DialogFooter>
+              <DialogFooter className="pt-2">
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={() => setShowAddModal(false)}
                   disabled={isSubmitting}
                 >
                   Batal
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" size="sm" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Menyimpan...
+                      Simpan
                     </>
                   ) : (
                     'Simpan'
