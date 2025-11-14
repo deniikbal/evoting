@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { 
   BarChart3, RefreshCw, Trophy, Users, 
-  CheckCircle, TrendingUp, Trash2, AlertTriangle, Sparkles
+  Trash2, Sparkles
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -166,61 +165,6 @@ export default function HasilVotingPage() {
       <DashboardHeader admin={admin} onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-
-
-        {/* Statistik Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="rounded-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-blue-100">Total Pemilih</p>
-                <Users className="h-5 w-5 text-blue-100" />
-              </div>
-              <div className="text-3xl font-bold mb-1">{statistik.totalVoters}</div>
-              <p className="text-xs text-blue-100">Siswa ({statistik.totalSiswa}) + Pegawai ({statistik.totalPegawai})</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-sm bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-emerald-100">Sudah Memilih</p>
-                <CheckCircle className="h-5 w-5 text-emerald-100" />
-              </div>
-              <div className="text-3xl font-bold mb-1">{statistik.sudahMemilih}</div>
-              <p className="text-xs text-emerald-100">
-                {statistik.totalVoters > 0 ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100) : 0}% partisipasi
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-sm bg-gradient-to-br from-cyan-500 to-cyan-600 text-white border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-cyan-100">Total Suara</p>
-                <TrendingUp className="h-5 w-5 text-cyan-100" />
-              </div>
-              <div className="text-3xl font-bold mb-1">{totalSuara}</div>
-              <p className="text-xs text-cyan-100">Suara masuk</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-sm bg-gradient-to-br from-sky-500 to-sky-600 text-white border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-sky-100">Status</p>
-                <BarChart3 className="h-5 w-5 text-sky-100" />
-              </div>
-              <div className="mb-1">
-                <Badge variant={statistik.votingAktif ? "default" : "secondary"} className="text-sm">
-                  {statistik.votingAktif ? "Aktif" : "Selesai"}
-                </Badge>
-              </div>
-              <p className="text-xs text-sky-100">Status voting</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Voting Active Notice */}
         {statistik.votingAktif ? (
           <Card className="rounded-sm mb-6 bg-gradient-to-br from-blue-100 to-cyan-100 border-2 border-blue-300 shadow-lg">
@@ -402,7 +346,7 @@ export default function HasilVotingPage() {
           <DialogHeader>
             <div className="flex items-center gap-2 text-red-600 mb-2">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6" />
+                <Trash2 className="w-6 h-6" />
               </div>
             </div>
             <DialogTitle className="text-xl">Reset Semua Hasil Voting</DialogTitle>
