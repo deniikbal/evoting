@@ -30,6 +30,7 @@ interface Kandidat {
   misi: string | null
   fotoUrl: string | null
   jumlahSuara: number
+  role: string
 }
 
 export default function LandingPage() {
@@ -224,58 +225,84 @@ export default function LandingPage() {
               <p className="text-gray-500">Belum ada kandidat yang terdaftar.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {kandidatList.map((kandidat) => (
-                <Card key={kandidat.id} className="hover:shadow-xl transition-shadow overflow-hidden">
-                  <CardHeader className="p-0">
-                    <div className="relative h-64 bg-gradient-to-br from-orange-100 to-pink-100">
-                      {kandidat.fotoUrl ? (
-                        <img 
-                          src={kandidat.fotoUrl} 
-                          alt={kandidat.namaCalon}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-24 h-24 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="absolute top-4 left-4">
-                        <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white text-lg px-4 py-2">
-                          Nomor {kandidat.nomorUrut}
-                        </Badge>
+            <div className="space-y-12">
+              {['mitramuda', 'mitratama'].map((roleType) => {
+                const roleKandidat = kandidatList.filter(k => k.role === roleType)
+                const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+                const roleColor = roleType === 'mitramuda' ? 'from-blue-500 to-cyan-500' : 'from-purple-500 to-pink-500'
+                
+                return (
+                  <div key={roleType}>
+                    <div className="mb-8 flex items-center gap-4">
+                      <div className={`px-4 py-2 rounded-full font-bold text-white text-sm sm:text-base ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
+                        {roleLabel}
                       </div>
+                      <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
+                      <span className="text-gray-600 font-medium text-sm">{roleKandidat.length} kandidat</span>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <CardTitle className="text-2xl mb-4 text-center">
-                      {kandidat.namaCalon}
-                    </CardTitle>
                     
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="w-5 h-5 text-orange-500" />
-                          <h4 className="font-semibold text-gray-800">Visi</h4>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {kandidat.visi || 'Visi belum ditambahkan'}
-                        </p>
+                    {roleKandidat.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        Belum ada kandidat untuk kategori ini
                       </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {roleKandidat.map((kandidat) => (
+                          <Card key={kandidat.id} className="hover:shadow-xl transition-shadow overflow-hidden">
+                            <CardHeader className="p-0">
+                              <div className={`relative h-64 bg-gradient-to-br ${roleColor}`}>
+                                {kandidat.fotoUrl ? (
+                                  <img 
+                                    src={kandidat.fotoUrl} 
+                                    alt={kandidat.namaCalon}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <User className="w-24 h-24 text-white/50" />
+                                  </div>
+                                )}
+                                <div className="absolute top-4 left-4 flex gap-2">
+                                  <Badge className="bg-white/90 text-gray-800 text-lg px-4 py-2">
+                                    Nomor {kandidat.nomorUrut}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                              <CardTitle className="text-2xl mb-4 text-center">
+                                {kandidat.namaCalon}
+                              </CardTitle>
+                              
+                              <div className="space-y-4">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Target className={`w-5 h-5 ${roleType === 'mitramuda' ? 'text-blue-500' : 'text-purple-500'}`} />
+                                    <h4 className="font-semibold text-gray-800">Visi</h4>
+                                  </div>
+                                  <p className="text-sm text-gray-600 leading-relaxed">
+                                    {kandidat.visi || 'Visi belum ditambahkan'}
+                                  </p>
+                                </div>
 
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <BookOpen className="w-5 h-5 text-pink-500" />
-                          <h4 className="font-semibold text-gray-800">Misi</h4>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                          {kandidat.misi || 'Misi belum ditambahkan'}
-                        </p>
+                                <div>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <BookOpen className={`w-5 h-5 ${roleType === 'mitramuda' ? 'text-cyan-500' : 'text-pink-500'}`} />
+                                    <h4 className="font-semibold text-gray-800">Misi</h4>
+                                  </div>
+                                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                                    {kandidat.misi || 'Misi belum ditambahkan'}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

@@ -15,6 +15,34 @@
       "when": 1762345499095,
       "tag": "0001_yellow_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763089638078,
+      "tag": "0002_strange_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1763103105604,
+      "tag": "0003_melted_clint_barton",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763107276045,
+      "tag": "0004_tough_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1763108301402,
+      "tag": "0005_unique_gravity",
+      "breakpoints": true
     }
   ]
 }

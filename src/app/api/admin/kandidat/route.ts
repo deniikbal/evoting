@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { kandidat } from '@/lib/schema'
-import { eq, asc } from 'drizzle-orm'
+import { eq, asc, and } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +21,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { nomorUrut, namaCalon, visi, misi, fotoUrl } = await request.json()
+    const { nomorUrut, namaCalon, visi, misi, fotoUrl, role } = await request.json()
 
     if (!nomorUrut || !namaCalon) {
       return NextResponse.json(
@@ -30,12 +30,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if nomor urut already exists
-    const [existingKandidat] = await db.select().from(kandidat).where(eq(kandidat.nomorUrut, nomorUrut)).limit(1)
+    if (!role || !['mitramuda', 'mitratama'].includes(role)) {
+      return NextResponse.json(
+        { message: 'Role harus mitramuda atau mitratama' },
+        { status: 400 }
+      )
+    }
+
+    // Check if nomor urut already exists in the same role/category
+    const [existingKandidat] = await db.select().from(kandidat).where(
+      and(eq(kandidat.nomorUrut, nomorUrut), eq(kandidat.role, role))
+    ).limit(1)
 
     if (existingKandidat) {
       return NextResponse.json(
-        { message: 'Nomor urut sudah digunakan' },
+        { message: `Nomor urut ${nomorUrut} sudah digunakan di kategori ${role === 'mitramuda' ? 'Mitra Muda' : 'Mitra Tama'}` },
         { status: 409 }
       )
     }
@@ -45,7 +54,8 @@ export async function POST(request: NextRequest) {
       namaCalon,
       visi: visi || null,
       misi: misi || null,
-      fotoUrl: fotoUrl || null
+      fotoUrl: fotoUrl || null,
+      role
     }).returning()
 
     return NextResponse.json({

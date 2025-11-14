@@ -21,12 +21,13 @@ export const siswa = pgTable('siswa', {
 
 export const kandidat = pgTable('kandidat', {
   id: serial('id').primaryKey(),
-  nomorUrut: integer('nomor_urut').notNull().unique(),
+  nomorUrut: integer('nomor_urut').notNull(),
   namaCalon: varchar('nama_calon').notNull(),
   visi: text('visi'),
   misi: text('misi'),
   fotoUrl: varchar('foto_url'),
   jumlahSuara: integer('jumlah_suara').notNull().default(0),
+  role: varchar('role', { length: 50 }).notNull().default('mitramuda'),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
@@ -44,9 +45,27 @@ export const admin = pgTable('admin', {
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
 
+export const pegawai = pgTable('pegawai', {
+  id: serial('id').primaryKey(),
+  nama: varchar('nama').notNull(),
+  email: varchar('email').notNull().unique(),
+  passwordPlain: varchar('password_plain').notNull(),
+  token: varchar('token').notNull().unique(),
+  tokenPlain: varchar('token_plain', { length: 10 }).notNull(), // 6-char plain token untuk display
+  role: varchar('role', { length: 50 }).notNull(), // 'guru' atau 'tu'
+  nip: varchar('nip'),
+  nomorInduk: varchar('nomor_induk'),
+  status: varchar('status', { length: 50 }).notNull().default('aktif'), // 'aktif' atau 'non-aktif'
+  sudahMemilih: boolean('sudah_memilih').notNull().default(false),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+})
+
 export const vote = pgTable('vote', {
   id: serial('id').primaryKey(),
-  siswaId: integer('siswa_id').notNull(),
+  siswaId: integer('siswa_id'),
+  pegawaiId: integer('pegawai_id'),
   kandidatId: integer('kandidat_id').notNull(),
+  voterType: varchar('voter_type', { length: 50 }).notNull(), // 'siswa', 'guru', 'tu'
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })

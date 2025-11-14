@@ -1,0 +1,1 @@
+ALTER TABLE "kandidat" ADD COLUMN "role" varchar(50) DEFAULT 'mitramuda' NOT NULL;

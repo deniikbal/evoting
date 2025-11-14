@@ -36,6 +36,7 @@ interface Kandidat {
   misi: string
   fotoUrl?: string
   jumlahSuara: number
+  role: string
 }
 
 interface Statistik {
@@ -296,8 +297,24 @@ export default function HasilVotingPage() {
                     <p className="text-gray-500">Belum ada data voting</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {sortedKandidat.map((k, index) => {
+                  <div className="space-y-8">
+                    {['mitramuda', 'mitratama'].map((roleType) => {
+                      const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
+                      const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+                      const roleColor = roleType === 'mitramuda' ? 'text-blue-600' : 'text-purple-600'
+                      
+                      if (roleKandidat.length === 0) return null
+                      
+                      return (
+                        <div key={roleType}>
+                          <div className="mb-6 flex items-center gap-4">
+                            <div className={`px-4 py-2 rounded-full font-bold text-white text-sm ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
+                              {roleLabel}
+                            </div>
+                            <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
+                          </div>
+                          <div className="space-y-4">
+                            {roleKandidat.map((k, index) => {
                       const persentase = totalSuara > 0 ? Math.round((k.jumlahSuara / totalSuara) * 100) : 0
                       const isWinner = index === 0 && k.jumlahSuara > 0
                       
@@ -351,6 +368,10 @@ export default function HasilVotingPage() {
                                 style={{ width: `${persentase}%` }}
                               />
                             </div>
+                          </div>
+                        </div>
+                            )
+                            })}
                           </div>
                         </div>
                       )

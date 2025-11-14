@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, ChevronDown, Users2, Trophy, BarChart3, Settings, LayoutDashboard, School } from 'lucide-react'
+import { LogOut, ChevronDown, Users2, Trophy, BarChart3, Settings, LayoutDashboard, School, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Admin {
@@ -63,6 +63,10 @@ export default function DashboardHeader({ admin, onLogout }: DashboardHeaderProp
                   <DropdownMenuItem onClick={() => router.push('/admin/siswa')} className="cursor-pointer hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Siswa</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/admin/pegawai')} className="cursor-pointer hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Guru & TU</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push('/admin/kandidat')} className="cursor-pointer hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
                     <Trophy className="mr-2 h-4 w-4" />
@@ -132,6 +136,10 @@ export default function DashboardHeader({ admin, onLogout }: DashboardHeaderProp
               <DropdownMenuItem onClick={() => router.push('/admin/siswa')} className="cursor-pointer text-xs hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
                 <Users2 className="mr-2 h-3 w-3" />
                 Siswa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/admin/pegawai')} className="cursor-pointer text-xs hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
+                <User className="mr-2 h-3 w-3" />
+                Guru & TU
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/admin/kandidat')} className="cursor-pointer text-xs hover:bg-blue-50 hover:text-blue-600 focus:bg-blue-50 focus:text-blue-600">
                 <Trophy className="mr-2 h-3 w-3" />

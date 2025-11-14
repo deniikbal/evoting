@@ -12,7 +12,7 @@ export async function PUT(
   try {
     const { id: idParam } = await params
     const id = parseInt(idParam)
-    const { nomorUrut, namaCalon, visi, misi, fotoUrl } = await request.json()
+    const { nomorUrut, namaCalon, visi, misi, fotoUrl, role } = await request.json()
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -28,6 +28,13 @@ export async function PUT(
       )
     }
 
+    if (!role || !['mitramuda', 'mitratama'].includes(role)) {
+      return NextResponse.json(
+        { message: 'Role harus mitramuda atau mitratama' },
+        { status: 400 }
+      )
+    }
+
     // Check if candidate exists
     const [existingKandidat] = await db.select().from(kandidat).where(eq(kandidat.id, id)).limit(1)
 
@@ -38,14 +45,18 @@ export async function PUT(
       )
     }
 
-    // Check if nomor urut is used by another candidate
+    // Check if nomor urut is used by another candidate in the same role/category
     const [duplicateNomorUrut] = await db.select().from(kandidat)
-      .where(and(eq(kandidat.nomorUrut, nomorUrut), ne(kandidat.id, id)))
+      .where(and(
+        eq(kandidat.nomorUrut, nomorUrut),
+        eq(kandidat.role, role),
+        ne(kandidat.id, id)
+      ))
       .limit(1)
 
     if (duplicateNomorUrut) {
       return NextResponse.json(
-        { message: 'Nomor urut sudah digunakan oleh kandidat lain' },
+        { message: `Nomor urut ${nomorUrut} sudah digunakan oleh kandidat lain di kategori ${role === 'mitramuda' ? 'Mitra Muda' : 'Mitra Tama'}` },
         { status: 409 }
       )
     }
@@ -56,7 +67,8 @@ export async function PUT(
         namaCalon,
         visi: visi || null,
         misi: misi || null,
-        fotoUrl: fotoUrl || null
+        fotoUrl: fotoUrl || null,
+        role
       })
       .where(eq(kandidat.id, id))
       .returning()

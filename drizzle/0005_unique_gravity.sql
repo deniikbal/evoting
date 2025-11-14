@@ -1,0 +1,1 @@
+ALTER TABLE "pegawai" ADD COLUMN "token_plain" varchar(10) NOT NULL DEFAULT 'TEMP00';

@@ -17,6 +17,7 @@ interface Kandidat {
   misi: string
   fotoUrl?: string
   jumlahSuara: number
+  role: string
 }
 
 interface Siswa {
@@ -30,7 +31,8 @@ interface Siswa {
 export default function VotingPage() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [siswa, setSiswa] = useState<Siswa | null>(null)
-  const [selectedKandidat, setSelectedKandidat] = useState<Kandidat | null>(null)
+  const [selectedMitraTama, setSelectedMitraTama] = useState<Kandidat | null>(null)
+  const [selectedMitraMuda, setSelectedMitraMuda] = useState<Kandidat | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isVoting, setIsVoting] = useState(false)
   const [error, setError] = useState('')
@@ -69,31 +71,45 @@ export default function VotingPage() {
   }
 
   const handleVote = async () => {
-    if (!selectedKandidat || !siswa) return
+    if (!selectedMitraTama || !selectedMitraMuda || !siswa) return
 
     setIsVoting(true)
     setError('')
 
     try {
-      const response = await fetch('/api/voting', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          kandidatId: selectedKandidat.id,
-          siswaId: siswa.id
+      // Submit both votes
+      const responses = await Promise.all([
+        fetch('/api/voting', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            kandidatId: selectedMitraTama.id,
+            siswaId: siswa.id
+          }),
         }),
-      })
+        fetch('/api/voting', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            kandidatId: selectedMitraMuda.id,
+            siswaId: siswa.id
+          }),
+        })
+      ])
 
-      const data = await response.json()
+      // Check if both votes succeeded
+      const allSuccess = responses.every(res => res.ok)
 
-      if (response.ok) {
+      if (allSuccess) {
         // Clear session and redirect to thank you page
         localStorage.removeItem('siswaSession')
         router.push('/terima-kasih')
       } else {
-        setError(data.message || 'Gagal melakukan voting')
+        setError('Gagal melakukan voting. Silakan coba lagi.')
         setShowConfirmDialog(false)
       }
     } catch (err) {
@@ -104,9 +120,18 @@ export default function VotingPage() {
     }
   }
 
-  const confirmVote = (kandidat: Kandidat) => {
-    setSelectedKandidat(kandidat)
-    setShowConfirmDialog(true)
+  const selectKandidat = (kandidat: Kandidat) => {
+    if (kandidat.role === 'mitratama') {
+      setSelectedMitraTama(kandidat)
+    } else {
+      setSelectedMitraMuda(kandidat)
+    }
+  }
+
+  const openConfirmDialog = () => {
+    if (selectedMitraTama && selectedMitraMuda) {
+      setShowConfirmDialog(true)
+    }
   }
 
   if (isLoading) {
@@ -161,7 +186,7 @@ export default function VotingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 p-3 sm:p-4">
+    <div className={`min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 p-3 sm:p-4 ${selectedMitraTama && selectedMitraMuda ? 'pb-32 sm:pb-40' : ''}`}>
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-6 sm:mb-8">
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
@@ -189,12 +214,32 @@ export default function VotingPage() {
 
       {/* Kandidat Cards */}
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-center">Pilih Salah Satu Kandidat</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {kandidat.map((k) => (
-            <Card key={k.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="text-center pb-3 sm:pb-6">
+        <div className="space-y-10 sm:space-y-12">
+          {['mitratama', 'mitramuda'].map((roleType) => {
+            const roleKandidat = kandidat.filter(k => k.role === roleType)
+            const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+            const roleColor = roleType === 'mitramuda' ? 'text-blue-600' : 'text-purple-600'
+            const selectedKandidat = roleType === 'mitratama' ? selectedMitraTama : selectedMitraMuda
+            
+            return (
+              <div key={roleType}>
+                <div className="mb-6 sm:mb-8 flex items-center gap-4">
+                  <div className={`px-4 py-2 rounded-full font-bold text-white text-sm sm:text-base ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
+                    {roleLabel}
+                  </div>
+                  <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
+                  <span className="text-gray-600 font-medium text-sm">{roleKandidat.length} kandidat</span>
+                </div>
+                
+                {roleKandidat.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Belum ada kandidat untuk kategori ini
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    {roleKandidat.map((k) => (
+            <Card key={k.id} className={`hover:shadow-lg transition-all cursor-pointer ${selectedKandidat?.id === k.id ? 'ring-2 ring-green-500 shadow-lg' : ''}`} onClick={() => selectKandidat(k)}>
+              <CardHeader className="text-center pb-3 sm:pb-6 relative">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full flex items-center justify-center">
                   {k.fotoUrl ? (
                     <img 
@@ -206,6 +251,11 @@ export default function VotingPage() {
                     <User className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
                   )}
                 </div>
+                {selectedKandidat?.id === k.id && (
+                  <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                )}
                 <Badge variant="secondary" className="w-fit mx-auto mb-2 text-xs sm:text-sm">
                   Nomor {k.nomorUrut}
                 </Badge>
@@ -257,39 +307,81 @@ export default function VotingPage() {
                   </DialogContent>
                 </Dialog>
 
-                {/* Vote Button */}
-                <Button 
-                  onClick={() => confirmVote(k)}
-                  className="w-full h-10 sm:h-11 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-sm sm:text-base font-semibold"
-                  disabled={isVoting}
-                >
-                  <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
-                  PILIH
-                </Button>
+                {/* Selection status */}
+                {selectedKandidat?.id === k.id && (
+                  <div className="w-full h-10 sm:h-11 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center text-sm sm:text-base font-semibold transition-colors">
+                    <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
+                    Dipilih
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
+
+      {/* Action Bar - Show when both candidates selected */}
+      {selectedMitraTama && selectedMitraMuda && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-xl p-4 sm:p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <p className="text-xs text-purple-600 font-semibold mb-2">Pilihan: Mitra Tama</p>
+                  <p className="text-sm font-bold text-gray-800">{selectedMitraTama.namaCalon}</p>
+                  <p className="text-xs text-gray-600 mt-1">Nomor {selectedMitraTama.nomorUrut}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-xs text-blue-600 font-semibold mb-2">Pilihan: Mitra Muda</p>
+                  <p className="text-sm font-bold text-gray-800">{selectedMitraMuda.namaCalon}</p>
+                  <p className="text-xs text-gray-600 mt-1">Nomor {selectedMitraMuda.nomorUrut}</p>
+                </div>
+              </div>
+              <Button 
+                onClick={openConfirmDialog}
+                className="w-full h-11 text-base bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-semibold"
+                disabled={isVoting}
+              >
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Konfirmasi Pilihan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Konfirmasi Pilihan</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Konfirmasi Pilihan Akhir</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Apakah Anda yakin ingin memilih kandidat ini?
+              Apakah Anda yakin dengan pilihan ini? Anda tidak dapat mengubahnya setelah submit.
             </DialogDescription>
           </DialogHeader>
           
-          {selectedKandidat && (
-            <div className="text-center py-3 sm:py-4">
-              <Badge variant="secondary" className="mb-2 text-xs sm:text-sm">
-                Nomor {selectedKandidat.nomorUrut}
-              </Badge>
-              <h3 className="text-base sm:text-lg font-semibold">{selectedKandidat.namaCalon}</h3>
-            </div>
-          )}
+          <div className="space-y-3 py-4">
+            {selectedMitraTama && (
+              <div className="bg-purple-50 rounded-lg p-3">
+                <p className="text-xs text-purple-600 font-semibold mb-1">Mitra Tama (Kelas XI)</p>
+                <p className="text-sm font-bold text-gray-800">{selectedMitraTama.namaCalon}</p>
+                <p className="text-xs text-gray-600">Nomor {selectedMitraTama.nomorUrut}</p>
+              </div>
+            )}
+            
+            {selectedMitraMuda && (
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-xs text-blue-600 font-semibold mb-1">Mitra Muda (Kelas X)</p>
+                <p className="text-sm font-bold text-gray-800">{selectedMitraMuda.namaCalon}</p>
+                <p className="text-xs text-gray-600">Nomor {selectedMitraMuda.nomorUrut}</p>
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button 
@@ -302,7 +394,7 @@ export default function VotingPage() {
             </Button>
             <Button 
               onClick={handleVote}
-              className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
               disabled={isVoting}
             >
               {isVoting ? (
@@ -311,7 +403,7 @@ export default function VotingPage() {
                   Memproses...
                 </>
               ) : (
-                'Ya, Yakin'
+                'Ya, Konfirmasi'
               )}
             </Button>
           </div>

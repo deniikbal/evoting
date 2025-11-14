@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const filterType = searchParams.get('type') // 'angkatan' or 'kelas'
+    const filterType = searchParams.get('type') // 'angkatan', 'kelas', or 'role'
     const filterValue = searchParams.get('value')
+    const roleFilter = searchParams.get('role') // optional: 'mitratama' or 'mitramuda'
 
     if (!filterType || !filterValue) {
       return NextResponse.json(
@@ -22,8 +23,20 @@ export async function GET(request: NextRequest) {
     const allKandidat = await db.select().from(kandidat)
 
     let filteredSiswaIds: number[] = []
+    let filteredKandidat = allKandidat
+    
+    // Apply role filter if provided
+    if (roleFilter && roleFilter !== 'semua') {
+      filteredKandidat = filteredKandidat.filter(k => k.role === roleFilter)
+    }
 
-    if (filterType === 'angkatan') {
+    // Handle role filter (mitratama or mitramuda)
+    if (filterType === 'role') {
+      filteredKandidat = allKandidat.filter(k => k.role === filterValue)
+      // Get all siswa (no class filtering for role)
+      const allSiswa = await db.select({ id: siswa.id }).from(siswa)
+      filteredSiswaIds = allSiswa.map(s => s.id)
+    } else if (filterType === 'angkatan') {
       // Get all classrooms with this angkatan
       const classrooms = await db
         .select({ id: classroom.id })
@@ -38,7 +51,8 @@ export async function GET(request: NextRequest) {
             id: k.id,
             nomorUrut: k.nomorUrut,
             namaCalon: k.namaCalon,
-            jumlahSuara: 0
+            jumlahSuara: 0,
+            role: k.role
           }))
         })
       }
@@ -62,11 +76,12 @@ export async function GET(request: NextRequest) {
 
     if (filteredSiswaIds.length === 0) {
       return NextResponse.json({
-        kandidatVotes: allKandidat.map(k => ({
+        kandidatVotes: filteredKandidat.map(k => ({
           id: k.id,
           nomorUrut: k.nomorUrut,
           namaCalon: k.namaCalon,
-          jumlahSuara: 0
+          jumlahSuara: 0,
+          role: k.role
         }))
       })
     }
@@ -81,14 +96,15 @@ export async function GET(request: NextRequest) {
       .where(inArray(vote.siswaId, filteredSiswaIds))
       .groupBy(vote.kandidatId)
 
-    // Map votes to kandidat
-    const kandidatVotes = allKandidat.map(k => {
+    // Map votes to kandidat (using filtered kandidat based on role)
+    const kandidatVotes = filteredKandidat.map(k => {
       const voteData = votes.find(v => v.kandidatId === k.id)
       return {
         id: k.id,
         nomorUrut: k.nomorUrut,
         namaCalon: k.namaCalon,
-        jumlahSuara: voteData?.count || 0
+        jumlahSuara: voteData?.count || 0,
+        role: k.role
       }
     })
 

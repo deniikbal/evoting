@@ -19,6 +19,7 @@ interface Kandidat {
   nomorUrut: number
   namaCalon: string
   jumlahSuara: number
+  role: string
 }
 
 interface Admin {

@@ -4,23 +4,51 @@ import path from "path";
 const nextConfig: NextConfig = {
   /* config options here */
   outputFileTracingRoot: path.join(__dirname),
+  
+  // Optimization untuk development
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
-    // 构建时忽略ESLint错误
     ignoreDuringBuilds: true,
   },
-  // 禁用 Next.js 热重载，由 nodemon 处理重编译
+  
+  // Enable HMR untuk fast refresh
   reactStrictMode: false,
-  webpack: (config, { dev }) => {
+  
+  // Image optimization
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+    ],
+  },
+  
+  // Webpack optimization
+  webpack: (config, { dev, isServer }) => {
     if (dev) {
-      // 禁用 webpack 的热模块替换
+      // Enable HMR dengan file watching
       config.watchOptions = {
-        ignored: ['**/*'], // 忽略所有文件变化
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.next'],
       };
+      
+      // Fast refresh
+      config.devtool = 'cheap-module-source-map';
     }
+    
     return config;
+  },
+  
+  // SWC optimization (built-in, faster than Babel)
+  swcMinify: true,
+  
+  // Experimental speedup
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-*'],
   },
 };
 
