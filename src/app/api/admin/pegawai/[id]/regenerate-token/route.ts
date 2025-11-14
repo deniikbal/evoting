@@ -27,15 +27,13 @@ export async function POST(
       )
     }
 
-    // Generate new token dan password
-    const plainPassword = generatePegawaiPassword()
+    // Generate new token (6 characters)
     const tokenPlain = generatePegawaiToken(existingPegawai.role as 'guru' | 'tu')
     const token = hashToken(tokenPlain)
 
     const [updatedPegawai] = await db
       .update(pegawai)
       .set({
-        passwordPlain: plainPassword,
         token: token,
         tokenPlain: tokenPlain,
         updatedAt: new Date(),
@@ -44,7 +42,7 @@ export async function POST(
       .returning()
 
     return NextResponse.json({
-      message: 'Password berhasil di-regenerate',
+      message: 'Token berhasil di-regenerate',
       pegawai: {
         id: updatedPegawai.id,
         nama: updatedPegawai.nama,
@@ -52,7 +50,7 @@ export async function POST(
       },
       credentials: {
         email: updatedPegawai.email,
-        password: plainPassword,
+        token: tokenPlain,
       },
     })
   } catch (error) {

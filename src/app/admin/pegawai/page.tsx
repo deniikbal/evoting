@@ -56,7 +56,7 @@ interface Pegawai {
 
 interface Credentials {
   email: string
-  password: string
+  token: string
 }
 
 interface FormData {
@@ -888,7 +888,7 @@ export default function PegawaiPage() {
               <CardHeader>
                 <CardTitle>Akun Pegawai Dibuat</CardTitle>
                 <CardDescription>
-                  Bagikan email & password untuk login di halaman voting (tab: Guru & TU)
+                  Bagikan email & token untuk login di halaman voting (tab: Guru & TU)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -911,23 +911,23 @@ export default function PegawaiPage() {
                   </div>
                 </div>
 
-                {/* Password */}
+                {/* Token */}
                 <div>
-                  <p className="text-sm font-medium mb-2">Password</p>
+                  <p className="text-sm font-medium mb-2">Token (6 karakter)</p>
                   <div className="flex gap-2">
                     <Input
-                      value={credentials.password}
+                      value={credentials.token}
                       readOnly
-                      className="text-xs"
+                      className="text-xs font-mono font-bold"
                     />
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        handleCopyCredential(credentials.password, 'password')
+                        handleCopyCredential(credentials.token, 'token')
                       }
                     >
-                      {copiedField === 'password' ? (
+                      {copiedField === 'token' ? (
                         <Check className="w-4 h-4" />
                       ) : (
                         <Copy className="w-4 h-4" />

@@ -71,8 +71,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate token dan password
-    const plainPassword = generatePegawaiPassword()
+    // Generate token (same format as siswa: 6 characters)
     const tokenPlain = generatePegawaiToken(role as 'guru' | 'tu')
     const token = hashToken(tokenPlain)
 
@@ -81,7 +80,6 @@ export async function POST(request: NextRequest) {
       .values({
         nama,
         email,
-        passwordPlain: plainPassword,
         token: token,
         tokenPlain: tokenPlain,
         role,
@@ -103,7 +101,7 @@ export async function POST(request: NextRequest) {
       },
       credentials: {
         email: newPegawai.email,
-        password: plainPassword,
+        token: tokenPlain,
       },
     })
   } catch (error) {

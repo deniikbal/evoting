@@ -49,7 +49,6 @@ export const pegawai = pgTable('pegawai', {
   id: serial('id').primaryKey(),
   nama: varchar('nama').notNull(),
   email: varchar('email').notNull().unique(),
-  passwordPlain: varchar('password_plain').notNull(),
   token: varchar('token').notNull().unique(),
   tokenPlain: varchar('token_plain', { length: 10 }).notNull(), // 6-char plain token untuk display
   role: varchar('role', { length: 50 }).notNull(), // 'guru' atau 'tu'

@@ -63,7 +63,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username: email, password }),
+        body: JSON.stringify({ username: email, token: password }),
       })
 
       const data = await response.json()
@@ -190,7 +190,7 @@ export default function LoginPage() {
               <TabsContent value="pegawai">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                   <p className="text-xs sm:text-sm text-blue-900">
-                    <strong>Login untuk Guru & TU:</strong> Gunakan email dan password yang diberikan oleh admin
+                    <strong>Login untuk Guru & TU:</strong> Gunakan email dan token (6 karakter) yang diberikan oleh admin
                   </p>
                 </div>
                 
@@ -212,13 +212,13 @@ export default function LoginPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password (bukan Token)</Label>
+                    <Label htmlFor="pegawai-token">Token (6 karakter)</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        id="password"
+                        id="pegawai-token"
                         type="password"
-                        placeholder="Masukkan password Anda"
+                        placeholder="Contoh: A1B2C3"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="pl-10"
