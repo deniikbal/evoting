@@ -6,6 +6,7 @@ import DashboardHeader from '@/components/admin/DashboardHeader'
 import StatistikCards from '@/components/admin/StatistikCards'
 import QuickResults from '@/components/admin/QuickResults'
 import StatistikCharts from '@/components/admin/StatistikCharts'
+import AccessControlInfo from '@/components/admin/AccessControlInfo'
 
 interface Statistik {
   totalVoters: number
@@ -83,11 +84,15 @@ export default function DashboardPage() {
         const data = await response.json()
         setStatistik(data)
         
-        // Fetch kandidat if voting is NOT active, OR if admin is SuperAdmin
-        if (!data.votingAktif || adminRole === 'superadmin') {
+        // Access Control Logic:
+        // SuperAdmin: Always see results (votingAktif true or false)
+        // Admin: Only see results when votingAktif is false
+        const shouldShowResults = !data.votingAktif || adminRole === 'superadmin'
+        
+        if (shouldShowResults) {
           fetchKandidat()
         } else {
-          // Clear kandidat data if voting is active and user is not SuperAdmin
+          // Hide results for Admin users when voting is active
           setKandidat([])
           setIsLoading(false)
         }
@@ -135,6 +140,13 @@ export default function DashboardPage() {
       <DashboardHeader admin={admin} onLogout={handleLogout} />
       
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Access Control Info */}
+        <AccessControlInfo 
+          adminRole={adminRole}
+          votingAktif={statistik.votingAktif}
+          canViewResults={!statistik.votingAktif || adminRole === 'superadmin'}
+        />
+
         {/* Statistik Cards */}
         <div className="mb-8">
           <StatistikCards statistik={statistik} />
