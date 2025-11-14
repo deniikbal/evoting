@@ -484,7 +484,7 @@ export default function UserManagementPage() {
                   setFormData({ ...formData, role: value as 'admin' | 'superadmin' })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -528,7 +528,7 @@ export default function UserManagementPage() {
                   setEditFormData({ ...editFormData, role: value as 'admin' | 'superadmin' })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
