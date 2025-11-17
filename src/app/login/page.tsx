@@ -120,7 +120,7 @@ export default function LoginPage() {
                 <TabsTrigger value="pegawai" className="text-xs sm:text-sm">
                   <Users className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">Guru & TU</span>
-                  <span className="sm:hidden">Staff</span>
+                  <span className="sm:hidden">Guru & TU</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -140,7 +140,7 @@ export default function LoginPage() {
                       <Input
                         id="nis"
                         type="text"
-                        placeholder="Contoh: 001"
+                        placeholder="Contoh: 252610XXX"
                         value={nis}
                         onChange={(e) => setNis(e.target.value)}
                         className="pl-10"
@@ -204,7 +204,7 @@ export default function LoginPage() {
                       <Input
                         id="email"
                         type="email"
-                        placeholder="Contoh: guru@sekolah.com"
+                        placeholder="Contoh: deniikbal@evoting.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-10"
