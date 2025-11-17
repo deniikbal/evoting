@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { User, CheckCircle, Eye, Loader2 } from 'lucide-react'
+import { User, CheckCircle, Eye, Loader2, ChevronDown, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Kandidat {
@@ -50,6 +50,7 @@ export default function VotingPage() {
   const [isVoting, setIsVoting] = useState(false)
   const [error, setError] = useState('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [expandedKandidat, setExpandedKandidat] = useState<number | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -174,12 +175,20 @@ export default function VotingPage() {
     } else {
       setSelectedMitraMuda(kandidat)
     }
+    // Toggle expanded state
+    setExpandedKandidat(expandedKandidat === kandidat.id ? null : kandidat.id)
   }
 
   const openConfirmDialog = () => {
     if (selectedMitraTama && selectedMitraMuda) {
       setShowConfirmDialog(true)
     }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('siswaSession')
+    localStorage.removeItem('pegawaiSession')
+    router.push('/login')
   }
 
   if (isLoading) {
@@ -244,18 +253,29 @@ export default function VotingPage() {
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Pemilihan Ketua OSIS</h1>
               <p className="text-sm sm:text-base text-gray-600">SMAN 1 Bantarujeg 2025</p>
             </div>
-            <div className="text-left sm:text-right">
-              <p className="text-xs sm:text-sm text-gray-500">Pemilih:</p>
-              <p className="font-semibold text-sm sm:text-base truncate">
-                {user?.type === 'siswa' 
-                  ? (user.data as Siswa).namaLengkap 
-                  : (user?.data as Pegawai).nama}
-              </p>
-              <p className="text-xs sm:text-sm text-gray-600">
-                {user?.type === 'siswa' 
-                  ? (user.data as Siswa).kelas 
-                  : `${user?.type === 'guru' ? 'Guru' : 'TU'}`}
-              </p>
+            <div className="flex items-center justify-between sm:justify-end gap-4">
+              <div className="text-left sm:text-right">
+                <p className="text-xs sm:text-sm text-gray-500">Pemilih:</p>
+                <p className="font-semibold text-sm sm:text-base truncate">
+                  {user?.type === 'siswa' 
+                    ? (user.data as Siswa).namaLengkap 
+                    : (user?.data as Pegawai).nama}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  {user?.type === 'siswa' 
+                    ? (user.data as Siswa).kelas 
+                    : `${user?.type === 'guru' ? 'Guru' : 'TU'}`}
+                </p>
+              </div>
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -320,49 +340,56 @@ export default function VotingPage() {
               </CardHeader>
               
               <CardContent className="space-y-3 sm:space-y-4">
-                {/* Visi & Misi Preview */}
-                <div className="text-xs sm:text-sm">
-                  <p className="font-semibold mb-1">Visi:</p>
-                  <p className="text-gray-600 line-clamp-2">
-                    {k.visi || 'Belum ada visi'}
-                  </p>
-                </div>
-
-                <div className="text-xs sm:text-sm">
-                  <p className="font-semibold mb-1">Misi:</p>
-                  <p className="text-gray-600 line-clamp-2">
-                    {k.misi || 'Belum ada misi'}
-                  </p>
-                </div>
-
-                {/* View Details Button */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full h-9 sm:h-10 text-sm">
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Lihat Visi & Misi</span>
-                      <span className="sm:hidden">Detail</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2 text-left">
-                        <Badge variant="secondary" className="w-fit text-xs sm:text-sm">Nomor {k.nomorUrut}</Badge>
-                        <span className="text-base sm:text-lg">{k.namaCalon}</span>
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 sm:space-y-4">
-                      <div>
-                        <h4 className="font-semibold mb-2 text-sm sm:text-base">Visi</h4>
-                        <p className="text-gray-600 text-xs sm:text-sm">{k.visi || 'Belum ada visi'}</p>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold mb-2 text-sm sm:text-base">Misi</h4>
-                        <p className="text-gray-600 text-xs sm:text-sm">{k.misi || 'Belum ada misi'}</p>
-                      </div>
+                {/* Visi & Misi Preview - Collapsed */}
+                {expandedKandidat !== k.id && (
+                  <>
+                    <div className="text-xs sm:text-sm">
+                      <p className="font-semibold mb-1">Visi:</p>
+                      <p className="text-gray-600 line-clamp-2">
+                        {k.visi || 'Belum ada visi'}
+                      </p>
                     </div>
-                  </DialogContent>
-                </Dialog>
+
+                    <div className="text-xs sm:text-sm">
+                      <p className="font-semibold mb-1">Misi:</p>
+                      <p className="text-gray-600 line-clamp-2">
+                        {k.misi || 'Belum ada misi'}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Visi & Misi Expanded */}
+                {expandedKandidat === k.id && (
+                  <div className="space-y-3 sm:space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-100">
+                    <div>
+                      <h4 className="font-semibold mb-2 text-xs sm:text-sm text-blue-900">Visi</h4>
+                      <p className="text-gray-700 text-xs sm:text-sm whitespace-pre-wrap">
+                        {k.visi || 'Belum ada visi'}
+                      </p>
+                    </div>
+                    <div className="h-px bg-blue-200"></div>
+                    <div>
+                      <h4 className="font-semibold mb-2 text-xs sm:text-sm text-blue-900">Misi</h4>
+                      <p className="text-gray-700 text-xs sm:text-sm whitespace-pre-wrap">
+                        {k.misi || 'Belum ada misi'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Toggle Details Button */}
+                <Button 
+                  variant={expandedKandidat === k.id ? "default" : "outline"} 
+                  className={`w-full h-9 sm:h-10 text-sm transition-all ${expandedKandidat === k.id ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setExpandedKandidat(expandedKandidat === k.id ? null : k.id)
+                  }}
+                >
+                  <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 transition-transform ${expandedKandidat === k.id ? 'rotate-180' : ''}`} />
+                  {expandedKandidat === k.id ? 'Tutup Detail' : 'Lihat Detail'}
+                </Button>
 
                 {/* Selection status */}
                 {selectedKandidat?.id === k.id && (
