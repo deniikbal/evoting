@@ -56,6 +56,8 @@ export default function SiswaManagementPage() {
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null)
   const [selectedClassForPrint, setSelectedClassForPrint] = useState<string>('all')
+  const [printMode, setPrintMode] = useState<'class' | 'individual'>('class')
+  const [selectedSiswaForPrint, setSelectedSiswaForPrint] = useState<number[]>([])
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -494,6 +496,10 @@ export default function SiswaManagementPage() {
   }
 
   const getFilteredSiswaForPrint = () => {
+    if (printMode === 'individual') {
+      return siswa.filter(s => selectedSiswaForPrint.includes(s.id))
+    }
+    
     if (selectedClassForPrint === 'all') {
       return siswa
     }
@@ -894,43 +900,141 @@ export default function SiswaManagementPage() {
                   <span className="hidden sm:inline">Export</span>
                 </Button>
 
-                <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+                <Dialog open={showPrintDialog} onOpenChange={(open) => {
+                  setShowPrintDialog(open)
+                  if (!open) {
+                    setPrintMode('class')
+                    setSelectedSiswaForPrint([])
+                    setSelectedClassForPrint('all')
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
                       <Printer className="w-4 h-4 mr-1 sm:mr-2" />
                       <span className="hidden sm:inline">Cetak Kartu</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4">
+                  <DialogContent className="max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Cetak Kartu Pemilih</DialogTitle>
                       <DialogDescription>
-                        Pilih kelas yang akan dicetak kartunya
+                        Pilih cara mencetak kartu peserta
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="print-class">Pilih Kelas</Label>
-                        <Select
-                          value={selectedClassForPrint}
-                          onValueChange={setSelectedClassForPrint}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih kelas" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Semua Kelas ({siswa.length} siswa)</SelectItem>
-                            {uniqueClasses.map((kelas) => {
-                              const count = siswa.filter(s => s.kelas === kelas).length
-                              return (
-                                <SelectItem key={kelas} value={kelas}>
-                                  {kelas} ({count} siswa)
-                                </SelectItem>
-                              )
-                            })}
-                          </SelectContent>
-                        </Select>
+                      {/* Print Mode Selector */}
+                      <div className="space-y-3 border-b pb-4">
+                        <Label className="text-base font-semibold">Mode Cetak</Label>
+                        <div className="flex gap-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              id="mode-class"
+                              name="printMode"
+                              value="class"
+                              checked={printMode === 'class'}
+                              onChange={() => {
+                                setPrintMode('class')
+                                setSelectedSiswaForPrint([])
+                              }}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                            <Label htmlFor="mode-class" className="font-medium cursor-pointer">
+                              Cetak Berdasarkan Kelas
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              id="mode-individual"
+                              name="printMode"
+                              value="individual"
+                              checked={printMode === 'individual'}
+                              onChange={() => setPrintMode('individual')}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                            <Label htmlFor="mode-individual" className="font-medium cursor-pointer">
+                              Pilih Peserta
+                            </Label>
+                          </div>
+                        </div>
                       </div>
+
+                      {/* Class Mode */}
+                      {printMode === 'class' && (
+                        <div>
+                          <Label htmlFor="print-class">Pilih Kelas</Label>
+                          <Select
+                            value={selectedClassForPrint}
+                            onValueChange={setSelectedClassForPrint}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Pilih kelas" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Semua Kelas ({siswa.length} siswa)</SelectItem>
+                              {uniqueClasses.map((kelas) => {
+                                const count = siswa.filter(s => s.kelas === kelas).length
+                                return (
+                                  <SelectItem key={kelas} value={kelas}>
+                                    {kelas} ({count} siswa)
+                                  </SelectItem>
+                                )
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Individual Mode */}
+                      {printMode === 'individual' && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                if (selectedSiswaForPrint.length === siswa.length) {
+                                  setSelectedSiswaForPrint([])
+                                } else {
+                                  setSelectedSiswaForPrint(siswa.map(s => s.id))
+                                }
+                              }}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-700 underline"
+                            >
+                              {selectedSiswaForPrint.length === siswa.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                            </button>
+                            <span className="text-xs text-gray-500">
+                              ({selectedSiswaForPrint.length}/{siswa.length})
+                            </span>
+                          </div>
+                          <div className="border rounded-lg max-h-64 overflow-y-auto p-3 space-y-2">
+                            {siswa.map((s) => (
+                              <div key={s.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+                                <Checkbox
+                                  id={`print-siswa-${s.id}`}
+                                  checked={selectedSiswaForPrint.includes(s.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedSiswaForPrint([...selectedSiswaForPrint, s.id])
+                                    } else {
+                                      setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => id !== s.id))
+                                    }
+                                  }}
+                                />
+                                <Label htmlFor={`print-siswa-${s.id}`} className="flex-1 cursor-pointer text-sm">
+                                  <span className="font-medium">{s.namaLengkap}</span>
+                                  <span className="text-gray-500 ml-2">({s.nis}) - {s.kelas}</span>
+                                </Label>
+                              </div>
+                            ))}
+                            {siswa.length === 0 && (
+                              <p className="text-center text-sm text-gray-500 py-4">
+                                Tidak ada siswa yang terdaftar
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <p className="text-sm text-blue-900">
                           <strong>Preview:</strong> {getFilteredSiswaForPrint().length} kartu akan dicetak
@@ -941,9 +1045,10 @@ export default function SiswaManagementPage() {
                           type="button" 
                           className="flex-1" 
                           onClick={handlePrintCards}
+                          disabled={getFilteredSiswaForPrint().length === 0}
                         >
                           <Printer className="w-4 h-4 mr-2" />
-                          Cetak
+                          Cetak ({getFilteredSiswaForPrint().length})
                         </Button>
                         <Button 
                           type="button" 
