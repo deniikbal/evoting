@@ -112,6 +112,23 @@ export default function PegawaiPage() {
   // Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState(0)
+  const [importResult, setImportResult] = useState<{
+    success: number
+    failed: number
+    errors: Array<{ row: number; error: string }>
+    credentials: Array<{
+      email: string
+      password_plain: string
+      token: string
+      role: string
+      nama: string
+    }>
+  } | null>(null)
+  const [importError, setImportError] = useState('')
 
   useEffect(() => {
     checkAdminSession()
@@ -259,7 +276,66 @@ export default function PegawaiPage() {
   }
 
   const handleImport = () => {
-    // TODO: Open import modal
+    setImportFile(null)
+    setImportResult(null)
+    setImportError('')
+    setImportProgress(0)
+    setShowImportModal(true)
+  }
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!importFile) {
+      setImportError('Pilih file terlebih dahulu')
+      return
+    }
+
+    setIsImporting(true)
+    setImportError('')
+    setImportProgress(10)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+
+      setImportProgress(50)
+
+      const response = await fetch('/api/admin/pegawai/import', {
+        method: 'POST',
+        body: formData,
+      })
+
+      setImportProgress(80)
+
+      if (response.ok) {
+        const data = await response.json()
+        setImportResult(data.result)
+        setImportProgress(100)
+        await fetchPegawai()
+        toast.success(`Import selesai: ${data.result.success} berhasil, ${data.result.failed} gagal`)
+      } else {
+        const data = await response.json()
+        setImportError(data.message || 'Gagal mengimport data')
+      }
+    } catch (err) {
+      setImportError('Terjadi kesalahan saat mengimport')
+      console.error('Error importing:', err)
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+        setImportError('File harus berformat Excel (.xlsx, .xls) atau CSV')
+        return
+      }
+      setImportError('')
+      setImportFile(file)
+    }
   }
 
   const handleExport = async () => {
@@ -1235,6 +1311,209 @@ export default function PegawaiPage() {
                 Cetak
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Modal */}
+        <Dialog 
+          open={showImportModal} 
+          onOpenChange={(open) => {
+            if (!isImporting) {
+              setShowImportModal(open)
+              if (!open) {
+                setImportFile(null)
+                setImportResult(null)
+                setImportError('')
+                setImportProgress(0)
+              }
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl rounded-sm max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-lg">Import Data Pegawai</DialogTitle>
+              <div className="text-sm text-gray-600 mt-2">
+                Import data pegawai dari file Excel dengan format nama, email, dan role
+              </div>
+            </DialogHeader>
+
+            {!importResult ? (
+              <form onSubmit={handleImportSubmit} className="space-y-4">
+                {/* Info Box */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 text-sm mb-2">Format File yang Diharapkan:</h3>
+                  <ul className="text-xs text-blue-800 space-y-1">
+                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column A - Nama:</strong> Nama lengkap pegawai</span></li>
+                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column B - Email:</strong> Email yang unik</span></li>
+                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column C - Role:</strong> Gunakan "guru" atau "tu"</span></li>
+                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column D - Kelas:</strong> Nama kelas (opsional, harus sesuai dengan kelas yang ada)</span></li>
+                  </ul>
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <p className="text-xs text-blue-700"><strong>💡 Tip:</strong> Gunakan template yang telah disediakan dengan klik tombol "Template"</p>
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                <div className="space-y-2">
+                  <Label htmlFor="import-file" className="text-sm font-semibold">Pilih File Excel</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                    onClick={() => document.getElementById('import-file')?.click()}
+                  >
+                    <input
+                      id="import-file"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".xlsx,.xls,.csv"
+                      disabled={isImporting}
+                      className="hidden"
+                    />
+                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm font-medium text-gray-700">
+                      {importFile ? importFile.name : 'Klik atau drag file di sini'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Format: .xlsx, .xls, atau .csv</p>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {importError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {importError}
+                  </div>
+                )}
+
+                {/* Progress Bar */}
+                {isImporting && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Mengimport data...</span>
+                      <span className="text-gray-600 font-semibold">{importProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-sky-500 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${importProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowImportModal(false)}
+                    disabled={isImporting}
+                  >
+                    Batal
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={!importFile || isImporting}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  >
+                    {isImporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Import
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            ) : (
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                {/* Results Summary */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-xs text-green-600 font-semibold">Berhasil Import</p>
+                    <p className="text-2xl font-bold text-green-700 mt-1">{importResult.success}</p>
+                  </div>
+                  <div className={`${importResult.failed > 0 ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'} rounded-lg p-3`}>
+                    <p className={`text-xs ${importResult.failed > 0 ? 'text-red-600' : 'text-gray-600'} font-semibold`}>Gagal Import</p>
+                    <p className={`text-2xl font-bold ${importResult.failed > 0 ? 'text-red-700' : 'text-gray-700'} mt-1`}>{importResult.failed}</p>
+                  </div>
+                </div>
+
+                {/* Error Details */}
+                {importResult.errors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-red-900 text-sm mb-3">Detail Error:</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {importResult.errors.map((error, idx) => (
+                        <div key={idx} className="text-xs bg-white rounded p-2 border border-red-100">
+                          <span className="font-semibold text-red-700">Baris {error.row}:</span>
+                          <span className="text-red-600 ml-1">{error.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Credentials Preview */}
+                {importResult.credentials.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 text-sm mb-3">Kredensial Pegawai Baru ({importResult.credentials.length}):</h4>
+                    <div className="space-y-3 max-h-40 overflow-y-auto">
+                      {importResult.credentials.map((cred, idx) => (
+                        <div key={idx} className="bg-white rounded p-2 border border-blue-100 text-xs">
+                          <p className="font-semibold text-blue-900">{cred.nama}</p>
+                          <div className="grid grid-cols-2 gap-2 mt-1 text-gray-600">
+                            <div>
+                              <span className="text-gray-500">Email:</span>
+                              <p className="font-mono text-xs break-all">{cred.email}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Role:</span>
+                              <p className="font-semibold">{cred.role === 'guru' ? 'Guru' : 'TU'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-gray-500">Token:</span>
+                              <p className="font-mono font-bold text-blue-600">{cred.token}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {importResult.success > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-green-800">
+                        <p className="font-semibold">Import Berhasil!</p>
+                        <p className="text-xs mt-1">
+                          {importResult.success} pegawai telah berhasil ditambahkan. Token dan kredensial telah dibuat otomatis.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter>
+                  <Button 
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportResult(null)
+                      setImportError('')
+                      setImportProgress(0)
+                    }}
+                    className="w-full bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600"
+                  >
+                    Selesai
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

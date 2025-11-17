@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { pegawai } from '@/lib/schema'
+import { pegawai, classroom } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
-import { generatePegawaiToken, generatePegawaiPassword, hashToken } from '@/lib/utils'
+import { generatePegawaiToken, hashToken } from '@/lib/utils'
 import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
@@ -11,6 +11,7 @@ interface ImportRow {
   nama?: string
   email?: string
   role?: string
+  kelas?: string
   nip?: string
   nomorInduk?: string
 }
@@ -21,7 +22,6 @@ interface ImportResult {
   errors: Array<{ row: number; error: string }>
   credentials: Array<{
     email: string
-    password_plain: string
     token: string
     role: string
     nama: string
@@ -102,8 +102,27 @@ export async function POST(request: NextRequest) {
           continue
         }
 
+        // Get classroom ID if kelas is provided
+        let classroomId: number | null = null
+        if (row.kelas && row.kelas.trim()) {
+          const [foundClassroom] = await db
+            .select()
+            .from(classroom)
+            .where(eq(classroom.name, row.kelas.trim()))
+            .limit(1)
+
+          if (!foundClassroom) {
+            result.errors.push({
+              row: rowNumber,
+              error: `Kelas "${row.kelas}" tidak ditemukan di database`,
+            })
+            result.failed++
+            continue
+          }
+          classroomId = foundClassroom.id
+        }
+
         // Generate credentials
-        const plainPassword = generatePegawaiPassword()
         const token = generatePegawaiToken(row.role as 'guru' | 'tu')
         const hashedToken = hashToken(token)
 
@@ -111,17 +130,18 @@ export async function POST(request: NextRequest) {
         await db.insert(pegawai).values({
           nama: row.nama.trim(),
           email: row.email.trim().toLowerCase(),
-          passwordPlain: plainPassword,
+          tokenPlain: token,
           token: hashedToken,
-          role: row.role,
+          role: row.role as 'guru' | 'tu',
+          classroomId: classroomId,
           nip: row.nip ? row.nip.toString().trim() : null,
           nomorInduk: row.nomorInduk ? row.nomorInduk.toString().trim() : null,
           status: 'aktif',
+          sudahMemilih: false,
         })
 
         result.credentials.push({
           email: row.email.trim().toLowerCase(),
-          password_plain: plainPassword,
           token: token,
           role: row.role,
           nama: row.nama.trim(),

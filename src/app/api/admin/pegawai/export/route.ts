@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
         nama: 'Contoh Nama Guru',
         email: 'guru@sekolah.com',
         role: 'guru',
+        kelas: 'XII MIPA 1',
         nip: '123456789',
         nomorInduk: 'G001',
       },
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
         nama: 'Contoh Nama TU',
         email: 'tu@sekolah.com',
         role: 'tu',
+        kelas: '',
         nip: '',
         nomorInduk: 'TU001',
       },
@@ -31,6 +33,7 @@ export async function GET(request: NextRequest) {
       { wch: 25 },  // nama
       { wch: 25 },  // email
       { wch: 10 },  // role
+      { wch: 20 },  // kelas
       { wch: 15 },  // nip
       { wch: 15 },  // nomorInduk
     ]
