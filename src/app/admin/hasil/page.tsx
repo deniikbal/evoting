@@ -290,7 +290,7 @@ export default function HasilVotingPage() {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {['mitramuda', 'mitratama'].map((roleType) => {
+                    {['mitratama', 'mitramuda'].map((roleType) => {
                       const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
                       const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
                       const roleColor = roleType === 'mitramuda' ? 'text-blue-600' : 'text-purple-600'

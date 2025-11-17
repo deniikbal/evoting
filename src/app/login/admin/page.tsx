@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Form */}
-        <Card>
+        <Card className="rounded-sm">
           <CardHeader>
             <CardTitle className="text-center">Panel Administrator</CardTitle>
             <CardDescription className="text-center">

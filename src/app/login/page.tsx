@@ -105,7 +105,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Tabs */}
-        <Card>
+        <Card className="rounded-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-center">Masuk ke Akun Anda</CardTitle>
           </CardHeader>
@@ -126,7 +126,7 @@ export default function LoginPage() {
 
               {/* Siswa Login */}
               <TabsContent value="siswa">
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                <div className="bg-orange-50 border border-orange-200 rounded-sm p-3 mb-4">
                   <p className="text-xs sm:text-sm text-orange-900">
                     <strong>Login untuk Siswa:</strong> Gunakan NIS dan token (6 karakter) yang diberikan oleh sekolah
                   </p>
@@ -190,7 +190,7 @@ export default function LoginPage() {
 
               {/* Pegawai Login */}
               <TabsContent value="pegawai">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-sm p-3 mb-4">
                   <p className="text-xs sm:text-sm text-blue-900">
                     <strong>Login untuk Guru & TU:</strong> Gunakan email dan token (6 karakter) yang diberikan oleh admin
                   </p>
