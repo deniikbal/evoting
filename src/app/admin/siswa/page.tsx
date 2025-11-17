@@ -58,6 +58,7 @@ export default function SiswaManagementPage() {
   const [selectedClassForPrint, setSelectedClassForPrint] = useState<string>('all')
   const [printMode, setPrintMode] = useState<'class' | 'individual'>('class')
   const [selectedSiswaForPrint, setSelectedSiswaForPrint] = useState<number[]>([])
+  const [printSearchTerm, setPrintSearchTerm] = useState<string>('')
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -506,6 +507,14 @@ export default function SiswaManagementPage() {
     return siswa.filter(s => s.kelas === selectedClassForPrint)
   }
 
+  const getSearchedSiswaForSelection = () => {
+    return siswa.filter(s =>
+      s.nis.toLowerCase().includes(printSearchTerm.toLowerCase()) ||
+      s.namaLengkap.toLowerCase().includes(printSearchTerm.toLowerCase()) ||
+      s.kelas.toLowerCase().includes(printSearchTerm.toLowerCase())
+    )
+  }
+
   const uniqueClasses = Array.from(new Set(siswa.map(s => s.kelas))).sort()
 
   if (isLoading) {
@@ -906,6 +915,7 @@ export default function SiswaManagementPage() {
                     setPrintMode('class')
                     setSelectedSiswaForPrint([])
                     setSelectedClassForPrint('all')
+                    setPrintSearchTerm('')
                   }
                 }}>
                   <DialogTrigger asChild>
@@ -989,44 +999,66 @@ export default function SiswaManagementPage() {
                       {/* Individual Mode */}
                       {printMode === 'individual' && (
                         <div className="space-y-3">
+                          <div>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Cari NIS, nama, atau kelas..."
+                                value={printSearchTerm}
+                                onChange={(e) => setPrintSearchTerm(e.target.value)}
+                                className="pl-10 text-sm"
+                              />
+                            </div>
+                          </div>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => {
-                                if (selectedSiswaForPrint.length === siswa.length) {
-                                  setSelectedSiswaForPrint([])
+                                const searchedSiswa = getSearchedSiswaForSelection()
+                                const allSearchedIds = searchedSiswa.map(s => s.id)
+                                const allSelected = allSearchedIds.every(id => selectedSiswaForPrint.includes(id))
+                                
+                                if (allSelected) {
+                                  setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => !allSearchedIds.includes(id)))
                                 } else {
-                                  setSelectedSiswaForPrint(siswa.map(s => s.id))
+                                  const newSelected = new Set(selectedSiswaForPrint)
+                                  allSearchedIds.forEach(id => newSelected.add(id))
+                                  setSelectedSiswaForPrint(Array.from(newSelected))
                                 }
                               }}
                               className="text-xs font-medium text-blue-600 hover:text-blue-700 underline"
                             >
-                              {selectedSiswaForPrint.length === siswa.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                              {printSearchTerm ? 'Pilih/Batal Hasil Pencarian' : 'Pilih/Batal Semua'}
                             </button>
                             <span className="text-xs text-gray-500">
                               ({selectedSiswaForPrint.length}/{siswa.length})
                             </span>
                           </div>
                           <div className="border rounded-lg max-h-64 overflow-y-auto p-3 space-y-2">
-                            {siswa.map((s) => (
-                              <div key={s.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                                <Checkbox
-                                  id={`print-siswa-${s.id}`}
-                                  checked={selectedSiswaForPrint.includes(s.id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedSiswaForPrint([...selectedSiswaForPrint, s.id])
-                                    } else {
-                                      setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => id !== s.id))
-                                    }
-                                  }}
-                                />
-                                <Label htmlFor={`print-siswa-${s.id}`} className="flex-1 cursor-pointer text-sm">
-                                  <span className="font-medium">{s.namaLengkap}</span>
-                                  <span className="text-gray-500 ml-2">({s.nis}) - {s.kelas}</span>
-                                </Label>
-                              </div>
-                            ))}
-                            {siswa.length === 0 && (
+                            {getSearchedSiswaForSelection().length > 0 ? (
+                              getSearchedSiswaForSelection().map((s) => (
+                                <div key={s.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+                                  <Checkbox
+                                    id={`print-siswa-${s.id}`}
+                                    checked={selectedSiswaForPrint.includes(s.id)}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setSelectedSiswaForPrint([...selectedSiswaForPrint, s.id])
+                                      } else {
+                                        setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => id !== s.id))
+                                      }
+                                    }}
+                                  />
+                                  <Label htmlFor={`print-siswa-${s.id}`} className="flex-1 cursor-pointer text-sm">
+                                    <span className="font-medium">{s.namaLengkap}</span>
+                                    <span className="text-gray-500 ml-2">({s.nis}) - {s.kelas}</span>
+                                  </Label>
+                                </div>
+                              ))
+                            ) : printSearchTerm ? (
+                              <p className="text-center text-sm text-gray-500 py-4">
+                                Tidak ada siswa yang cocok dengan pencarian
+                              </p>
+                            ) : (
                               <p className="text-center text-sm text-gray-500 py-4">
                                 Tidak ada siswa yang terdaftar
                               </p>
