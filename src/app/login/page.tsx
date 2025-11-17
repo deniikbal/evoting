@@ -40,6 +40,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
+        localStorage.removeItem('pegawaiSession')
         localStorage.setItem('siswaSession', JSON.stringify(data.user))
         window.location.href = '/voting'
       } else {
@@ -69,6 +70,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
+        localStorage.removeItem('siswaSession')
         localStorage.setItem('pegawaiSession', JSON.stringify(data.user))
         window.location.href = '/voting'
       } else {
@@ -153,7 +155,7 @@ export default function LoginPage() {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
                         id="token"
-                        type="password"
+                        type="text"
                         placeholder="Contoh: A1B2C3"
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
@@ -217,7 +219,7 @@ export default function LoginPage() {
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
                         id="pegawai-token"
-                        type="password"
+                        type="text"
                         placeholder="Contoh: A1B2C3"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}

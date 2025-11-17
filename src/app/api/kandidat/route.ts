@@ -14,14 +14,14 @@ export async function GET() {
     // For each kandidat, count votes from vote table (real-time calculation)
     const kandidatWithVotes = await Promise.all(
       allKandidat.map(async (k) => {
-        const [voteCount] = await db
+        const voteCount = await db
           .select({ count: count() })
           .from(vote)
           .where(eq(vote.kandidatId, k.id))
 
         return {
           ...k,
-          jumlahSuara: voteCount.count, // Override dengan count real-time dari vote table
+          jumlahSuara: voteCount[0]?.count || 0,
         }
       })
     )
