@@ -15,6 +15,7 @@ import {
   ChevronsUpDown,
   Vote,
   BadgeCheck,
+  ScanLine,
 } from 'lucide-react'
 
 import {
@@ -208,6 +209,20 @@ export default function AdminSidebar() {
                   <Shield />
                   <span>User</span>
                 </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/kiosk'}
+                tooltip="Bilik Voting (Kiosk)"
+                className={menuHover}
+              >
+                <a href="/kiosk" target="_blank" rel="noopener noreferrer">
+                  <ScanLine />
+                  <span>Bilik Voting (Kiosk)</span>
+                </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
