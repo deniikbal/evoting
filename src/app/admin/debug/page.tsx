@@ -81,9 +81,9 @@ export default function DebugPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Debug Admin Role</h1>
+    <div className="flex flex-1 flex-col gap-6">
+      <div className="mx-auto w-full max-w-4xl">
+        <h1 className="mb-6 text-3xl font-bold">Debug Admin Role</h1>
 
         {/* Current Session */}
         <Card className="mb-6">
@@ -96,16 +96,16 @@ export default function DebugPage() {
                 <p><strong>Username:</strong> {currentAdmin.username}</p>
                 <p>
                   <strong>Role:</strong>{' '}
-                  <Badge className={currentAdmin.role === 'superadmin' ? 'bg-red-500' : 'bg-blue-500'}>
+                  <Badge variant={currentAdmin.role === 'superadmin' ? 'destructive' : 'secondary'}>
                     {currentAdmin.role || 'NOT SET'}
                   </Badge>
                 </p>
-                <p className="text-sm text-gray-600 mt-4">
+                <p className="mt-4 text-sm text-muted-foreground">
                   💡 Jika role menunjukkan 'NOT SET' atau 'admin', ubah ke 'superadmin' di bawah, atau logout & login ulang.
                 </p>
               </div>
             ) : (
-              <p className="text-gray-500">Tidak ada session. Silakan login terlebih dahulu.</p>
+              <p className="text-muted-foreground">Tidak ada session. Silakan login terlebih dahulu.</p>
             )}
           </CardContent>
         </Card>
@@ -117,16 +117,16 @@ export default function DebugPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <p>Loading...</p>
+              <p className="text-muted-foreground">Loading...</p>
             ) : admins.length === 0 ? (
-              <p className="text-gray-500">Tidak ada admin</p>
+              <p className="text-muted-foreground">Tidak ada admin</p>
             ) : (
               <div className="space-y-3">
                 {admins.map((adm) => (
-                  <div key={adm.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={adm.id} className="flex items-center justify-between rounded-lg border p-3">
                     <div>
                       <p className="font-semibold">{adm.username}</p>
-                      <Badge className={adm.role === 'superadmin' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'} variant="outline">
+                      <Badge variant={adm.role === 'superadmin' ? 'destructive' : 'secondary'}>
                         {adm.role || 'NOT SET'}
                       </Badge>
                     </div>
@@ -135,7 +135,7 @@ export default function DebugPage() {
                         <Button
                           onClick={() => updateRole(adm.username, 'superadmin')}
                           size="sm"
-                          className="bg-red-500 hover:bg-red-600"
+                          variant="destructive"
                         >
                           Jadikan SuperAdmin
                         </Button>
