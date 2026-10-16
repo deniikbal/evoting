@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { User, CheckCircle, Eye, Loader2, ChevronDown, LogOut } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { User, CheckCircle, Loader2, ChevronDown, LogOut, AlertCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Kandidat {
@@ -106,7 +108,7 @@ export default function VotingPage() {
 
     try {
       // Prepare vote payload
-      const votePayload = user.type === 'siswa' 
+      const votePayload = user.type === 'siswa'
         ? {
             kandidatId: selectedMitraTama.id,
             siswaId: (user.data as Siswa).id,
@@ -133,7 +135,7 @@ export default function VotingPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            ...(user.type === 'siswa' 
+            ...(user.type === 'siswa'
               ? { siswaId: (user.data as Siswa).id, voterType: 'siswa' }
               : { pegawaiId: (user.data as Pegawai).id, voterType: user.type }
             ),
@@ -193,10 +195,14 @@ export default function VotingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Memuat data...</p>
+      <div className="min-h-screen bg-muted/40 p-3 sm:p-4">
+        <div className="mx-auto max-w-6xl space-y-6 py-8">
+          <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-72 w-full" />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -205,33 +211,33 @@ export default function VotingPage() {
   // Jika user sudah voting, tampilkan ucapan terimakasih
   if (user?.data.sudahMemilih) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-3 sm:p-4">
         <div className="w-full max-w-md">
           <Card className="text-center">
             <CardHeader className="pb-3 sm:pb-6">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
+              <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-primary/10 sm:mb-4 sm:size-20">
+                <CheckCircle className="size-8 text-primary sm:size-10" />
               </div>
-              <CardTitle className="text-xl sm:text-2xl text-green-600">
+              <CardTitle className="text-xl sm:text-2xl">
                 Terima Kasih!
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
-              <p className="text-sm sm:text-base text-gray-700">
+              <p className="text-sm text-muted-foreground sm:text-base">
                 Anda telah berhasil menggunakan hak suara Anda dalam Pemilihan Ketua OSIS SMAN 1 Bantarujeg.
               </p>
-              <p className="text-xs sm:text-sm text-gray-600">
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 Partisipasi Anda sangat berarti untuk kemajuan OSIS kita.
               </p>
-              
+
               <div className="pt-2 sm:pt-4">
-                <Button 
+                <Button
                   onClick={() => {
                     localStorage.removeItem('siswaSession')
                     localStorage.removeItem('pegawaiSession')
                     router.push('/')
                   }}
-                  className="w-full h-10 sm:h-11 text-sm sm:text-base"
+                  className="h-10 w-full text-sm sm:h-11 sm:text-base"
                 >
                   Kembali ke Halaman Utama
                 </Button>
@@ -244,162 +250,168 @@ export default function VotingPage() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50 p-3 sm:p-4 ${selectedMitraTama && selectedMitraMuda ? 'pb-32 sm:pb-40' : ''}`}>
+    <div className={`min-h-screen bg-muted/40 p-3 sm:p-4 ${selectedMitraTama && selectedMitraMuda ? 'pb-32 sm:pb-40' : ''}`}>
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-6 sm:mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Pemilihan Ketua OSIS</h1>
-              <p className="text-sm sm:text-base text-gray-600">SMAN 1 Bantarujeg 2025</p>
-            </div>
-            <div className="flex items-center justify-between sm:justify-end gap-4">
-              <div className="text-left sm:text-right">
-                <p className="text-xs sm:text-sm text-gray-500">Pemilih:</p>
-                <p className="font-semibold text-sm sm:text-base truncate">
-                  {user?.type === 'siswa' 
-                    ? (user.data as Siswa).namaLengkap 
-                    : (user?.data as Pegawai).nama}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {user?.type === 'siswa' 
-                    ? (user.data as Siswa).kelas 
-                    : `${user?.type === 'guru' ? 'Guru' : 'TU'}`}
-                </p>
+      <div className="mx-auto mb-6 max-w-6xl sm:mb-8">
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex-1">
+                <h1 className="text-xl font-bold sm:text-2xl">Pemilihan Ketua OSIS</h1>
+                <p className="text-sm text-muted-foreground sm:text-base">SMAN 1 Bantarujeg 2025</p>
               </div>
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </Button>
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <div className="text-left sm:text-right">
+                  <p className="text-xs text-muted-foreground sm:text-sm">Pemilih:</p>
+                  <p className="truncate text-sm font-semibold sm:text-base">
+                    {user?.type === 'siswa'
+                      ? (user.data as Siswa).namaLengkap
+                      : (user?.data as Pegawai).nama}
+                  </p>
+                  <p className="text-xs text-muted-foreground sm:text-sm">
+                    {user?.type === 'siswa'
+                      ? (user.data as Siswa).kelas
+                      : `${user?.type === 'guru' ? 'Guru' : 'TU'}`}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  title="Logout"
+                >
+                  <LogOut />
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {error && (
-        <div className="max-w-6xl mx-auto mb-6">
+        <div className="mx-auto mb-6 max-w-6xl">
           <Alert variant="destructive">
+            <AlertCircle className="size-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         </div>
       )}
 
       {/* Kandidat Cards */}
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto max-w-6xl">
         <div className="space-y-10 sm:space-y-12">
           {['mitratama', 'mitramuda'].map((roleType) => {
             const roleKandidat = kandidat.filter(k => k.role === roleType)
             const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-            const roleColor = roleType === 'mitramuda' ? 'text-blue-600' : 'text-purple-600'
             const selectedKandidat = roleType === 'mitratama' ? selectedMitraTama : selectedMitraMuda
-            
+
             return (
               <div key={roleType}>
-                <div className="mb-6 sm:mb-8 flex items-center gap-4">
-                  <div className={`px-4 py-2 rounded-full font-bold text-white text-sm sm:text-base ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
+                <div className="mb-6 flex items-center gap-4 sm:mb-8">
+                  <Badge variant="outline" className="px-4 py-2 text-sm font-bold sm:text-base">
                     {roleLabel}
-                  </div>
-                  <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
-                  <span className="text-gray-600 font-medium text-sm">{roleKandidat.length} kandidat</span>
+                  </Badge>
+                  <Separator className="flex-1" />
+                  <span className="text-sm font-medium text-muted-foreground">{roleKandidat.length} kandidat</span>
                 </div>
-                
+
                 {roleKandidat.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="py-8 text-center text-muted-foreground">
                     Belum ada kandidat untuk kategori ini
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
                     {roleKandidat.map((k) => (
-            <Card key={k.id} className={`hover:shadow-lg transition-all cursor-pointer ${selectedKandidat?.id === k.id ? 'ring-2 ring-green-500 shadow-lg' : ''}`} onClick={() => selectKandidat(k)}>
-              <CardHeader className="text-center pb-3 sm:pb-6 relative">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full flex items-center justify-center">
-                  {k.fotoUrl ? (
-                    <img 
-                      src={k.fotoUrl} 
-                      alt={k.namaCalon}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
-                  )}
-                </div>
-                {selectedKandidat?.id === k.id && (
-                  <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                    <CheckCircle className="w-5 h-5" />
-                  </div>
-                )}
-                <Badge variant="secondary" className="w-fit mx-auto mb-2 text-xs sm:text-sm">
-                  Nomor {k.nomorUrut}
-                </Badge>
-                <CardTitle className="text-base sm:text-lg">{k.namaCalon}</CardTitle>
-              </CardHeader>
-              
-              <CardContent className="space-y-3 sm:space-y-4">
-                {/* Visi & Misi Preview - Collapsed */}
-                {expandedKandidat !== k.id && (
-                  <>
-                    <div className="text-xs sm:text-sm">
-                      <p className="font-semibold mb-1">Visi:</p>
-                      <p className="text-gray-600 line-clamp-2">
-                        {k.visi || 'Belum ada visi'}
-                      </p>
-                    </div>
+                      <Card
+                        key={k.id}
+                        className={`cursor-pointer transition-all hover:shadow-lg ${selectedKandidat?.id === k.id ? 'ring-2 ring-primary' : ''}`}
+                        onClick={() => selectKandidat(k)}
+                      >
+                        <CardHeader className="relative pb-3 text-center sm:pb-6">
+                          <div className="mx-auto mb-3 flex size-20 items-center justify-center rounded-full bg-muted sm:mb-4 sm:size-24">
+                            {k.fotoUrl ? (
+                              <img
+                                src={k.fotoUrl}
+                                alt={k.namaCalon}
+                                className="size-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="size-10 text-muted-foreground sm:size-12" />
+                            )}
+                          </div>
+                          {selectedKandidat?.id === k.id && (
+                            <div className="absolute right-2 top-2 rounded-full bg-primary p-1 text-primary-foreground">
+                              <CheckCircle className="size-5" />
+                            </div>
+                          )}
+                          <Badge variant="secondary" className="mx-auto mb-2 w-fit text-xs sm:text-sm">
+                            Nomor {k.nomorUrut}
+                          </Badge>
+                          <CardTitle className="text-base sm:text-lg">{k.namaCalon}</CardTitle>
+                        </CardHeader>
 
-                    <div className="text-xs sm:text-sm">
-                      <p className="font-semibold mb-1">Misi:</p>
-                      <p className="text-gray-600 line-clamp-2">
-                        {k.misi || 'Belum ada misi'}
-                      </p>
-                    </div>
-                  </>
-                )}
+                        <CardContent className="space-y-3 sm:space-y-4">
+                          {/* Visi & Misi Preview - Collapsed */}
+                          {expandedKandidat !== k.id && (
+                            <>
+                              <div className="text-xs sm:text-sm">
+                                <p className="mb-1 font-semibold">Visi:</p>
+                                <p className="line-clamp-2 text-muted-foreground">
+                                  {k.visi || 'Belum ada visi'}
+                                </p>
+                              </div>
 
-                {/* Visi & Misi Expanded */}
-                {expandedKandidat === k.id && (
-                  <div className="space-y-3 sm:space-y-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-100">
-                    <div>
-                      <h4 className="font-semibold mb-2 text-xs sm:text-sm text-blue-900">Visi</h4>
-                      <p className="text-gray-700 text-xs sm:text-sm whitespace-pre-wrap">
-                        {k.visi || 'Belum ada visi'}
-                      </p>
-                    </div>
-                    <div className="h-px bg-blue-200"></div>
-                    <div>
-                      <h4 className="font-semibold mb-2 text-xs sm:text-sm text-blue-900">Misi</h4>
-                      <p className="text-gray-700 text-xs sm:text-sm whitespace-pre-wrap">
-                        {k.misi || 'Belum ada misi'}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                              <div className="text-xs sm:text-sm">
+                                <p className="mb-1 font-semibold">Misi:</p>
+                                <p className="line-clamp-2 text-muted-foreground">
+                                  {k.misi || 'Belum ada misi'}
+                                </p>
+                              </div>
+                            </>
+                          )}
 
-                {/* Toggle Details Button */}
-                <Button 
-                  variant={expandedKandidat === k.id ? "default" : "outline"} 
-                  className={`w-full h-9 sm:h-10 text-sm transition-all ${expandedKandidat === k.id ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setExpandedKandidat(expandedKandidat === k.id ? null : k.id)
-                  }}
-                >
-                  <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 transition-transform ${expandedKandidat === k.id ? 'rotate-180' : ''}`} />
-                  {expandedKandidat === k.id ? 'Tutup Detail' : 'Lihat Detail'}
-                </Button>
+                          {/* Visi & Misi Expanded */}
+                          {expandedKandidat === k.id && (
+                            <div className="space-y-3 rounded-lg border bg-muted/50 p-3 sm:space-y-4 sm:p-4">
+                              <div>
+                                <h4 className="mb-2 text-xs font-semibold sm:text-sm">Visi</h4>
+                                <p className="whitespace-pre-wrap text-xs text-muted-foreground sm:text-sm">
+                                  {k.visi || 'Belum ada visi'}
+                                </p>
+                              </div>
+                              <Separator />
+                              <div>
+                                <h4 className="mb-2 text-xs font-semibold sm:text-sm">Misi</h4>
+                                <p className="whitespace-pre-wrap text-xs text-muted-foreground sm:text-sm">
+                                  {k.misi || 'Belum ada misi'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
 
-                {/* Selection status */}
-                {selectedKandidat?.id === k.id && (
-                  <div className="w-full h-10 sm:h-11 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center text-sm sm:text-base font-semibold transition-colors">
-                    <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
-                    Dipilih
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                          {/* Toggle Details Button */}
+                          <Button
+                            variant={expandedKandidat === k.id ? 'default' : 'outline'}
+                            className="h-9 w-full text-sm transition-all sm:h-10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setExpandedKandidat(expandedKandidat === k.id ? null : k.id)
+                            }}
+                          >
+                            <ChevronDown className={`size-3 transition-transform sm:size-4 ${expandedKandidat === k.id ? 'rotate-180' : ''}`} />
+                            {expandedKandidat === k.id ? 'Tutup Detail' : 'Lihat Detail'}
+                          </Button>
+
+                          {/* Selection status */}
+                          {selectedKandidat?.id === k.id && (
+                            <div className="flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground sm:h-11 sm:text-base">
+                              <CheckCircle className="mr-1 size-4 sm:mr-2" />
+                              Dipilih
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -411,27 +423,27 @@ export default function VotingPage() {
 
       {/* Action Bar - Show when both candidates selected */}
       {selectedMitraTama && selectedMitraMuda && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-xl p-4 sm:p-6">
-          <div className="max-w-6xl mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 shadow-lg sm:p-6">
+          <div className="mx-auto max-w-6xl">
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <p className="text-xs text-purple-600 font-semibold mb-2">Pilihan: Mitra Tama</p>
-                  <p className="text-sm font-bold text-gray-800">{selectedMitraTama.namaCalon}</p>
-                  <p className="text-xs text-gray-600 mt-1">Nomor {selectedMitraTama.nomorUrut}</p>
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Pilihan: Mitra Tama</p>
+                  <p className="text-sm font-bold">{selectedMitraTama.namaCalon}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Nomor {selectedMitraTama.nomorUrut}</p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="text-xs text-blue-600 font-semibold mb-2">Pilihan: Mitra Muda</p>
-                  <p className="text-sm font-bold text-gray-800">{selectedMitraMuda.namaCalon}</p>
-                  <p className="text-xs text-gray-600 mt-1">Nomor {selectedMitraMuda.nomorUrut}</p>
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Pilihan: Mitra Muda</p>
+                  <p className="text-sm font-bold">{selectedMitraMuda.namaCalon}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Nomor {selectedMitraMuda.nomorUrut}</p>
                 </div>
               </div>
-              <Button 
+              <Button
                 onClick={openConfirmDialog}
-                className="w-full h-11 text-base bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-semibold"
+                className="h-11 w-full text-base font-semibold"
                 disabled={isVoting}
               >
-                <CheckCircle className="w-5 h-5 mr-2" />
+                <CheckCircle className="size-5" />
                 Konfirmasi Pilihan
               </Button>
             </div>
@@ -448,42 +460,42 @@ export default function VotingPage() {
               Apakah Anda yakin dengan pilihan ini? Anda tidak dapat mengubahnya setelah submit.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3 py-4">
             {selectedMitraTama && (
-              <div className="bg-purple-50 rounded-lg p-3">
-                <p className="text-xs text-purple-600 font-semibold mb-1">Mitra Tama (Kelas XI)</p>
-                <p className="text-sm font-bold text-gray-800">{selectedMitraTama.namaCalon}</p>
-                <p className="text-xs text-gray-600">Nomor {selectedMitraTama.nomorUrut}</p>
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Mitra Tama (Kelas XI)</p>
+                <p className="text-sm font-bold">{selectedMitraTama.namaCalon}</p>
+                <p className="text-xs text-muted-foreground">Nomor {selectedMitraTama.nomorUrut}</p>
               </div>
             )}
-            
+
             {selectedMitraMuda && (
-              <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-xs text-blue-600 font-semibold mb-1">Mitra Muda (Kelas X)</p>
-                <p className="text-sm font-bold text-gray-800">{selectedMitraMuda.namaCalon}</p>
-                <p className="text-xs text-gray-600">Nomor {selectedMitraMuda.nomorUrut}</p>
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Mitra Muda (Kelas X)</p>
+                <p className="text-sm font-bold">{selectedMitraMuda.namaCalon}</p>
+                <p className="text-xs text-muted-foreground">Nomor {selectedMitraMuda.nomorUrut}</p>
               </div>
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Button 
-              variant="outline" 
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <Button
+              variant="outline"
               onClick={() => setShowConfirmDialog(false)}
-              className="flex-1 h-10 sm:h-11 text-sm sm:text-base"
+              className="h-10 flex-1 text-sm sm:h-11 sm:text-base"
               disabled={isVoting}
             >
               Batal
             </Button>
-            <Button 
+            <Button
               onClick={handleVote}
-              className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+              className="h-10 flex-1 text-sm sm:h-11 sm:text-base"
               disabled={isVoting}
             >
               {isVoting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Memproses...
                 </>
               ) : (

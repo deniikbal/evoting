@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Users, 
-  Vote, 
-  Shield, 
-  BarChart3, 
-  Clock, 
+import { Separator } from '@/components/ui/separator'
+import {
+  Users,
+  Vote,
+  Shield,
+  BarChart3,
+  Clock,
   CheckCircle,
   ArrowRight,
   User,
@@ -78,123 +79,93 @@ export default function LandingPage() {
     }
   }
 
+  const navItems = [
+    { label: 'Beranda', href: '#beranda' },
+    { label: 'Kandidat', href: '#kandidat' },
+    { label: 'Statistik', href: '#statistik' },
+    { label: 'Fitur', href: '#fitur' },
+    { label: 'Kontak', href: '#kontak' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-yellow-50 to-green-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
-                <Vote className="w-4 h-4 text-white" />
+              <div className="flex size-8 items-center justify-center rounded-full bg-primary">
+                <Vote className="size-4 text-primary-foreground" />
               </div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-800">E-Voting OSIS</h1>
+              <h1 className="text-lg font-bold sm:text-xl">E-Voting OSIS</h1>
             </div>
-            
+
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-4 lg:gap-6">
-              <a href="#beranda" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Beranda
-              </a>
-              <a href="#kandidat" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Kandidat
-              </a>
-              <a href="#statistik" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Statistik
-              </a>
-              <a href="#fitur" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Fitur
-              </a>
-              <a href="#kontak" className="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-                Kontak
-              </a>
+            <nav className="hidden items-center gap-1 md:flex">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  {item.label}
+                </a>
+              ))}
             </nav>
 
             {/* Mobile Menu Button */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
               aria-label="Toggle menu"
             >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6 text-gray-700" />
-              ) : (
-                <Menu className="w-6 h-6 text-gray-700" />
-              )}
-            </button>
+              {isMobileMenuOpen ? <X /> : <Menu />}
+            </Button>
           </div>
 
           {/* Mobile Navigation */}
           {isMobileMenuOpen && (
-            <nav className="md:hidden py-4 border-t">
-              <div className="flex flex-col space-y-3">
-                <a 
-                  href="#beranda" 
+            <nav className="flex flex-col gap-1 border-t py-4 md:hidden">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
-                  Beranda
+                  {item.label}
                 </a>
-                <a 
-                  href="#kandidat" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                >
-                  Kandidat
-                </a>
-                <a 
-                  href="#statistik" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                >
-                  Statistik
-                </a>
-                <a 
-                  href="#fitur" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                >
-                  Fitur
-                </a>
-                <a 
-                  href="#kontak" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                >
-                  Kontak
-                </a>
-              </div>
+              ))}
             </nav>
           )}
         </div>
       </header>
 
       {/* Hero Section */}
-      <section id="beranda" className="py-12 sm:py-16 px-4 border-b-2 border-gray-200">
-        <div className="max-w-7xl mx-auto text-center">
+      <section id="beranda" className="border-b py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <div className="mb-8">
-            <Badge className="mb-4 bg-gradient-to-r from-orange-500 to-pink-500">
-              Pemilihan 2025
-            </Badge>
-            <h1 className="text-5xl font-bold text-gray-800 mb-6">
+            <Badge className="mb-4">Pemilihan 2025</Badge>
+            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl">
               E-Voting OSIS
-              <span className="block text-3xl text-orange-600 mt-2">
+              <span className="mt-2 block text-2xl text-muted-foreground sm:text-3xl">
                 SMAN 1 Bantarujeg
               </span>
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Sistem pemilihan elektronik yang modern, aman, dan transparan untuk 
+            <p className="mx-auto mb-8 max-w-3xl text-lg text-muted-foreground">
+              Sistem pemilihan elektronik yang modern, aman, dan transparan untuk
               memilih Ketua OSIS periode 2025/2026
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                onClick={() => window.location.href = '/login'}
-                className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                onClick={() => (window.location.href = '/login')}
               >
-                <UserCheck className="w-5 h-5 mr-2" />
-                Login & Voting
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <UserCheck />
+                Login &amp; Voting
+                <ArrowRight />
               </Button>
             </div>
           </div>
@@ -202,95 +173,94 @@ export default function LandingPage() {
       </section>
 
       {/* Kandidat Section */}
-      <section id="kandidat" className="py-16 sm:py-20 px-4 bg-white shadow-inner border-b-2 border-gray-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <Badge className="mb-4 bg-gradient-to-r from-orange-500 to-pink-500">
-              Kandidat OSIS 2025
-            </Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">
+      <section id="kandidat" className="border-b bg-muted/30 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 text-center">
+            <Badge variant="secondary" className="mb-4">Kandidat OSIS 2025</Badge>
+            <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
               Kenali Kandidat Anda
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
               Pelajari visi dan misi setiap kandidat untuk membuat pilihan yang tepat
             </p>
           </div>
 
           {isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Memuat data kandidat...</p>
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">Memuat data kandidat...</p>
             </div>
           ) : kandidatList.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Belum ada kandidat yang terdaftar.</p>
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">Belum ada kandidat yang terdaftar.</p>
             </div>
           ) : (
             <div className="space-y-12">
               {['mitramuda', 'mitratama'].map((roleType) => {
                 const roleKandidat = kandidatList.filter(k => k.role === roleType)
                 const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                const roleColor = roleType === 'mitramuda' ? 'from-blue-500 to-cyan-500' : 'from-purple-500 to-pink-500'
-                
+
                 return (
                   <div key={roleType}>
                     <div className="mb-8 flex items-center gap-4">
-                      <div className={`px-4 py-2 rounded-full font-bold text-white text-sm sm:text-base ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
+                      <Badge variant="outline" className="px-4 py-1.5 text-sm font-bold sm:text-base">
                         {roleLabel}
-                      </div>
-                      <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
-                      <span className="text-gray-600 font-medium text-sm">{roleKandidat.length} kandidat</span>
+                      </Badge>
+                      <Separator className="flex-1" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {roleKandidat.length} kandidat
+                      </span>
                     </div>
-                    
+
                     {roleKandidat.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="py-8 text-center text-muted-foreground">
                         Belum ada kandidat untuk kategori ini
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         {roleKandidat.map((kandidat) => (
-                          <Card key={kandidat.id} className="hover:shadow-xl transition-shadow overflow-hidden">
+                          <Card key={kandidat.id} className="overflow-hidden transition-shadow hover:shadow-lg">
                             <CardHeader className="p-0">
-                              <div className={`relative h-64 bg-gradient-to-br ${roleColor}`}>
+                              <div className="relative h-64 bg-muted">
                                 {kandidat.fotoUrl ? (
-                                  <img 
-                                    src={kandidat.fotoUrl} 
+                                  <img
+                                    src={kandidat.fotoUrl}
                                     alt={kandidat.namaCalon}
-                                    className="w-full h-full object-cover"
+                                    className="h-full w-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <User className="w-24 h-24 text-white/50" />
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <User className="size-24 text-muted-foreground/40" />
                                   </div>
                                 )}
-                                <div className="absolute top-4 left-4 flex gap-2">
-                                  <Badge className="bg-white/90 text-gray-800 text-lg px-4 py-2">
+                                <div className="absolute left-4 top-4">
+                                  <Badge className="px-4 py-2 text-lg">
                                     Nomor {kandidat.nomorUrut}
                                   </Badge>
                                 </div>
                               </div>
                             </CardHeader>
                             <CardContent className="p-6">
-                              <CardTitle className="text-2xl mb-4 text-center">
+                              <CardTitle className="mb-4 text-center text-2xl">
                                 {kandidat.namaCalon}
                               </CardTitle>
-                              
+
                               <div className="space-y-4">
                                 <div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Target className={`w-5 h-5 ${roleType === 'mitramuda' ? 'text-blue-500' : 'text-purple-500'}`} />
-                                    <h4 className="font-semibold text-gray-800">Visi</h4>
+                                  <div className="mb-2 flex items-center gap-2">
+                                    <Target className="size-5 text-primary" />
+                                    <h4 className="font-semibold">Visi</h4>
                                   </div>
-                                  <p className="text-sm text-gray-600 leading-relaxed">
+                                  <p className="text-sm leading-relaxed text-muted-foreground">
                                     {kandidat.visi || 'Visi belum ditambahkan'}
                                   </p>
                                 </div>
 
                                 <div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <BookOpen className={`w-5 h-5 ${roleType === 'mitramuda' ? 'text-cyan-500' : 'text-pink-500'}`} />
-                                    <h4 className="font-semibold text-gray-800">Misi</h4>
+                                  <div className="mb-2 flex items-center gap-2">
+                                    <BookOpen className="size-5 text-primary" />
+                                    <h4 className="font-semibold">Misi</h4>
                                   </div>
-                                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                                  <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                                     {kandidat.misi || 'Misi belum ditambahkan'}
                                   </p>
                                 </div>
@@ -309,33 +279,33 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section id="statistik" className="py-16 sm:py-20 px-4 bg-gradient-to-b from-orange-50/30 to-pink-50/30 border-b-2 border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section id="statistik" className="border-b py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <Card className="text-center">
               <CardHeader>
-                <Users className="w-12 h-12 mx-auto text-orange-500 mb-4" />
-                <CardTitle className="text-3xl font-bold text-gray-800">
+                <Users className="mx-auto mb-4 size-12 text-primary" />
+                <CardTitle className="text-3xl font-bold">
                   {isLoading ? '...' : stats.totalSiswa}
                 </CardTitle>
                 <CardDescription>Siswa Terdaftar</CardDescription>
               </CardHeader>
             </Card>
-            
+
             <Card className="text-center">
               <CardHeader>
-                <Trophy className="w-12 h-12 mx-auto text-pink-500 mb-4" />
-                <CardTitle className="text-3xl font-bold text-gray-800">
+                <Trophy className="mx-auto mb-4 size-12 text-primary" />
+                <CardTitle className="text-3xl font-bold">
                   {isLoading ? '...' : stats.totalKandidat}
                 </CardTitle>
                 <CardDescription>Kandidat Berkualitas</CardDescription>
               </CardHeader>
             </Card>
-            
+
             <Card className="text-center">
               <CardHeader>
-                <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
-                <CardTitle className="text-3xl font-bold text-gray-800">
+                <CheckCircle className="mx-auto mb-4 size-12 text-primary" />
+                <CardTitle className="text-3xl font-bold">
                   {isLoading ? '...' : (stats.votingAktif ? 'Aktif' : 'Non-Aktif')}
                 </CardTitle>
                 <CardDescription>Status Voting</CardDescription>
@@ -346,79 +316,79 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="fitur" className="py-20 px-4 bg-white shadow-inner border-b-2 border-gray-200">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+      <section id="fitur" className="border-b bg-muted/30 py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-3xl font-bold tracking-tight">
               Mengapa E-Voting OSIS?
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
               Sistem voting modern dengan berbagai keunggulan untuk pemilihan yang adil dan transparan
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="hover:shadow-lg transition-shadow">
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <Shield className="w-10 h-10 text-orange-500 mb-4" />
-                <CardTitle>Aman & Terpercaya</CardTitle>
+                <Shield className="mb-4 size-10 text-primary" />
+                <CardTitle>Aman &amp; Terpercaya</CardTitle>
                 <CardDescription>
-                  Sistem keamanan berlapis dengan enkripsi data dan autentikasi 
+                  Sistem keamanan berlapis dengan enkripsi data dan autentikasi
                   yang kuat untuk menjaga kerahasiaan suara
                 </CardDescription>
               </CardHeader>
             </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow">
+
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <Zap className="w-10 h-10 text-pink-500 mb-4" />
-                <CardTitle>Cepat & Efisien</CardTitle>
+                <Zap className="mb-4 size-10 text-primary" />
+                <CardTitle>Cepat &amp; Efisien</CardTitle>
                 <CardDescription>
-                  Proses voting yang instan dan hasil real-time, 
+                  Proses voting yang instan dan hasil real-time,
                   menghemat waktu dan sumber daya
                 </CardDescription>
               </CardHeader>
             </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow">
+
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <BarChart3 className="w-10 h-10 text-green-500 mb-4" />
+                <BarChart3 className="mb-4 size-10 text-primary" />
                 <CardTitle>Transparan</CardTitle>
                 <CardDescription>
-                  Hasil voting dapat dipantau secara real-time dengan 
+                  Hasil voting dapat dipantau secara real-time dengan
                   statistik yang lengkap dan akurat
                 </CardDescription>
               </CardHeader>
             </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow">
+
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <Target className="w-10 h-10 text-orange-500 mb-4" />
+                <Target className="mb-4 size-10 text-primary" />
                 <CardTitle>Mudah Digunakan</CardTitle>
                 <CardDescription>
-                  Interface yang user-friendly dan intuitif, 
+                  Interface yang user-friendly dan intuitif,
                   mudah digunakan oleh semua siswa
                 </CardDescription>
               </CardHeader>
             </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow">
+
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <Clock className="w-10 h-10 text-pink-500 mb-4" />
+                <Clock className="mb-4 size-10 text-primary" />
                 <CardTitle>24/7 Access</CardTitle>
                 <CardDescription>
-                  Sistem dapat diakses kapan saja selama periode voting, 
+                  Sistem dapat diakses kapan saja selama periode voting,
                   memberikan fleksibilitas maksimal
                 </CardDescription>
               </CardHeader>
             </Card>
-            
-            <Card className="hover:shadow-lg transition-shadow">
+
+            <Card className="transition-shadow hover:shadow-lg">
               <CardHeader>
-                <BookOpen className="w-10 h-10 text-green-500 mb-4" />
+                <BookOpen className="mb-4 size-10 text-primary" />
                 <CardTitle>Edukatif</CardTitle>
                 <CardDescription>
-                  Mendidik siswa tentang pentingnya demokrasi dan 
+                  Mendidik siswa tentang pentingnya demokrasi dan
                   proses pemilihan yang fair
                 </CardDescription>
               </CardHeader>
@@ -428,69 +398,70 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-orange-500 to-pink-500 shadow-lg border-y-2 border-orange-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+      <section className="border-y bg-primary py-20">
+        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-primary-foreground">
             Siap untuk Memberikan Suaramu?
           </h2>
-          <p className="text-xl text-white/90 mb-8">
+          <p className="mb-8 text-xl text-primary-foreground/90">
             Bergabunglah dalam pemilihan OSIS yang akan menentukan masa depan organisasi kita
           </p>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             variant="secondary"
-            onClick={() => window.location.href = '/login'}
-            className="bg-white text-orange-600 hover:bg-gray-100"
+            onClick={() => (window.location.href = '/login')}
           >
-            <Vote className="w-5 h-5 mr-2" />
+            <Vote />
             Mulai Voting Sekarang
-            <ArrowRight className="w-5 h-5 ml-2" />
+            <ArrowRight />
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer id="kontak" className="bg-gray-800 text-white py-12 px-4 border-t-4 border-gray-700 shadow-2xl">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <footer id="kontak" className="border-t bg-muted/30 py-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center">
-                  <Vote className="w-4 h-4 text-white" />
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-full bg-primary">
+                  <Vote className="size-4 text-primary-foreground" />
                 </div>
                 <h3 className="text-lg font-bold">E-Voting OSIS</h3>
               </div>
-              <p className="text-gray-400">
+              <p className="text-muted-foreground">
                 Sistem pemilihan elektronik modern untuk OSIS SMAN 1 Bantarujeg
               </p>
             </div>
-            
+
             <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-gray-400">
+              <h4 className="mb-4 text-lg font-semibold">Quick Links</h4>
+              <ul className="space-y-2 text-muted-foreground">
                 <li>
-                  <button 
-                    onClick={() => window.location.href = '/login'}
-                    className="hover:text-white transition-colors"
+                  <button
+                    onClick={() => (window.location.href = '/login')}
+                    className="transition-colors hover:text-foreground"
                   >
                     Login Siswa
                   </button>
                 </li>
               </ul>
             </div>
-            
+
             <div>
-              <h4 className="text-lg font-semibold mb-4">Kontak</h4>
-              <p className="text-gray-400">
+              <h4 className="mb-4 text-lg font-semibold">Kontak</h4>
+              <p className="text-muted-foreground">
                 SMAN 1 Bantarujeg<br />
                 Panitia Pemilihan OSIS 2025/2026
               </p>
             </div>
           </div>
-          
-          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 E-Voting OSIS SMAN 1 Bantarujeg. All rights reserved.</p>
-          </div>
+
+          <Separator className="my-8" />
+
+          <p className="text-center text-muted-foreground">
+            &copy; 2025 E-Voting OSIS SMAN 1 Bantarujeg. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

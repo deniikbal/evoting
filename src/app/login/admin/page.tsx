@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Shield, ArrowLeft } from 'lucide-react'
+import { Loader2, Shield, AlertCircle } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState('')
@@ -45,25 +45,21 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-50 flex items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mb-4">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
-              <Shield className="w-10 h-10 text-white" />
-            </div>
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+            <Shield className="size-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Login Admin
-          </h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-semibold tracking-tight">Login Admin</h1>
+          <p className="text-muted-foreground">
             E-Voting OSIS SMAN 1 Bantarujeg
           </p>
         </div>
 
         {/* Login Form */}
-        <Card className="rounded-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="text-center">Panel Administrator</CardTitle>
             <CardDescription className="text-center">
@@ -73,45 +69,40 @@ export default function AdminLoginPage() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-orange-700">Username</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   type="text"
                   placeholder="Masukkan username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="border-orange-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-orange-700">Password</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="Masukkan password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="border-orange-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               {error && (
                 <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 focus:ring-orange-500" 
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Memproses...
                   </>
                 ) : (
@@ -121,8 +112,6 @@ export default function AdminLoginPage() {
             </form>
           </CardContent>
         </Card>
-
-
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Home } from 'lucide-react'
 
@@ -33,41 +33,39 @@ export default function TerimaKasihPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
-        <Card className="text-center">
-          <CardHeader>
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle className="size-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl text-green-600">
-              Terima Kasih!
-            </CardTitle>
+            <CardTitle className="text-2xl">Terima Kasih!</CardTitle>
+            <CardDescription>
+              Suara Anda telah berhasil direkam.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-gray-700">
+            <p className="text-muted-foreground">
               Anda telah berhasil menggunakan hak suara Anda dalam Pemilihan Ketua OSIS SMAN 1 Bantarujeg.
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Partisipasi Anda sangat berarti untuk kemajuan OSIS kita.
             </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <p className="text-sm text-blue-900 text-center">
-                Anda akan otomatis keluar dalam <span className="font-bold text-lg">{countdown}</span> detik
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <p className="text-center text-sm text-muted-foreground">
+                Anda akan otomatis keluar dalam{' '}
+                <span className="text-lg font-bold text-foreground">{countdown}</span> detik
               </p>
             </div>
-            
-            <div className="pt-2 space-y-2">
-              <Button 
-                onClick={handleLogoutNow}
-                className="w-full"
-                variant="default"
-              >
-                <Home className="w-4 h-4 mr-2" />
+
+            <div className="space-y-2 pt-2">
+              <Button onClick={handleLogoutNow} className="w-full">
+                <Home className="size-4" />
                 Logout Sekarang
               </Button>
-              <p className="text-xs text-center text-gray-500">
+              <p className="text-center text-xs text-muted-foreground">
                 Untuk keamanan, Anda akan otomatis keluar dari sistem
               </p>
             </div>
