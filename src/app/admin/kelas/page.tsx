@@ -11,11 +11,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
-  ChevronLeft, ChevronRight, Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet
+  ChevronLeft, ChevronRight, Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet,
+  ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, X
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -40,9 +47,15 @@ export default function KelasManagementPage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null)
-  const [admin, setAdmin] = useState<Admin | null>(null)
+  const [, setAdmin] = useState<Admin | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Bulk selection states
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'angkatan' | 'createdAt'; dir: 'asc' | 'desc' } | null>(null)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -66,11 +79,6 @@ export default function KelasManagementPage() {
     setAdmin(session)
     fetchClassrooms()
   }, [router])
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
-  }
 
   const fetchClassrooms = async () => {
     try {
@@ -239,11 +247,90 @@ export default function KelasManagementPage() {
     }
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+
+    setIsBulkDeleting(true)
+    try {
+      const response = await fetch('/api/admin/classroom/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        if (data.blockedCount > 0) {
+          toast.warning(
+            `${data.deletedCount} kelas dihapus. ${data.blockedCount} kelas dilewati karena masih memiliki siswa.`
+          )
+        } else {
+          toast.success(`${data.deletedCount} kelas berhasil dihapus`)
+        }
+        setSelectedIds([])
+        setShowBulkDeleteDialog(false)
+        fetchClassrooms()
+      } else {
+        toast.error(data.message || 'Gagal menghapus kelas')
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(selectableItems.map((c) => c.id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const toggleSelectOne = (id: number, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    )
+  }
+
+  const toggleSort = (key: 'name' | 'angkatan' | 'createdAt') => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+      }
+      return { key, dir: 'asc' }
+    })
+  }
+
+  // Sorted data (derived)
+  const sortedClassrooms = useMemo(() => {
+    if (!sortConfig) return classrooms
+    const { key, dir } = sortConfig
+    const factor = dir === 'asc' ? 1 : -1
+    return [...classrooms].sort((a, b) => {
+      if (key === 'angkatan') {
+        return (Number(a.angkatan) - Number(b.angkatan)) * factor
+      }
+      if (key === 'createdAt') {
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * factor
+      }
+      return a.name.localeCompare(b.name) * factor
+    })
+  }, [classrooms, sortConfig])
+
   // Pagination calculations
-  const totalPages = Math.ceil(classrooms.length / itemsPerPage)
+  const totalPages = Math.ceil(sortedClassrooms.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentItems = classrooms.slice(startIndex, endIndex)
+  const currentItems = sortedClassrooms.slice(startIndex, endIndex)
+  const selectableItems = currentItems
+  const allCurrentSelected =
+    selectableItems.length > 0 &&
+    selectableItems.every((c) => selectedIds.includes(c.id))
+  const someCurrentSelected =
+    selectableItems.some((c) => selectedIds.includes(c.id)) && !allCurrentSelected
 
   // Statistik turunan (derived) - tidak mengubah data/logic
   const statistik = useMemo(() => {
@@ -265,6 +352,20 @@ export default function KelasManagementPage() {
     setItemsPerPage(value)
     setCurrentPage(1) // Reset to first page
   }
+
+  // Drop selections that no longer exist (e.g. after delete/refetch)
+  useEffect(() => {
+    setSelectedIds((prev) =>
+      prev.filter((id) => classrooms.some((c) => c.id === id))
+    )
+  }, [classrooms])
+
+  // Keep current page valid when total pages shrink
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [totalPages, currentPage])
 
   if (isLoading) {
     return (
@@ -466,21 +567,107 @@ export default function KelasManagementPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Bulk Action Toolbar */}
+          {selectedIds.length > 0 && (
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary">{selectedIds.length} dipilih</Badge>
+                <span className="text-muted-foreground">
+                  {selectedIds.length} kelas siap dihapus
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                >
+                  <X />
+                  Batal Pilih
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                >
+                  <Trash2 />
+                  Hapus {selectedIds.length} Kelas
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Desktop View */}
           <div className="hidden rounded-md border sm:block">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama Kelas</TableHead>
-                  <TableHead>Angkatan</TableHead>
-                  <TableHead>Tanggal Dibuat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={
+                        allCurrentSelected
+                          ? true
+                          : someCurrentSelected
+                          ? 'indeterminate'
+                          : false
+                      }
+                      onCheckedChange={(v) => toggleSelectAll(v === true)}
+                      aria-label="Pilih semua"
+                      disabled={selectableItems.length === 0}
+                    />
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8"
+                      onClick={() => toggleSort('name')}
+                    >
+                      Nama Kelas
+                      {sortConfig?.key === 'name' ? (
+                        sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
+                      ) : (
+                        <ArrowUpDown className="opacity-50" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8"
+                      onClick={() => toggleSort('angkatan')}
+                    >
+                      Angkatan
+                      {sortConfig?.key === 'angkatan' ? (
+                        sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
+                      ) : (
+                        <ArrowUpDown className="opacity-50" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="-ml-3 h-8"
+                      onClick={() => toggleSort('createdAt')}
+                    >
+                      Tanggal Dibuat
+                      {sortConfig?.key === 'createdAt' ? (
+                        sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
+                      ) : (
+                        <ArrowUpDown className="opacity-50" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  <TableHead className="w-24 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-10">
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5} className="py-10">
                       <Empty>
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -500,7 +687,18 @@ export default function KelasManagementPage() {
                   </TableRow>
                 ) : (
                   currentItems.map((classroom) => (
-                    <TableRow key={classroom.id}>
+                    <TableRow
+                      key={classroom.id}
+                      data-state={selectedIds.includes(classroom.id) ? 'selected' : undefined}
+                      className="data-[state=selected]:bg-muted"
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(classroom.id)}
+                          onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
+                          aria-label={`Pilih ${classroom.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{classroom.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{classroom.angkatan}</Badge>
@@ -508,26 +706,28 @@ export default function KelasManagementPage() {
                       <TableCell className="text-muted-foreground">
                         {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(classroom)}
-                            title="Edit kelas"
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(classroom)}
-                            title="Hapus kelas"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreHorizontal />
+                              <span className="sr-only">Buka menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(classroom)}>
+                              <Pencil />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => openDeleteDialog(classroom)}
+                            >
+                              <Trash2 />
+                              Hapus
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -551,14 +751,26 @@ export default function KelasManagementPage() {
               </Empty>
             ) : (
               currentItems.map((classroom) => (
-                <div key={classroom.id} className="space-y-3 rounded-lg border p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">{classroom.name}</p>
-                      <p className="text-xs text-muted-foreground">Angkatan {classroom.angkatan}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
-                      </p>
+                <div
+                  key={classroom.id}
+                  className={`space-y-3 rounded-lg border p-4 transition-colors ${
+                    selectedIds.includes(classroom.id) ? 'bg-muted' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={selectedIds.includes(classroom.id)}
+                        onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
+                        aria-label={`Pilih ${classroom.name}`}
+                      />
+                      <div>
+                        <p className="text-sm font-semibold">{classroom.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
                     </div>
                     <Badge variant="secondary">{classroom.angkatan}</Badge>
                   </div>
@@ -834,6 +1046,46 @@ export default function KelasManagementPage() {
                 <>
                   <Trash2 />
                   Ya, Hapus
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete AlertDialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="size-5 text-destructive" />
+              Hapus {selectedIds.length} Kelas
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus <strong>{selectedIds.length}</strong> kelas yang dipilih?
+              Kelas yang masih memiliki siswa terdaftar akan otomatis dilewati.
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleBulkDelete()
+              }}
+              disabled={isBulkDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <RefreshCw className="animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                <>
+                  <Trash2 />
+                  Ya, Hapus Semua
                 </>
               )}
             </AlertDialogAction>
