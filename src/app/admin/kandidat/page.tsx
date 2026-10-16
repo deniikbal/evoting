@@ -1,16 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { 
-  Trophy, Plus, Edit, Trash2, RefreshCw, User,
-  AlertTriangle, X, Loader2
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import {
+  Trophy, Plus, Pencil, Trash2, RefreshCw, User, Loader2, X,
+  Users, Crown, Vote,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -70,11 +77,6 @@ export default function KandidatManagementPage() {
     setAdmin(session)
     fetchKandidat()
   }, [router])
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
-  }
 
   const fetchKandidat = async () => {
     try {
@@ -146,7 +148,7 @@ export default function KandidatManagementPage() {
 
   const formatMisiWithNumbers = (text: string): string => {
     if (!text) return text
-    
+
     const lines = text.split('\n').filter(line => line.trim())
     return lines.map((line, index) => {
       // Remove existing numbers/bullets at the start
@@ -308,433 +310,451 @@ export default function KandidatManagementPage() {
     setShowEditDialog(true)
   }
 
+  // Statistik turunan (derived)
+  const statistik = useMemo(() => ({
+    total: kandidat.length,
+    mitraTama: kandidat.filter(k => k.role === 'mitratama').length,
+    mitraMuda: kandidat.filter(k => k.role === 'mitramuda').length,
+    totalSuara: kandidat.reduce((sum, k) => sum + (k.jumlahSuara || 0), 0),
+  }), [kandidat])
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-blue-900">Memuat data kandidat...</p>
-        </div>
+      <div className="flex flex-1 flex-col gap-6">
+        <StatCardGrid>
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full" />)}
+        </StatCardGrid>
+        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 flex-col gap-6">
+      {/* Statistik Cards */}
+      <StatCardGrid>
+        <StatCard
+          title="Total Kandidat"
+          value={statistik.total}
+          description="Kandidat terdaftar"
+          icon={Trophy}
+        />
+        <StatCard
+          title="Mitra Tama"
+          value={statistik.mitraTama}
+          description="Kelas XI"
+          icon={Crown}
+        />
+        <StatCard
+          title="Mitra Muda"
+          value={statistik.mitraMuda}
+          description="Kelas X"
+          icon={Users}
+        />
+        <StatCard
+          title="Total Suara"
+          value={statistik.totalSuara}
+          description="Suara masuk"
+          icon={Vote}
+        />
+      </StatCardGrid>
 
-      <div className="contents">
-        {/* Actions */}
-        <Card className="rounded-sm mb-6">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Data Kandidat
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Total {kandidat.length} kandidat terdaftar
-                </CardDescription>
-              </div>
-              <div className="grid grid-cols-2 sm:flex gap-2">
-                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="w-full sm:w-auto">
-                      <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Tambah</span>
-                      <span className="sm:hidden">Add</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="pb-2">
-                      <DialogTitle className="text-lg">Tambah Kandidat Baru</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleAddKandidat} className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor="nomorUrut" className="text-xs font-semibold">No. Urut</Label>
-                          <Input
-                            id="nomorUrut"
-                            type="number"
-                            value={formData.nomorUrut}
-                            onChange={(e) => setFormData({...formData, nomorUrut: e.target.value})}
-                            className="text-xs h-8"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="namaCalon" className="text-xs font-semibold">Nama Calon</Label>
-                          <Input
-                            id="namaCalon"
-                            value={formData.namaCalon}
-                            onChange={(e) => setFormData({...formData, namaCalon: e.target.value})}
-                            className="text-xs h-8"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor="addRole" className="text-xs font-semibold">Kategori</Label>
-                          <select
-                            id="addRole"
-                            value={formData.role}
-                            onChange={(e) => setFormData({...formData, role: e.target.value})}
-                            className="w-full px-2 h-8 rounded-md border border-input bg-background text-xs"
-                            required
-                          >
-                            <option value="mitramuda">Mitra Muda</option>
-                            <option value="mitratama">Mitra Tama</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label htmlFor="foto" className="text-xs font-semibold">Foto</Label>
-                          <Input
-                            id="foto"
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/webp"
-                            onChange={handleImageChange}
-                            className="text-xs h-8 px-2"
-                          />
-                        </div>
-                      </div>
-                      {imagePreview && (
-                        <div className="flex justify-center mt-1">
-                          <div className="relative w-16 h-16">
-                            <Image
-                              src={imagePreview}
-                              alt="Preview"
-                              width={64}
-                              height={64}
-                              className="w-full h-full object-cover rounded-lg border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setImageFile(null)
-                                setImagePreview('')
-                              }}
-                              className="absolute -top-2 -right-2 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
-                            >
-                              <X className="w-2.5 h-2.5" />
-                            </button>
+      <Card>
+        <DataTableToolbar
+          title="Data Kandidat"
+          icon={Trophy}
+          description={`Total ${kandidat.length} kandidat terdaftar`}
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={fetchKandidat}>
+                <RefreshCw />
+                Refresh
+              </Button>
+              <Button size="sm" onClick={() => setShowAddDialog(true)}>
+                <Plus />
+                Tambah
+              </Button>
+            </>
+          }
+        />
+        <CardContent className="space-y-8">
+          {kandidat.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Trophy />
+                </EmptyMedia>
+                <EmptyTitle>Belum ada kandidat terdaftar</EmptyTitle>
+                <EmptyDescription>
+                  Tambahkan kandidat untuk memulai voting.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            ['mitratama', 'mitramuda'].map((roleType) => {
+              const roleKandidat = kandidat.filter(k => k.role === roleType)
+              const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+
+              if (roleKandidat.length === 0) return null
+
+              return (
+                <div key={roleType}>
+                  <div className="mb-6 flex items-center gap-4">
+                    <Badge variant="outline" className="px-4 py-1.5 text-sm font-bold">
+                      {roleLabel}
+                    </Badge>
+                    <Separator className="flex-1" />
+                    <span className="text-sm font-medium text-muted-foreground">{roleKandidat.length} kandidat</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+                    {roleKandidat.map((k) => (
+                      <Card key={k.id} className="transition-shadow hover:shadow-lg">
+                        <CardHeader className="pb-3 text-center sm:pb-6">
+                          <div className="mx-auto mb-3 flex size-24 items-center justify-center rounded-full bg-muted sm:mb-4 sm:size-32">
+                            {k.fotoUrl ? (
+                              <img
+                                src={k.fotoUrl}
+                                alt={k.namaCalon}
+                                className="size-full rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="size-12 text-muted-foreground sm:size-16" />
+                            )}
                           </div>
-                        </div>
-                      )}
-                      <div>
-                        <Label htmlFor="visi" className="text-xs font-semibold">Visi</Label>
-                        <Textarea
-                          id="visi"
-                          value={formData.visi}
-                          onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                          rows={1}
-                          placeholder="Visi..."
-                          className="text-xs resize-none"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="misi" className="text-xs font-semibold">Misi (per baris)</Label>
-                        <Textarea
-                          id="misi"
-                          value={formData.misi}
-                          onChange={handleMisiChange}
-                          rows={2}
-                          placeholder="Misi 1&#10;Misi 2"
-                          className="text-xs resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <Button type="submit" size="sm" className="flex-1 h-8 text-xs" disabled={isUploading || isSubmitting}>
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                              Menyimpan...
-                            </>
-                          ) : isUploading ? (
-                            <>
-                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                              Upload...
-                            </>
-                          ) : (
-                            'Tambah'
-                          )}
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setShowAddDialog(false)} disabled={isUploading || isSubmitting}>
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                <Button variant="outline" size="sm" onClick={fetchKandidat} className="w-full sm:w-auto">
-                  <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Refresh</span>
-                  <span className="sm:hidden">⟳</span>
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Kandidat Cards */}
-            {kandidat.length === 0 ? (
-              <div className="text-center py-12">
-                <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Belum ada kandidat terdaftar</p>
-                <p className="text-sm text-gray-400 mt-2">Tambahkan kandidat untuk memulai voting</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {['mitratama', 'mitramuda'].map((roleType) => {
-                  const roleKandidat = kandidat.filter(k => k.role === roleType)
-                  const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                  
-                  if (roleKandidat.length === 0) return null
-                  
-                  return (
-                    <div key={roleType}>
-                      <div className="mb-6 flex items-center gap-4">
-                        <div className={`px-4 py-2 rounded-full font-bold text-white text-sm ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
-                          {roleLabel}
-                        </div>
-                        <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
-                        <span className="text-gray-600 font-medium text-sm">{roleKandidat.length} kandidat</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                        {roleKandidat.map((k) => (
-                          <Card key={k.id} className="rounded-sm hover:shadow-lg transition-shadow">
-                            <CardHeader className="text-center pb-3 sm:pb-6">
-                              <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-3 sm:mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                                {k.fotoUrl ? (
-                                  <img 
-                                    src={k.fotoUrl} 
-                                    alt={k.namaCalon}
-                                    className="w-full h-full rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <User className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
-                                )}
-                              </div>
-                              <div className="flex gap-2 justify-center mb-2 flex-wrap">
-                                <Badge variant="secondary" className="text-xs sm:text-sm">
-                                  Nomor {k.nomorUrut}
-                                </Badge>
-                              </div>
-                              <CardTitle className="text-base sm:text-lg truncate px-2">{k.namaCalon}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-0 sm:pt-6">
-                              <div className="space-y-3 mb-4">
-                                <div className="text-xs sm:text-sm">
-                                  <p className="font-semibold mb-1">Visi:</p>
-                                  <p className="text-gray-600 line-clamp-2 text-xs">
-                                    {k.visi || 'Belum ada visi'}
-                                  </p>
-                                </div>
-                                <div className="text-xs sm:text-sm">
-                                  <p className="font-semibold mb-1">Misi:</p>
-                                  {k.misi ? (
-                                    <ol className="text-gray-600 space-y-1 text-xs">
-                                      {k.misi.split('\n').filter(line => line.trim()).slice(0, 3).map((line, idx) => (
-                                        <li key={idx} className="line-clamp-1">
-                                          {line}
-                                        </li>
-                                      ))}
-                                      {k.misi.split('\n').filter(line => line.trim()).length > 3 && (
-                                        <li className="text-gray-400 italic">...</li>
-                                      )}
-                                    </ol>
-                                  ) : (
-                                    <p className="text-gray-600 text-xs">Belum ada misi</p>
+                          <div className="mb-2 flex flex-wrap justify-center gap-2">
+                            <Badge variant="secondary">
+                              Nomor {k.nomorUrut}
+                            </Badge>
+                            <Badge variant="outline">
+                              {k.jumlahSuara} suara
+                            </Badge>
+                          </div>
+                          <CardTitle className="truncate px-2 text-base sm:text-lg">{k.namaCalon}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0 sm:pt-6">
+                          <div className="mb-4 space-y-3">
+                            <div className="text-xs sm:text-sm">
+                              <p className="mb-1 font-semibold">Visi:</p>
+                              <p className="line-clamp-2 text-xs text-muted-foreground">
+                                {k.visi || 'Belum ada visi'}
+                              </p>
+                            </div>
+                            <div className="text-xs sm:text-sm">
+                              <p className="mb-1 font-semibold">Misi:</p>
+                              {k.misi ? (
+                                <ol className="space-y-1 text-xs text-muted-foreground">
+                                  {k.misi.split('\n').filter(line => line.trim()).slice(0, 3).map((line, idx) => (
+                                    <li key={idx} className="line-clamp-1">
+                                      {line}
+                                    </li>
+                                  ))}
+                                  {k.misi.split('\n').filter(line => line.trim()).length > 3 && (
+                                    <li className="italic text-muted-foreground/70">...</li>
                                   )}
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => openEditDialog(k)}
-                                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 text-xs font-medium"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => openDeleteDialog(k.id)}
-                                  className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105"
-                                  title="Hapus kandidat"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                                </ol>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">Belum ada misi</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => openEditDialog(k)}
+                            >
+                              <Pencil />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => openDeleteDialog(k.id)}
+                              title="Hapus kandidat"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-lg">Edit Kandidat</DialogTitle>
+      {/* Add Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Kandidat Baru</DialogTitle>
+            <DialogDescription>
+              Isi data kandidat, visi, dan misi.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEditKandidat} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="editNomorUrut" className="text-xs font-semibold">No. Urut</Label>
+          <form onSubmit={handleAddKandidat} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="nomorUrut">No. Urut</Label>
                 <Input
-                  id="editNomorUrut"
+                  id="nomorUrut"
                   type="number"
                   value={formData.nomorUrut}
                   onChange={(e) => setFormData({...formData, nomorUrut: e.target.value})}
-                  className="text-xs h-8"
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="editNamaCalon" className="text-xs font-semibold">Nama Calon</Label>
+              <div className="space-y-2">
+                <Label htmlFor="namaCalon">Nama Calon</Label>
                 <Input
-                  id="editNamaCalon"
+                  id="namaCalon"
                   value={formData.namaCalon}
                   onChange={(e) => setFormData({...formData, namaCalon: e.target.value})}
-                  className="text-xs h-8"
                   required
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="editRole" className="text-xs font-semibold">Kategori</Label>
-                <select
-                  id="editRole"
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Kategori</Label>
+                <Select
                   value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-2 h-8 rounded-md border border-input bg-background text-xs"
-                  required
+                  onValueChange={(value) => setFormData({...formData, role: value})}
                 >
-                  <option value="mitramuda">Mitra Muda</option>
-                  <option value="mitratama">Mitra Tama</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mitramuda">Mitra Muda</SelectItem>
+                    <SelectItem value="mitratama">Mitra Tama</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label htmlFor="editFoto" className="text-xs font-semibold">Foto</Label>
+              <div className="space-y-2">
+                <Label htmlFor="foto">Foto</Label>
                 <Input
-                  id="editFoto"
+                  id="foto"
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={handleImageChange}
-                  className="text-xs h-8 px-2"
+                  className="px-2"
                 />
               </div>
             </div>
             {imagePreview && (
-              <div className="flex justify-center mt-1">
-                <div className="relative w-16 h-16">
+              <div className="flex justify-center">
+                <div className="relative size-16">
                   <Image
                     src={imagePreview}
                     alt="Preview"
                     width={64}
                     height={64}
-                    className="w-full h-full object-cover rounded-lg border"
+                    className="size-full rounded-lg border object-cover"
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -right-2 -top-2 size-5 rounded-full"
                     onClick={() => {
                       setImageFile(null)
                       setImagePreview('')
                     }}
-                    className="absolute -top-2 -right-2 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600"
                   >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
+                    <X className="size-3" />
+                  </Button>
                 </div>
               </div>
             )}
-            <div>
-              <Label htmlFor="editVisi" className="text-xs font-semibold">Visi</Label>
+            <div className="space-y-2">
+              <Label htmlFor="visi">Visi</Label>
               <Textarea
-                id="editVisi"
+                id="visi"
                 value={formData.visi}
                 onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                rows={1}
+                rows={2}
                 placeholder="Visi..."
-                className="text-xs resize-none"
+                className="resize-none"
               />
             </div>
-            <div>
-              <Label htmlFor="editMisi" className="text-xs font-semibold">Misi (per baris)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="misi">Misi (per baris)</Label>
               <Textarea
-                id="editMisi"
+                id="misi"
                 value={formData.misi}
                 onChange={handleMisiChange}
-                rows={2}
+                rows={3}
                 placeholder="Misi 1&#10;Misi 2"
-                className="text-xs resize-none"
+                className="resize-none"
               />
             </div>
-            <div className="flex gap-2 pt-1">
-              <Button type="submit" size="sm" className="flex-1 h-8 text-xs" disabled={isUploading || isSubmitting}>
+            <DialogFooter className="gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)} disabled={isUploading || isSubmitting}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isUploading || isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Menyimpan...
                   </>
                 ) : isUploading ? (
                   <>
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    <Loader2 className="animate-spin" />
+                    Upload...
+                  </>
+                ) : (
+                  'Tambah'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Kandidat</DialogTitle>
+            <DialogDescription>
+              Perbarui data kandidat, visi, dan misi.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditKandidat} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="editNomorUrut">No. Urut</Label>
+                <Input
+                  id="editNomorUrut"
+                  type="number"
+                  value={formData.nomorUrut}
+                  onChange={(e) => setFormData({...formData, nomorUrut: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editNamaCalon">Nama Calon</Label>
+                <Input
+                  id="editNamaCalon"
+                  value={formData.namaCalon}
+                  onChange={(e) => setFormData({...formData, namaCalon: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Kategori</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({...formData, role: value})}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mitramuda">Mitra Muda</SelectItem>
+                    <SelectItem value="mitratama">Mitra Tama</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editFoto">Foto</Label>
+                <Input
+                  id="editFoto"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  className="px-2"
+                />
+              </div>
+            </div>
+            {imagePreview && (
+              <div className="flex justify-center">
+                <div className="relative size-16">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    width={64}
+                    height={64}
+                    className="size-full rounded-lg border object-cover"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -right-2 -top-2 size-5 rounded-full"
+                    onClick={() => {
+                      setImageFile(null)
+                      setImagePreview('')
+                    }}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="editVisi">Visi</Label>
+              <Textarea
+                id="editVisi"
+                value={formData.visi}
+                onChange={(e) => setFormData({...formData, visi: e.target.value})}
+                rows={2}
+                placeholder="Visi..."
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editMisi">Misi (per baris)</Label>
+              <Textarea
+                id="editMisi"
+                value={formData.misi}
+                onChange={handleMisiChange}
+                rows={3}
+                placeholder="Misi 1&#10;Misi 2"
+                className="resize-none"
+              />
+            </div>
+            <DialogFooter className="gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} disabled={isUploading || isSubmitting}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isUploading || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : isUploading ? (
+                  <>
+                    <Loader2 className="animate-spin" />
                     Upload...
                   </>
                 ) : (
                   'Perbarui'
                 )}
               </Button>
-              <Button type="button" variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setShowEditDialog(false)} disabled={isUploading || isSubmitting}>
-                Batal
-              </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Konfirmasi Hapus
-            </DialogTitle>
-            <DialogDescription>
-              Apakah Anda yakin ingin menghapus kandidat ini? Tindakan ini tidak dapat dibatalkan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-3 sm:gap-3">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setShowDeleteDialog(false)}
-              className="flex-1 sm:flex-none"
-            >
-              Batal
-            </Button>
-            <Button 
-              type="button" 
-              variant="destructive" 
-              onClick={handleDeleteConfirm}
-              className="flex-1 sm:flex-none"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Ya, Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Konfirmasi Hapus"
+        description="Apakah Anda yakin ingin menghapus kandidat ini? Tindakan ini tidak dapat dibatalkan."
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   )
 }
