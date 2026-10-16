@@ -2,42 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { 
-  Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2, 
-  Edit, Key, Search, ChevronLeft, ChevronRight, AlertTriangle, Printer, Users, Briefcase, CheckCircle
-} from 'lucide-react'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
+import { DataTablePagination } from '@/components/admin/data-table-pagination'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import {
+  Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2,
+  Key, Search, Printer, Users, Briefcase, CheckCircle, MoreHorizontal, FileSpreadsheet, Info
+} from 'lucide-react'
 import { toast } from 'sonner'
-import PegawaiCard from '@/components/admin/PegawaiCard'
 
 interface Admin {
   id: number
@@ -85,6 +74,7 @@ export default function PegawaiPage() {
   const [roleFilter, setRoleFilter] = useState<'all' | 'guru' | 'tu'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'sudah' | 'belum'>('all')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [credentials, setCredentials] = useState<Credentials | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -103,11 +93,11 @@ export default function PegawaiPage() {
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [classroomSearch, setClassroomSearch] = useState('')
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
@@ -166,11 +156,6 @@ export default function PegawaiPage() {
     }
     const session = JSON.parse(sessionData)
     setAdmin(session)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
   }
 
   const fetchPegawai = async () => {
@@ -284,7 +269,7 @@ export default function PegawaiPage() {
 
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!importFile) {
       setImportError('Pilih file terlebih dahulu')
       return
@@ -441,6 +426,7 @@ export default function PegawaiPage() {
   }
 
   const handleDelete = async (id: number) => {
+    setIsDeleting(true)
     try {
       const response = await fetch(`/api/admin/pegawai/${id}`, {
         method: 'DELETE',
@@ -453,6 +439,7 @@ export default function PegawaiPage() {
       console.error('Error deleting pegawai:', err)
       toast.error('Gagal menghapus pegawai')
     } finally {
+      setIsDeleting(false)
       setDeleteConfirm(null)
     }
   }
@@ -533,9 +520,10 @@ export default function PegawaiPage() {
   const totalPages = Math.ceil(filteredPegawai.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const currentItems = filteredPegawai.slice(startIndex, startIndex + itemsPerPage)
-  
+
   const isAllSelected = currentItems.length > 0 && currentItems.every(item => selectedIds.includes(item.id))
-  
+  const isSomeSelected = selectedIds.length > 0 && !isAllSelected
+
   // Stats
   const totalPegawai = pegawaiList.length
   const totalGuru = pegawaiList.filter(p => p.role === 'guru').length
@@ -551,970 +539,838 @@ export default function PegawaiPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-6">Daftar Guru & TU</h1>
+      {/* Statistik Cards */}
+      <StatCardGrid>
+        <StatCard
+          title="Total Pegawai"
+          value={totalPegawai}
+          description="Terdaftar"
+          icon={Users}
+        />
+        <StatCard
+          title="Guru"
+          value={totalGuru}
+          description={`${totalPegawai > 0 ? Math.round((totalGuru / totalPegawai) * 100) : 0}% dari total`}
+          icon={Users}
+        />
+        <StatCard
+          title="TU"
+          value={totalTu}
+          description={`${totalPegawai > 0 ? Math.round((totalTu / totalPegawai) * 100) : 0}% dari total`}
+          icon={Briefcase}
+        />
+        <StatCard
+          title="Sudah Vote"
+          value={sudahVote}
+          description={`${totalPegawai > 0 ? Math.round((sudahVote / totalPegawai) * 100) : 0}% partisipasi`}
+          icon={CheckCircle}
+        />
+      </StatCardGrid>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <Card className="col-span-1 rounded-sm bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-blue-700">Total Pegawai</CardTitle>
-                <Users className="h-4 w-4 text-blue-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold text-blue-900">{totalPegawai}</div>
-                <p className="text-xs text-blue-600 mt-1">Terdaftar</p>
-              </CardContent>
-            </Card>
-            <Card className="col-span-1 rounded-sm bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-purple-700">Guru</CardTitle>
-                <Users className="h-4 w-4 text-purple-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold text-purple-900">{totalGuru}</div>
-                <p className="text-xs text-purple-600 mt-1">{totalPegawai > 0 ? Math.round((totalGuru / totalPegawai) * 100) : 0}% dari total</p>
-              </CardContent>
-            </Card>
-            <Card className="col-span-1 rounded-sm bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-orange-700">TU</CardTitle>
-                <Briefcase className="h-4 w-4 text-orange-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold text-orange-900">{totalTu}</div>
-                <p className="text-xs text-orange-600 mt-1">{totalPegawai > 0 ? Math.round((totalTu / totalPegawai) * 100) : 0}% dari total</p>
-              </CardContent>
-            </Card>
-            <Card className="col-span-1 rounded-sm bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700">Sudah Vote</CardTitle>
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold text-emerald-900">{sudahVote}</div>
-                <p className="text-xs text-emerald-600 mt-1">{totalPegawai > 0 ? Math.round((sudahVote / totalPegawai) * 100) : 0}% partisipasi</p>
-              </CardContent>
-            </Card>
+      {/* Table */}
+      <Card>
+        <DataTableToolbar
+          title="Daftar Pegawai"
+          icon={Users}
+          description={`Total ${totalPegawai} pegawai terdaftar`}
+          actions={
+            <>
+              <Button onClick={handleExport} variant="outline" size="sm">
+                <Download />
+                Template
+              </Button>
+              <Button onClick={handleImport} variant="outline" size="sm">
+                <Upload />
+                Import
+              </Button>
+              <Button onClick={() => setShowPrintDialog(true)} variant="outline" size="sm">
+                <Printer />
+                Cetak Kartu
+              </Button>
+              <Button onClick={handleAddNew} size="sm">
+                <Plus />
+                Tambah
+              </Button>
+              <Button onClick={fetchPegawai} variant="outline" size="sm">
+                <RefreshCw />
+                Refresh
+              </Button>
+            </>
+          }
+        />
+        <CardContent>
+          {/* Search & Filters */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <Search className="size-4" />
+              </InputGroupAddon>
+              <InputGroupInput
+                placeholder="Cari nama atau email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </InputGroup>
+            <div className="w-full sm:w-40">
+              <Select
+                value={roleFilter}
+                onValueChange={(value: 'all' | 'guru' | 'tu') => setRoleFilter(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="guru">Guru</SelectItem>
+                  <SelectItem value="tu">TU</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
+                value={statusFilter}
+                onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="sudah">Sudah Memilih</SelectItem>
+                  <SelectItem value="belum">Belum Memilih</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
 
-        {/* Table */}
-        <Card className="bg-white border-slate-200 rounded-sm">
-          <CardHeader className="border-b">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <CardTitle>Daftar Pegawai</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleExport}
-                    variant="outline"
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
-                  >
-                    <Download className="w-4 h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Template</span>
-                  </Button>
-                  <Button
-                    onClick={handleImport}
-                    variant="outline"
-                    size="sm"
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
-                  >
-                    <Upload className="w-4 h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Import</span>
-                  </Button>
-                  <Button
-                    onClick={() => setShowPrintDialog(true)}
-                    size="sm"
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
-                  >
-                    <Printer className="w-4 h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Cetak Kartu</span>
-                  </Button>
-                  <Button
-                    onClick={handleAddNew}
-                    size="sm"
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all text-xs"
-                  >
-                    <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Tambah</span>
-                  </Button>
-                  <Button
-                    onClick={fetchPegawai}
-                    variant="outline"
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
-                    <span className="hidden sm:inline">Refresh</span>
-                  </Button>
-                </div>
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden rounded-md border sm:block">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+                          onCheckedChange={(v) => handleSelectAll(v === true)}
+                          aria-label="Pilih semua"
+                        />
+                      </TableHead>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Token</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Vote</TableHead>
+                      <TableHead className="w-24 text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentItems.length === 0 ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={8} className="py-10">
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon">
+                                <Users />
+                              </EmptyMedia>
+                              <EmptyTitle>
+                                {searchQuery ? 'Tidak ada pegawai yang cocok' : 'Belum ada data pegawai'}
+                              </EmptyTitle>
+                              <EmptyDescription>
+                                {searchQuery ? 'Coba ubah kata kunci pencarian.' : 'Tambahkan pegawai atau import dari Excel.'}
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      currentItems.map((p) => (
+                        <TableRow
+                          key={p.id}
+                          data-state={selectedIds.includes(p.id) ? 'selected' : undefined}
+                          className="data-[state=selected]:bg-muted"
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.includes(p.id)}
+                              onCheckedChange={(checked) => handleSelectOne(p.id, checked as boolean)}
+                              aria-label={`Pilih ${p.nama}`}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{p.nama}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{p.email}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <code className="rounded bg-muted px-2 py-1 font-mono text-xs font-bold">
+                                {p.tokenPlain}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                onClick={() => handleCopyToken(p.tokenPlain, p.nama)}
+                                title="Copy token"
+                              >
+                                {copiedField === `token-${p.tokenPlain}` ? (
+                                  <Check className="size-3 text-primary" />
+                                ) : (
+                                  <Copy className="size-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {p.role === 'guru' ? 'Guru' : 'TU'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
+                              {p.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                              {p.sudahMemilih ? 'Sudah' : 'Belum'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="size-8">
+                                  <MoreHorizontal />
+                                  <span className="sr-only">Menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleRegenerateToken(p.id)}
+                                  disabled={regeneratingIds.includes(p.id)}
+                                >
+                                  {regeneratingIds.includes(p.id) ? (
+                                    <RefreshCw className="animate-spin" />
+                                  ) : (
+                                    <Key />
+                                  )}
+                                  Generate Token
+                                </DropdownMenuItem>
+                                {p.sudahMemilih && (
+                                  <DropdownMenuItem onClick={() => handleResetStatus(p.id)}>
+                                    <RotateCcw />
+                                    Reset Status
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onClick={() => setDeleteConfirm(p.id)}>
+                                  <Trash2 />
+                                  Hapus
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="space-y-3 sm:hidden">
+                {currentItems.length === 0 ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Users />
+                      </EmptyMedia>
+                      <EmptyTitle>
+                        {searchQuery ? 'Tidak ada pegawai yang cocok' : 'Belum ada data pegawai'}
+                      </EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  currentItems.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`space-y-3 rounded-lg border p-4 transition-colors ${
+                        selectedIds.includes(p.id) ? 'bg-muted' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={selectedIds.includes(p.id)}
+                          onCheckedChange={(checked) => handleSelectOne(p.id, checked as boolean)}
+                          aria-label={`Pilih ${p.nama}`}
+                          className="mt-1"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{p.nama}</p>
+                          <p className="truncate text-xs text-muted-foreground">{p.email}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                              {p.tokenPlain}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-6"
+                              onClick={() => handleCopyToken(p.tokenPlain, p.nama)}
+                            >
+                              {copiedField === `token-${p.tokenPlain}` ? (
+                                <Check className="size-3 text-primary" />
+                              ) : (
+                                <Copy className="size-3" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
+                            <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
+                              {p.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}
+                            </Badge>
+                            <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                              {p.sudahMemilih ? 'Sudah' : 'Belum'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="ml-8 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRegenerateToken(p.id)}
+                          disabled={regeneratingIds.includes(p.id)}
+                        >
+                          {regeneratingIds.includes(p.id) ? (
+                            <RefreshCw className="animate-spin" />
+                          ) : (
+                            <Key />
+                          )}
+                          Token
+                        </Button>
+                        {p.sudahMemilih && (
+                          <Button variant="outline" size="sm" onClick={() => handleResetStatus(p.id)}>
+                            <RotateCcw />
+                            Reset
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDeleteConfirm(p.id)}
+                        >
+                          <Trash2 />
+                          Hapus
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Pagination */}
+              {filteredPegawai.length > 0 && (
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Pegawai Modal */}
+      <Dialog
+        open={showAddModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFormData({
+              nama: '',
+              email: '',
+              role: 'guru',
+              nip: '',
+              nomorInduk: '',
+              classroomId: '',
+              status: 'aktif',
+            })
+            setFormError('')
+          }
+          setShowAddModal(open)
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tambah Pegawai Baru</DialogTitle>
+            <DialogDescription>
+              Isi data pegawai. Email & token dibuat otomatis.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitForm} className="space-y-3">
+            {formError && (
+              <Alert variant="destructive">
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="nama" className="text-xs">Nama *</Label>
+                <Input
+                  id="nama"
+                  placeholder="Nama lengkap"
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-xs">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="email@sekolah"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            {/* Search & Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Cari nama atau email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-              <div className="w-full sm:w-40">
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Role *</Label>
                 <Select
-                  value={roleFilter}
-                  onValueChange={(value: 'all' | 'guru' | 'tu') => setRoleFilter(value)}
+                  value={formData.role}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, role: value as 'guru' | 'tu' })
+                  }
                 >
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Filter Role" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Role</SelectItem>
                     <SelectItem value="guru">Guru</SelectItem>
                     <SelectItem value="tu">TU</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-full sm:w-48">
+              <div className="space-y-1">
+                <Label className="text-xs">Kelas</Label>
                 <Select
-                  value={statusFilter}
-                  onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
+                  value={formData.classroomId}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, classroomId: value })
+                    setClassroomSearch('')
+                  }}
                 >
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Filter Status" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Pilih kelas..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="sudah">Sudah Memilih</SelectItem>
-                    <SelectItem value="belum">Belum Memilih</SelectItem>
+                    <div className="sticky top-0 z-50 border-b bg-popover p-2">
+                      <Input
+                        placeholder="Cari kelas..."
+                        value={classroomSearch}
+                        onChange={(e) => setClassroomSearch(e.target.value)}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    {loadingClassrooms ? (
+                      <div className="p-2 text-center text-xs text-muted-foreground">Memuat...</div>
+                    ) : classrooms
+                        .filter((c) =>
+                          `${c.name} ${c.angkatan}`
+                            .toLowerCase()
+                            .includes(classroomSearch.toLowerCase())
+                        )
+                        .length > 0 ? (
+                      classrooms
+                        .filter((c) =>
+                          `${c.name} ${c.angkatan}`
+                            .toLowerCase()
+                            .includes(classroomSearch.toLowerCase())
+                        )
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name} ({c.angkatan})
+                          </SelectItem>
+                        ))
+                    ) : (
+                      <div className="p-2 text-center text-xs text-muted-foreground">
+                        Tidak ada kelas
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Desktop Table View */}
-            {isLoading ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto text-slate-400" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="nip" className="text-xs">NIP</Label>
+                <Input
+                  id="nip"
+                  placeholder="123456789"
+                  value={formData.nip}
+                  onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                />
               </div>
-            ) : (
-              <>
-                <div className="hidden sm:block rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={isAllSelected}
-                            onCheckedChange={handleSelectAll}
-                            aria-label="Select all"
-                          />
-                        </TableHead>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Token</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Vote</TableHead>
-                        <TableHead>Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentItems.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            {searchQuery ? 'Tidak ada pegawai yang cocok dengan pencarian' : 'Belum ada data pegawai'}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        currentItems.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedIds.includes(p.id)}
-                                onCheckedChange={(checked) => handleSelectOne(p.id, checked as boolean)}
-                                aria-label={`Select ${p.nama}`}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">{p.nama}</TableCell>
-                            <TableCell className="text-sm text-slate-600">{p.email}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <code className="px-2 py-1 bg-slate-100 rounded text-xs font-mono font-bold">
-                                  {p.tokenPlain}
-                                </code>
-                                <button
-                                  onClick={() => handleCopyToken(p.tokenPlain, p.nama)}
-                                  className="p-1 rounded hover:bg-slate-100 transition-colors"
-                                  title="Copy token"
-                                >
-                                  {copiedField === `token-${p.tokenPlain}` ? (
-                                    <Check className="w-3 h-3 text-green-600" />
-                                  ) : (
-                                    <Copy className="w-3 h-3 text-slate-500" />
-                                  )}
-                                </button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="secondary"
-                                className={
-                                  p.role === 'guru'
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-blue-100 text-blue-700'
-                                }
-                              >
-                                {p.role === 'guru' ? 'Guru' : 'TU'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="secondary"
-                                className={
-                                  p.status === 'aktif'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'
-                                }
-                              >
-                                {p.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={p.sudahMemilih ? 'default' : 'secondary'}
-                              >
-                                {p.sudahMemilih ? '✓ Sudah' : 'Belum'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleRegenerateToken(p.id)}
-                                  disabled={regeneratingIds.includes(p.id)}
-                                  className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                                  title="Generate ulang token"
-                                >
-                                  {regeneratingIds.includes(p.id) ? (
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Key className="w-4 h-4" />
-                                  )}
-                                </button>
-                                {p.sudahMemilih && (
-                                  <button
-                                    onClick={() => handleResetStatus(p.id)}
-                                    className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
-                                    title="Reset status pemilihan"
-                                  >
-                                    <RotateCcw className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => setDeleteConfirm(p.id)}
-                                  className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
-                                  title="Hapus pegawai"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="nomorInduk" className="text-xs">No. Induk</Label>
+                <Input
+                  id="nomorInduk"
+                  placeholder="G001"
+                  value={formData.nomorInduk}
+                  onChange={(e) => setFormData({ ...formData, nomorInduk: e.target.value })}
+                />
+              </div>
+            </div>
 
-                {/* Pagination */}
-                {filteredPegawai.length > 0 && (
-                  <div className="flex flex-col gap-4 mt-4">
-                    {/* Mobile Pagination */}
-                    <div className="sm:hidden flex flex-col gap-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="px-3 py-2 text-xs"
-                        >
-                          <ChevronLeft className="w-3 h-3" />
-                        </Button>
-                        <span className="text-xs text-muted-foreground px-2">
-                          Hal {currentPage} dari {totalPages}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="px-3 py-2 text-xs"
-                        >
-                          <ChevronRight className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-center gap-2 text-xs">
-                        <span className="text-gray-600">Tampilkan:</span>
-                        <Select
-                          value={itemsPerPage.toString()}
-                          onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                        >
-                          <SelectTrigger className="w-12 h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5">5</SelectItem>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="20">20</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <span className="text-gray-600">data/halaman</span>
-                      </div>
-                    </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, status: value as 'aktif' | 'non-aktif' })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aktif">Aktif</SelectItem>
+                  <SelectItem value="non-aktif">Non-Aktif</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                    {/* Desktop Pagination */}
-                    <div className="hidden sm:flex flex-col sm:flex-row items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Tampilkan:</span>
-                        <Select
-                          value={itemsPerPage.toString()}
-                          onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                        >
-                          <SelectTrigger className="w-16 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5">5</SelectItem>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="20">20</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <span className="text-sm text-gray-600">data per halaman</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                          Previous
-                        </Button>
-
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const pages = []
-                            const maxVisible = 5
-                            if (totalPages <= maxVisible) {
-                              for (let i = 1; i <= totalPages; i++) {
-                                pages.push(i)
-                              }
-                            } else {
-                              pages.push(1)
-                              if (currentPage > 3) pages.push('...')
-                              const start = Math.max(2, currentPage - 1)
-                              const end = Math.min(totalPages - 1, currentPage + 1)
-                              for (let i = start; i <= end; i++) {
-                                if (i !== 1 && i !== totalPages) pages.push(i)
-                              }
-                              if (currentPage < totalPages - 2) pages.push('...')
-                              if (totalPages > 1) pages.push(totalPages)
-                            }
-                            return pages.map((page, index) => {
-                              if (page === '...') {
-                                return (
-                                  <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-gray-500">
-                                    ...
-                                  </span>
-                                )
-                              }
-                              return (
-                                <Button
-                                  key={page}
-                                  variant={currentPage === page ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => handlePageChange(page as number)}
-                                  className="w-8 h-8 p-0"
-                                >
-                                  {page}
-                                </Button>
-                              )
-                            })
-                          })()}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      <div className="text-sm text-muted-foreground">
-                        Halaman {currentPage} dari {totalPages}
-                      </div>
-                    </div>
-                  </div>
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddModal(false)}
+                disabled={isSubmitting}
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Simpan
+                  </>
+                ) : (
+                  'Simpan'
                 )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-        {/* Add Pegawai Modal */}
-        <Dialog
-          open={showAddModal}
-          onOpenChange={(open) => {
+
+      {/* Credentials Modal */}
+      <Dialog open={credentials !== null} onOpenChange={(open) => !open && setCredentials(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Akun Pegawai Dibuat</DialogTitle>
+            <DialogDescription>
+              Bagikan email & token untuk login di halaman voting (tab: Guru & TU)
+            </DialogDescription>
+          </DialogHeader>
+          {credentials && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Email</p>
+                <div className="flex gap-2">
+                  <Input value={credentials.email} readOnly className="text-xs" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopyCredential(credentials.email, 'email')}
+                  >
+                    {copiedField === 'email' ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Token (6 karakter)</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={credentials.token}
+                    readOnly
+                    className="font-mono text-xs font-bold"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopyCredential(credentials.token, 'token')}
+                  >
+                    {copiedField === 'token' ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              <Button onClick={() => setCredentials(null)} className="w-full">
+                Tutup
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Hapus Pegawai"
+        description="Apakah Anda yakin ingin menghapus pegawai ini? Aksi ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        isLoading={isDeleting}
+        onConfirm={() => {
+          if (deleteConfirm) handleDelete(deleteConfirm)
+        }}
+      />
+
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cetak Kartu Pegawai</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Hanya pegawai dengan status "Aktif" yang akan ditampilkan pada kartu.
+            </p>
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription className="text-xs">
+                <strong>Info:</strong> Kartu akan ditampilkan dalam 4 kolom dan siap untuk dicetak.
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowPrintDialog(false)}>
+              Batal
+            </Button>
+            <Button type="button" onClick={handlePrintCards}>
+              <Printer />
+              Cetak
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Modal */}
+      <Dialog
+        open={showImportModal}
+        onOpenChange={(open) => {
+          if (!isImporting) {
+            setShowImportModal(open)
             if (!open) {
-              setFormData({
-                nama: '',
-                email: '',
-                role: 'guru',
-                nip: '',
-                nomorInduk: '',
-                classroomId: '',
-                status: 'aktif',
-              })
-              setFormError('')
+              setImportFile(null)
+              setImportResult(null)
+              setImportError('')
+              setImportProgress(0)
             }
-            setShowAddModal(open)
-          }}
-        >
-          <DialogContent className="max-w-sm rounded-sm">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-lg">Tambah Pegawai Baru</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmitForm} className="space-y-3">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-xs">
-                  {formError}
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import Data Pegawai</DialogTitle>
+            <DialogDescription>
+              Import data pegawai dari file Excel dengan format nama, email, dan role
+            </DialogDescription>
+          </DialogHeader>
+
+          {!importResult ? (
+            <form onSubmit={handleImportSubmit} className="space-y-4">
+              <Alert>
+                <FileSpreadsheet className="size-4" />
+                <AlertTitle>Format File yang Diharapkan</AlertTitle>
+                <AlertDescription>
+                  <ul className="mt-1 space-y-1 text-xs">
+                    <li><strong>Column A - Nama:</strong> Nama lengkap pegawai</li>
+                    <li><strong>Column B - Email:</strong> Email yang unik</li>
+                    <li><strong>Column C - Role:</strong> Gunakan "guru" atau "tu"</li>
+                    <li><strong>Column D - Kelas:</strong> Nama kelas (opsional, harus sesuai dengan kelas yang ada)</li>
+                  </ul>
+                  <p className="mt-2 text-xs">
+                    <strong>Tip:</strong> Gunakan template yang disediakan dengan klik tombol "Template".
+                  </p>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="import-file" className="text-sm font-semibold">Pilih File Excel</Label>
+                <div
+                  className="cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-primary"
+                  onClick={() => document.getElementById('import-file')?.click()}
+                >
+                  <input
+                    id="import-file"
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".xlsx,.xls,.csv"
+                    disabled={isImporting}
+                    className="hidden"
+                  />
+                  <Upload className="mx-auto mb-2 size-8 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    {importFile ? importFile.name : 'Klik atau drag file di sini'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Format: .xlsx, .xls, atau .csv</p>
+                </div>
+              </div>
+
+              {importError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{importError}</AlertDescription>
+                </Alert>
+              )}
+
+              {isImporting && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Mengimport data...</span>
+                    <span className="font-semibold">{importProgress}%</span>
+                  </div>
+                  <Progress value={importProgress} />
                 </div>
               )}
 
-              {/* Row 1: Nama & Email */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="nama" className="text-xs">Nama *</Label>
-                  <Input
-                    id="nama"
-                    placeholder="Nama lengkap"
-                    value={formData.nama}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nama: e.target.value })
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="email" className="text-xs">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="email@sekolah"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: Role & Kelas */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="role" className="text-xs">Role *</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        role: value as 'guru' | 'tu',
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="guru">Guru</SelectItem>
-                      <SelectItem value="tu">TU</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="classroomId" className="text-xs">Kelas</Label>
-                  <Select
-                    value={formData.classroomId}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, classroomId: value })
-                      setClassroomSearch('')
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue placeholder="Pilih kelas..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64">
-                      <div className="p-2 sticky top-0 bg-white border-b z-50">
-                        <Input
-                          placeholder="Cari kelas..."
-                          value={classroomSearch}
-                          onChange={(e) => setClassroomSearch(e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                      {loadingClassrooms ? (
-                        <div className="p-2 text-xs text-gray-500 text-center">Memuat...</div>
-                      ) : classrooms
-                          .filter((c) =>
-                            `${c.name} ${c.angkatan}`
-                              .toLowerCase()
-                              .includes(classroomSearch.toLowerCase())
-                          )
-                          .length > 0 ? (
-                        classrooms
-                          .filter((c) =>
-                            `${c.name} ${c.angkatan}`
-                              .toLowerCase()
-                              .includes(classroomSearch.toLowerCase())
-                          )
-                          .map((c) => (
-                            <SelectItem key={c.id} value={c.id.toString()}>
-                              {c.name} ({c.angkatan})
-                            </SelectItem>
-                          ))
-                      ) : (
-                        <div className="p-2 text-xs text-gray-500 text-center">
-                          Tidak ada kelas
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Row 3: NIP & Nomor Induk */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="nip" className="text-xs">NIP</Label>
-                  <Input
-                    id="nip"
-                    placeholder="123456789"
-                    value={formData.nip}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nip: e.target.value })
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="nomorInduk" className="text-xs">No. Induk</Label>
-                  <Input
-                    id="nomorInduk"
-                    placeholder="G001"
-                    value={formData.nomorInduk}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nomorInduk: e.target.value })
-                    }
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Row 4: Status */}
-              <div className="space-y-1">
-                <Label htmlFor="status" className="text-xs">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      status: value as 'aktif' | 'non-aktif',
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-8 text-sm w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="aktif">Aktif</SelectItem>
-                    <SelectItem value="non-aktif">Non-Aktif</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <DialogFooter className="pt-2">
+              <DialogFooter className="gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddModal(false)}
-                  disabled={isSubmitting}
+                  onClick={() => setShowImportModal(false)}
+                  disabled={isImporting}
                 >
                   Batal
                 </Button>
-                <Button type="submit" size="sm" disabled={isSubmitting}>
-                  {isSubmitting ? (
+                <Button type="submit" disabled={!importFile || isImporting}>
+                  {isImporting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Simpan
+                      <Loader2 className="animate-spin" />
+                      Importing...
                     </>
                   ) : (
-                    'Simpan'
+                    <>
+                      <Upload />
+                      Import
+                    </>
                   )}
                 </Button>
               </DialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Credentials Modal */}
-        {credentials && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <Card className="w-full max-w-md bg-white rounded-sm">
-              <CardHeader>
-                <CardTitle>Akun Pegawai Dibuat</CardTitle>
-                <CardDescription>
-                  Bagikan email & token untuk login di halaman voting (tab: Guru & TU)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Email */}
-                <div>
-                  <p className="text-sm font-medium mb-2">Email</p>
-                  <div className="flex gap-2">
-                    <Input value={credentials.email} readOnly className="text-xs" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyCredential(credentials.email, 'email')}
-                    >
-                      {copiedField === 'email' ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Token */}
-                <div>
-                  <p className="text-sm font-medium mb-2">Token (6 karakter)</p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={credentials.token}
-                      readOnly
-                      className="text-xs font-mono font-bold"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        handleCopyCredential(credentials.token, 'token')
-                      }
-                    >
-                      {copiedField === 'token' ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => setCredentials(null)}
-                  className="w-full"
-                >
-                  Tutup
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Delete Confirmation */}
-        <AlertDialog open={deleteConfirm !== null} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-          <AlertDialogContent className="rounded-sm">
-            <AlertDialogTitle>Hapus Pegawai</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus pegawai ini? Aksi ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-            <div className="flex gap-3 justify-end">
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (deleteConfirm) {
-                    handleDelete(deleteConfirm)
-                    setDeleteConfirm(null)
-                  }
-                }}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Hapus
-              </AlertDialogAction>
-            </div>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Print Dialog */}
-        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-          <DialogContent className="max-w-md mx-4">
-            <DialogHeader>
-              <DialogTitle>Cetak Kartu Pegawai</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-gray-600">
-                Pilih pegawai yang akan dicetak kartunya. Hanya pegawai dengan status "Aktif" yang akan ditampilkan.
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2">
-                <p className="text-xs text-blue-700">
-                  💡 <strong>Info:</strong> Kartu akan ditampilkan dalam 2 kolom dan siap untuk dicetak.
-                </p>
-              </div>
-            </div>
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowPrintDialog(false)}
-              >
-                Batal
-              </Button>
-              <Button 
-                type="button" 
-                className="flex-1" 
-                onClick={handlePrintCards}
-              >
-                <Printer className="w-4 h-4 mr-2" />
-                Cetak
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Import Modal */}
-        <Dialog 
-          open={showImportModal} 
-          onOpenChange={(open) => {
-            if (!isImporting) {
-              setShowImportModal(open)
-              if (!open) {
-                setImportFile(null)
-                setImportResult(null)
-                setImportError('')
-                setImportProgress(0)
-              }
-            }
-          }}
-        >
-          <DialogContent className="max-w-2xl rounded-sm max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-lg">Import Data Pegawai</DialogTitle>
-              <div className="text-sm text-gray-600 mt-2">
-                Import data pegawai dari file Excel dengan format nama, email, dan role
-              </div>
-            </DialogHeader>
-
-            {!importResult ? (
-              <form onSubmit={handleImportSubmit} className="space-y-4">
-                {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 text-sm mb-2">Format File yang Diharapkan:</h3>
-                  <ul className="text-xs text-blue-800 space-y-1">
-                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column A - Nama:</strong> Nama lengkap pegawai</span></li>
-                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column B - Email:</strong> Email yang unik</span></li>
-                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column C - Role:</strong> Gunakan "guru" atau "tu"</span></li>
-                    <li className="flex gap-2"><span className="font-bold">•</span> <span><strong>Column D - Kelas:</strong> Nama kelas (opsional, harus sesuai dengan kelas yang ada)</span></li>
-                  </ul>
-                  <div className="mt-3 pt-3 border-t border-blue-200">
-                    <p className="text-xs text-blue-700"><strong>💡 Tip:</strong> Gunakan template yang telah disediakan dengan klik tombol "Template"</p>
-                  </div>
-                </div>
-
-                {/* File Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="import-file" className="text-sm font-semibold">Pilih File Excel</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                    onClick={() => document.getElementById('import-file')?.click()}
-                  >
-                    <input
-                      id="import-file"
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".xlsx,.xls,.csv"
-                      disabled={isImporting}
-                      className="hidden"
-                    />
-                    <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm font-medium text-gray-700">
-                      {importFile ? importFile.name : 'Klik atau drag file di sini'}
+          ) : (
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <Card>
+                  <CardContent className="p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Berhasil Import</p>
+                    <p className="mt-1 text-2xl font-bold text-primary">{importResult.success}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Gagal Import</p>
+                    <p className={`mt-1 text-2xl font-bold ${importResult.failed > 0 ? 'text-destructive' : ''}`}>
+                      {importResult.failed}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Format: .xlsx, .xls, atau .csv</p>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                {/* Error Message */}
-                {importError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                    {importError}
-                  </div>
-                )}
+              {importResult.errors.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTitle>Detail Error</AlertTitle>
+                  <AlertDescription>
+                    <ScrollArea className="mt-2 max-h-40">
+                      <div className="space-y-2">
+                        {importResult.errors.map((error, idx) => (
+                          <div key={idx} className="rounded border p-2 text-xs">
+                            <span className="font-semibold">Baris {error.row}:</span>{' '}
+                            {error.error}
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                {/* Progress Bar */}
-                {isImporting && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Mengimport data...</span>
-                      <span className="text-gray-600 font-semibold">{importProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-sky-500 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${importProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <DialogFooter className="gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowImportModal(false)}
-                    disabled={isImporting}
-                  >
-                    Batal
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={!importFile || isImporting}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                  >
-                    {isImporting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Import
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            ) : (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                {/* Results Summary */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-xs text-green-600 font-semibold">Berhasil Import</p>
-                    <p className="text-2xl font-bold text-green-700 mt-1">{importResult.success}</p>
-                  </div>
-                  <div className={`${importResult.failed > 0 ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'} rounded-lg p-3`}>
-                    <p className={`text-xs ${importResult.failed > 0 ? 'text-red-600' : 'text-gray-600'} font-semibold`}>Gagal Import</p>
-                    <p className={`text-2xl font-bold ${importResult.failed > 0 ? 'text-red-700' : 'text-gray-700'} mt-1`}>{importResult.failed}</p>
-                  </div>
-                </div>
-
-                {/* Error Details */}
-                {importResult.errors.length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-red-900 text-sm mb-3">Detail Error:</h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {importResult.errors.map((error, idx) => (
-                        <div key={idx} className="text-xs bg-white rounded p-2 border border-red-100">
-                          <span className="font-semibold text-red-700">Baris {error.row}:</span>
-                          <span className="text-red-600 ml-1">{error.error}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Credentials Preview */}
-                {importResult.credentials.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-900 text-sm mb-3">Kredensial Pegawai Baru ({importResult.credentials.length}):</h4>
-                    <div className="space-y-3 max-h-40 overflow-y-auto">
+              {importResult.credentials.length > 0 && (
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <h4 className="mb-3 text-sm font-semibold">
+                    Kredensial Pegawai Baru ({importResult.credentials.length}):
+                  </h4>
+                  <ScrollArea className="max-h-40">
+                    <div className="space-y-3">
                       {importResult.credentials.map((cred, idx) => (
-                        <div key={idx} className="bg-white rounded p-2 border border-blue-100 text-xs">
-                          <p className="font-semibold text-blue-900">{cred.nama}</p>
-                          <div className="grid grid-cols-2 gap-2 mt-1 text-gray-600">
+                        <div key={idx} className="rounded border bg-background p-2 text-xs">
+                          <p className="font-semibold">{cred.nama}</p>
+                          <div className="mt-1 grid grid-cols-2 gap-2 text-muted-foreground">
                             <div>
-                              <span className="text-gray-500">Email:</span>
-                              <p className="font-mono text-xs break-all">{cred.email}</p>
+                              <span>Email:</span>
+                              <p className="break-all font-mono text-xs">{cred.email}</p>
                             </div>
                             <div>
-                              <span className="text-gray-500">Role:</span>
+                              <span>Role:</span>
                               <p className="font-semibold">{cred.role === 'guru' ? 'Guru' : 'TU'}</p>
                             </div>
                             <div className="col-span-2">
-                              <span className="text-gray-500">Token:</span>
-                              <p className="font-mono font-bold text-blue-600">{cred.token}</p>
+                              <span>Token:</span>
+                              <p className="font-mono font-bold text-primary">{cred.token}</p>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  </ScrollArea>
+                </div>
+              )}
 
-                {/* Success Message */}
-                {importResult.success > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-green-800">
-                        <p className="font-semibold">Import Berhasil!</p>
-                        <p className="text-xs mt-1">
-                          {importResult.success} pegawai telah berhasil ditambahkan. Token dan kredensial telah dibuat otomatis.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {importResult.success > 0 && (
+                <Alert>
+                  <CheckCircle className="size-4" />
+                  <AlertTitle>Import Berhasil!</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {importResult.success} pegawai telah berhasil ditambahkan. Token dan kredensial telah dibuat otomatis.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                <DialogFooter>
-                  <Button 
-                    onClick={() => {
-                      setShowImportModal(false)
-                      setImportFile(null)
-                      setImportResult(null)
-                      setImportError('')
-                      setImportProgress(0)
-                    }}
-                    className="w-full bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600"
-                  >
-                    Selesai
-                  </Button>
-                </DialogFooter>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                    setImportResult(null)
+                    setImportError('')
+                    setImportProgress(0)
+                  }}
+                  className="w-full"
+                >
+                  Selesai
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
