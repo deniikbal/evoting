@@ -911,11 +911,6 @@ export default function KelasManagementPage() {
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
-
-              <p className="text-center text-sm text-muted-foreground sm:text-right">
-                Halaman <span className="font-medium text-foreground">{currentPage}</span> dari{' '}
-                <span className="font-medium text-foreground">{totalPages}</span>
-              </p>
             </div>
           )}
         </CardContent>
