@@ -61,6 +61,10 @@ const dataMasterItems = [
   { title: 'Kandidat', url: '/admin/kandidat', icon: Trophy },
 ]
 
+// Hover berwarna untuk item sidebar (khusus panel admin)
+const menuHover =
+  'transition-colors duration-200 hover:bg-sky-100 hover:text-sky-700 focus-visible:bg-sky-100 focus-visible:text-sky-700 data-[active=true]:bg-sky-100 data-[active=true]:font-semibold data-[active=true]:text-sky-700 data-[state=open]:bg-sky-100 data-[state=open]:text-sky-700 dark:hover:bg-sky-500/15 dark:hover:text-sky-300 dark:focus-visible:bg-sky-500/15 dark:focus-visible:text-sky-300 dark:data-[active=true]:bg-sky-500/15 dark:data-[active=true]:text-sky-300 dark:data-[state=open]:bg-sky-500/15 dark:data-[state=open]:text-sky-300'
+
 export default function AdminSidebar() {
   const router = useRouter()
   const pathname = usePathname()
@@ -115,6 +119,7 @@ export default function AdminSidebar() {
                 asChild
                 isActive={pathname === '/admin/dashboard'}
                 tooltip="Dashboard"
+                className={menuHover}
               >
                 <button onClick={() => router.push('/admin/dashboard')}>
                   <LayoutDashboard />
@@ -130,7 +135,7 @@ export default function AdminSidebar() {
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip="Data Master" isActive={isDataMasterActive}>
+                  <SidebarMenuButton tooltip="Data Master" isActive={isDataMasterActive} className={menuHover}>
                     <Users2 />
                     <span>Data Master</span>
                     <ChevronsUpDown className="ml-auto" />
@@ -145,6 +150,7 @@ export default function AdminSidebar() {
                           <SidebarMenuSubButton
                             asChild
                             isActive={pathname === item.url}
+                            className={menuHover}
                           >
                             <button onClick={() => router.push(item.url)}>
                               <Icon />
@@ -164,6 +170,7 @@ export default function AdminSidebar() {
                 asChild
                 isActive={pathname === '/admin/hasil'}
                 tooltip="Hasil Voting"
+                className={menuHover}
               >
                 <button onClick={() => router.push('/admin/hasil')}>
                   <BarChart3 />
@@ -177,6 +184,7 @@ export default function AdminSidebar() {
                 asChild
                 isActive={pathname === '/admin/pengaturan'}
                 tooltip="Pengaturan"
+                className={menuHover}
               >
                 <button onClick={() => router.push('/admin/pengaturan')}>
                   <Settings />
@@ -194,6 +202,7 @@ export default function AdminSidebar() {
                     ? 'Hanya SuperAdmin yang dapat mengelola admin'
                     : 'Kelola admin pengguna'
                 }
+                className={menuHover}
               >
                 <button onClick={() => router.push('/admin/user')}>
                   <Shield />
@@ -212,7 +221,7 @@ export default function AdminSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  className={menuHover}
                 >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted">
                     <BadgeCheck className="size-4" />
