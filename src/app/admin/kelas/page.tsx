@@ -841,7 +841,7 @@ export default function KelasManagementPage() {
                   value={itemsPerPage.toString()}
                   onValueChange={(value) => handleItemsPerPageChange(Number(value))}
                 >
-                  <SelectTrigger className="h-8 w-16">
+                  <SelectTrigger className="h-8 w-auto min-w-[4.5rem] px-2.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
