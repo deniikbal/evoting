@@ -1,27 +1,21 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from '@/components/ui/pagination'
+import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
+import { DataTablePagination } from '@/components/admin/data-table-pagination'
+import { BulkActionBar } from '@/components/admin/bulk-action-bar'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,8 +24,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
-  Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet,
-  ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, X
+  Calendar, Layers, ListChecks, FileSpreadsheet,
+  ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -46,29 +40,6 @@ interface Classroom {
   name: string
   angkatan: string
   createdAt: string
-}
-
-// Build a compact page list with ellipsis, e.g. [1, 'ellipsis', 4, 5, 6, 'ellipsis', 20]
-function getPageNumbers(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
-  const pages: (number | 'ellipsis')[] = []
-  const maxVisible = 5
-
-  if (totalPages <= maxVisible) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i)
-    return pages
-  }
-
-  pages.push(1)
-  if (currentPage > 3) pages.push('ellipsis')
-
-  const start = Math.max(2, currentPage - 1)
-  const end = Math.min(totalPages - 1, currentPage + 1)
-  for (let i = start; i <= end; i++) pages.push(i)
-
-  if (currentPage < totalPages - 2) pages.push('ellipsis')
-  pages.push(totalPages)
-
-  return pages
 }
 
 export default function KelasManagementPage() {
@@ -415,73 +386,50 @@ export default function KelasManagementPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       {/* Statistik Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Kelas</CardTitle>
-            <School className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistik.totalKelas}</div>
-            <p className="text-xs text-muted-foreground">Kelas terdaftar</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Angkatan</CardTitle>
-            <Layers className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistik.totalAngkatan}</div>
-            <p className="text-xs text-muted-foreground">Angkatan berbeda</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Angkatan Terbaru</CardTitle>
-            <Calendar className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistik.angkatanTerbaru}</div>
-            <p className="text-xs text-muted-foreground">Tahun terakhir</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Data / Halaman</CardTitle>
-            <ListChecks className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{itemsPerPage}</div>
-            <p className="text-xs text-muted-foreground">
-              Halaman {currentPage} dari {totalPages || 1}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <StatCardGrid>
+        <StatCard
+          title="Total Kelas"
+          value={statistik.totalKelas}
+          description="Kelas terdaftar"
+          icon={School}
+        />
+        <StatCard
+          title="Total Angkatan"
+          value={statistik.totalAngkatan}
+          description="Angkatan berbeda"
+          icon={Layers}
+        />
+        <StatCard
+          title="Angkatan Terbaru"
+          value={statistik.angkatanTerbaru}
+          description="Tahun terakhir"
+          icon={Calendar}
+        />
+        <StatCard
+          title="Data / Halaman"
+          value={itemsPerPage}
+          description={`Halaman ${currentPage} dari ${totalPages || 1}`}
+          icon={ListChecks}
+        />
+      </StatCardGrid>
 
       {/* Data Kelas */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                <School className="size-5" />
-                Data Kelas
-              </CardTitle>
-              <CardDescription>
-                Total {classrooms.length} kelas terdaftar
-                {classrooms.length > 0 && (
-                  <span className="ml-2">
-                    • Menampilkan {startIndex + 1}-{Math.min(endIndex, classrooms.length)} dari {classrooms.length}
-                  </span>
-                )}
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-2">
+        <DataTableToolbar
+          title="Data Kelas"
+          icon={School}
+          description={
+            <>
+              Total {classrooms.length} kelas terdaftar
+              {classrooms.length > 0 && (
+                <span className="ml-2">
+                  • Menampilkan {startIndex + 1}-{Math.min(endIndex, classrooms.length)} dari {classrooms.length}
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
               <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -595,39 +543,17 @@ export default function KelasManagementPage() {
                 <RefreshCw />
                 Refresh
               </Button>
-            </div>
-          </div>
-        </CardHeader>
+            </>
+          }
+        />
         <CardContent>
           {/* Bulk Action Toolbar */}
-          {selectedIds.length > 0 && (
-            <div className="mb-4 flex flex-col gap-3 rounded-lg border bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <Badge variant="secondary">{selectedIds.length} dipilih</Badge>
-                <span className="text-muted-foreground">
-                  {selectedIds.length} kelas siap dihapus
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedIds([])}
-                >
-                  <X />
-                  Batal Pilih
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowBulkDeleteDialog(true)}
-                >
-                  <Trash2 />
-                  Hapus {selectedIds.length} Kelas
-                </Button>
-              </div>
-            </div>
-          )}
+          <BulkActionBar
+            selectedCount={selectedIds.length}
+            itemLabel="kelas"
+            onClear={() => setSelectedIds([])}
+            onDelete={() => setShowBulkDeleteDialog(true)}
+          />
 
           {/* Desktop View */}
           <div className="hidden rounded-md border sm:block">
@@ -833,85 +759,13 @@ export default function KelasManagementPage() {
 
           {/* Pagination Controls */}
           {classrooms.length > 0 && (
-            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* Rows per page */}
-              <div className="flex items-center justify-center gap-2 sm:justify-start">
-                <span className="text-sm text-muted-foreground">Tampilkan</span>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                >
-                  <SelectTrigger className="h-8 w-auto min-w-[4.5rem] px-2.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-muted-foreground">per halaman</span>
-              </div>
-
-              {/* Pagination */}
-              <Pagination className="mx-0 w-auto justify-center sm:justify-end">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      aria-disabled={currentPage === 1}
-                      tabIndex={currentPage === 1 ? -1 : undefined}
-                      className={
-                        currentPage === 1
-                          ? 'pointer-events-none opacity-50'
-                          : undefined
-                      }
-                      onClick={(e) => {
-                        e.preventDefault()
-                        if (currentPage > 1) handlePageChange(currentPage - 1)
-                      }}
-                    />
-                  </PaginationItem>
-
-                  {getPageNumbers(currentPage, totalPages).map((page, index) => (
-                    <PaginationItem key={`${page}-${index}`}>
-                      {page === 'ellipsis' ? (
-                        <PaginationEllipsis />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          isActive={currentPage === page}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            handlePageChange(page as number)
-                          }}
-                        >
-                          {page}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      aria-disabled={currentPage === totalPages}
-                      tabIndex={currentPage === totalPages ? -1 : undefined}
-                      className={
-                        currentPage === totalPages
-                          ? 'pointer-events-none opacity-50'
-                          : undefined
-                      }
-                      onClick={(e) => {
-                        e.preventDefault()
-                        if (currentPage < totalPages) handlePageChange(currentPage + 1)
-                      }}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
           )}
         </CardContent>
       </Card>
@@ -968,89 +822,37 @@ export default function KelasManagementPage() {
       </Dialog>
 
 
-      {/* Delete AlertDialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <TriangleAlert className="size-5 text-destructive" />
-              Konfirmasi Hapus
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus kelas <strong>{selectedClassroom?.name}</strong>?
-              Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isDeleting}
-              onClick={() => setSelectedClassroom(null)}
-            >
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDelete()
-              }}
-              disabled={isDeleting}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {isDeleting ? (
-                <>
-                  <RefreshCw className="animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                <>
-                  <Trash2 />
-                  Ya, Hapus
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete ConfirmDialog */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Konfirmasi Hapus"
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus kelas{' '}
+            <strong>{selectedClassroom?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+          </>
+        }
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+      />
 
-      {/* Bulk Delete AlertDialog */}
-      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <TriangleAlert className="size-5 text-destructive" />
-              Hapus {selectedIds.length} Kelas
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus <strong>{selectedIds.length}</strong> kelas yang dipilih?
-              Kelas yang masih memiliki siswa terdaftar akan otomatis dilewati.
-              Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBulkDeleting}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleBulkDelete()
-              }}
-              disabled={isBulkDeleting}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {isBulkDeleting ? (
-                <>
-                  <RefreshCw className="animate-spin" />
-                  Menghapus...
-                </>
-              ) : (
-                <>
-                  <Trash2 />
-                  Ya, Hapus Semua
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Bulk Delete ConfirmDialog */}
+      <ConfirmDialog
+        open={showBulkDeleteDialog}
+        onOpenChange={setShowBulkDeleteDialog}
+        title={`Hapus ${selectedIds.length} Kelas`}
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus <strong>{selectedIds.length}</strong> kelas yang dipilih?
+            Kelas yang masih memiliki siswa terdaftar akan otomatis dilewati.
+            Tindakan ini tidak dapat dibatalkan.
+          </>
+        }
+        confirmLabel="Ya, Hapus Semua"
+        isLoading={isBulkDeleting}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   )
 }
