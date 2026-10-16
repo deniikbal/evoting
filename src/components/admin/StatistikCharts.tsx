@@ -35,11 +35,14 @@ interface StatistikChartsProps {
 }
 
 const CHART_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
+  '#0ea5e9', // sky
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#f59e0b', // amber
+  '#10b981', // emerald
+  '#06b6d4', // cyan
+  '#6366f1', // indigo
+  '#ef4444', // red
 ]
 
 const chartConfig = {
@@ -333,11 +336,11 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
       {/* Row 1: Charts by Angkatan and Kelas */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Chart 1: By Angkatan */}
-        <Card>
+        <Card className="border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/40 dark:border-sky-900">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <CardTitle className="text-lg sm:text-xl">Suara Kandidat per Angkatan</CardTitle>
+                <CardTitle className="text-lg text-sky-800 sm:text-xl dark:text-sky-200">Suara Kandidat per Angkatan</CardTitle>
                 <div className="ml-auto flex gap-1.5 sm:gap-2">
                   <div className="flex-1 sm:w-32 sm:flex-none">
                     <Select value={selectedAngkatan} onValueChange={setSelectedAngkatan}>
@@ -386,11 +389,11 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
         </Card>
 
         {/* Chart 2: By Kelas */}
-        <Card>
+        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 dark:border-emerald-900">
           <CardHeader>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <CardTitle className="text-lg sm:text-xl">Suara Kandidat per Kelas</CardTitle>
+                <CardTitle className="text-lg text-emerald-800 sm:text-xl dark:text-emerald-200">Suara Kandidat per Kelas</CardTitle>
                 <div className="ml-auto flex gap-1.5 sm:gap-2">
                   <div className="flex-1 sm:w-32 sm:flex-none">
                     <Select value={selectedKelas} onValueChange={setSelectedKelas}>
@@ -442,9 +445,9 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
       {/* Row 2: Charts by Role (Mitra Tama & Mitra Muda) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Chart 3: By Mitra Tama */}
-        <Card>
+        <Card className="border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/40 dark:to-pink-950/40 dark:border-fuchsia-900">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Suara Kandidat Mitra Tama</CardTitle>
+            <CardTitle className="text-lg text-fuchsia-800 sm:text-xl dark:text-fuchsia-200">Suara Kandidat Mitra Tama</CardTitle>
             <CardDescription>
               Distribusi suara kandidat Mitra Tama (Kelas XI)
             </CardDescription>
@@ -463,9 +466,9 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
         </Card>
 
         {/* Chart 4: By Mitra Muda */}
-        <Card>
+        <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/40 dark:to-sky-950/40 dark:border-cyan-900">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Suara Kandidat Mitra Muda</CardTitle>
+            <CardTitle className="text-lg text-cyan-800 sm:text-xl dark:text-cyan-200">Suara Kandidat Mitra Muda</CardTitle>
             <CardDescription>
               Distribusi suara kandidat Mitra Muda (Kelas X)
             </CardDescription>
