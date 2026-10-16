@@ -1,19 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Users, Plus, Download, Upload, Edit, Trash2, RefreshCw, 
-  ArrowLeft, Search, Eye, EyeOff, CheckCircle, XCircle, 
-  ChevronLeft, ChevronRight, AlertTriangle, Key, Copy, Printer
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
+import { DataTablePagination } from '@/components/admin/data-table-pagination'
+import { BulkActionBar } from '@/components/admin/bulk-action-bar'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import {
+  Users, Plus, Download, Upload, Pencil, Trash2, RefreshCw,
+  Search, CheckCircle, XCircle, Key, Copy, Printer, MoreHorizontal,
+  UserCheck, UserX, Percent, FileSpreadsheet, Info,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import VoterCard from '@/components/admin/VoterCard'
@@ -51,7 +62,6 @@ export default function SiswaManagementPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
-  const [showTokenDialog, setShowTokenDialog] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null)
   const [selectedClassForPrint, setSelectedClassForPrint] = useState<string>('all')
@@ -64,17 +74,18 @@ export default function SiswaManagementPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0, message: '' })
   const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
-  
+
   // Selection and delete states
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteType, setDeleteType] = useState<'single' | 'bulk'>('single')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
-  
+  const [isDeleting, setIsDeleting] = useState(false)
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  
+
   const router = useRouter()
 
   // Form state for adding/editing student
@@ -99,14 +110,9 @@ export default function SiswaManagementPage() {
     fetchClassrooms()
   }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
-  }
-
   useEffect(() => {
     // Filter students based on search term and status
-    let filtered = siswa.filter(s => 
+    let filtered = siswa.filter(s =>
       s.nis.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.kelas.toLowerCase().includes(searchTerm.toLowerCase())
@@ -264,6 +270,7 @@ export default function SiswaManagementPage() {
   }
 
   const handleDeleteConfirm = async () => {
+    setIsDeleting(true)
     try {
       if (deleteType === 'single' && deleteTarget) {
         const response = await fetch(`/api/admin/siswa/${deleteTarget}`, {
@@ -308,6 +315,7 @@ export default function SiswaManagementPage() {
     } catch (err) {
       toast.error('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
+      setIsDeleting(false)
       setShowDeleteDialog(false)
       setDeleteTarget(null)
     }
@@ -333,7 +341,7 @@ export default function SiswaManagementPage() {
 
   const handleRegenerateToken = async (studentIds: number[]) => {
     setRegeneratingIds(prev => [...prev, ...studentIds])
-    
+
     try {
       const response = await fetch('/api/admin/siswa/regenerate-token', {
         method: 'POST',
@@ -374,7 +382,7 @@ export default function SiswaManagementPage() {
         document.body.appendChild(textArea)
         textArea.focus()
         textArea.select()
-        
+
         try {
           document.execCommand('copy')
           textArea.remove()
@@ -426,7 +434,7 @@ export default function SiswaManagementPage() {
 
     try {
       setImportProgress({ current: 0, total: 0, message: 'Mengunggah dan memproses data...' })
-      
+
       const response = await fetch('/api/admin/siswa/import', {
         method: 'POST',
         body: formData,
@@ -435,14 +443,14 @@ export default function SiswaManagementPage() {
       const data = await response.json()
 
       if (response.ok) {
-        setImportProgress({ 
-          current: data.count, 
-          total: data.count, 
-          message: `Selesai! ${data.count} siswa berhasil diimpor` 
+        setImportProgress({
+          current: data.count,
+          total: data.count,
+          message: `Selesai! ${data.count} siswa berhasil diimpor`
         })
-        
+
         toast.success(`Berhasil mengimpor ${data.count} siswa`)
-        
+
         setTimeout(() => {
           setShowImportDialog(false)
           setIsImporting(false)
@@ -499,7 +507,7 @@ export default function SiswaManagementPage() {
     if (printMode === 'individual') {
       return siswa.filter(s => selectedSiswaForPrint.includes(s.id))
     }
-    
+
     if (selectedClassForPrint === 'all') {
       return siswa
     }
@@ -518,1016 +526,814 @@ export default function SiswaManagementPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-blue-900">Memuat data siswa...</p>
-        </div>
+      <div className="flex flex-1 flex-col gap-6">
+        <StatCardGrid>
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full" />)}
+        </StatCardGrid>
+        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
+  const persentasePartisipasi = siswa.length > 0
+    ? Math.round((siswa.filter(s => s.sudahMemilih).length / siswa.length) * 100)
+    : 0
+
   return (
     <div className="flex flex-1 flex-col gap-6">
+      {/* Statistik Cards */}
+      <StatCardGrid>
+        <StatCard
+          title="Total Siswa"
+          value={siswa.length}
+          description="Terdaftar"
+          icon={Users}
+        />
+        <StatCard
+          title="Sudah Memilih"
+          value={siswa.filter(s => s.sudahMemilih).length}
+          description={`${persentasePartisipasi}% partisipasi`}
+          icon={UserCheck}
+        />
+        <StatCard
+          title="Belum Memilih"
+          value={siswa.filter(s => !s.sudahMemilih).length}
+          description={`${100 - persentasePartisipasi}% belum`}
+          icon={UserX}
+        />
+        <StatCard
+          title="Tingkat Partisipasi"
+          value={`${persentasePartisipasi}%`}
+          description="Dari total siswa"
+          icon={Percent}
+        />
+      </StatCardGrid>
 
-      <div className="contents">
-        {/* Statistik Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Siswa</CardTitle>
-              <Users className="h-4 w-4 text-slate-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-slate-900">{siswa.length}</div>
-              <p className="text-xs text-slate-500 mt-1">Terdaftar</p>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700">Sudah Memilih</CardTitle>
-              <CheckCircle className="h-4 w-4 text-emerald-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-emerald-900">{siswa.filter(s => s.sudahMemilih).length}</div>
-              <p className="text-xs text-emerald-600 mt-1">
-                {siswa.length > 0 ? Math.round((siswa.filter(s => s.sudahMemilih).length / siswa.length) * 100) : 0}% partisipasi
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-amber-700">Belum Memilih</CardTitle>
-              <XCircle className="h-4 w-4 text-amber-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-amber-900">{siswa.filter(s => !s.sudahMemilih).length}</div>
-              <p className="text-xs text-amber-600 mt-1">
-                {siswa.length > 0 ? Math.round((siswa.filter(s => !s.sudahMemilih).length / siswa.length) * 100) : 0}% belum
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-indigo-700">Tingkat Partisipasi</CardTitle>
-              <Users className="h-4 w-4 text-indigo-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl sm:text-2xl font-bold text-indigo-900">
-                {siswa.length > 0 ? Math.round((siswa.filter(s => s.sudahMemilih).length / siswa.length) * 100) : 0}%
-              </div>
-              <p className="text-xs text-indigo-600 mt-1">Dari total siswa</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Actions */}
-        <Card className="mb-6 rounded-sm">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Data Siswa
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm mt-1">
-                  <span className="block sm:inline">Total {siswa.length} siswa terdaftar</span>
-                  {filteredSiswa.length !== siswa.length && (
-                    <span className="text-orange-600 block sm:inline ml-0 sm:ml-2">
-                      ({filteredSiswa.length} hasil filter)
-                    </span>
-                  )}
-                  {filteredSiswa.length > 0 && (
-                    <span className="text-gray-600 block sm:inline ml-0 sm:ml-2">
-                      Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredSiswa.length)} dari {filteredSiswa.length}
-                    </span>
-                  )}
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                {selectedIds.length > 0 && (
-                  <>
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleRegenerateToken(selectedIds)}
-                      disabled={regeneratingIds.length > 0}
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Key className="w-4 h-4 mr-1 sm:mr-2" />
-                      Generate Token ({selectedIds.length})
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={openBulkDeleteDialog}
-                      className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white border-0 shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1 sm:mr-2" />
-                      Hapus {selectedIds.length}
-                    </Button>
-                  </>
-                )}
-                
-                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
-                      <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                      Tambah
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Siswa Baru</DialogTitle>
-                      <DialogDescription>
-                        Masukkan data siswa yang akan ditambahkan
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAddSiswa} className="space-y-4">
-                      <div>
-                        <Label htmlFor="nis">NIS</Label>
-                        <Input
-                          id="nis"
-                          value={formData.nis}
-                          onChange={(e) => setFormData({...formData, nis: e.target.value})}
-                          placeholder="Masukkan NIS"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="namaLengkap">Nama Lengkap</Label>
-                        <Input
-                          id="namaLengkap"
-                          value={formData.namaLengkap}
-                          onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
-                          placeholder="Masukkan nama lengkap"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="classroom">Kelas</Label>
-                        <Select
-                          value={formData.classroomId}
-                          onValueChange={(value) => {
-                            const selectedClass = classrooms.find(c => c.id.toString() === value)
-                            setFormData({
-                              ...formData, 
-                              classroomId: value,
-                              kelas: selectedClass ? selectedClass.name : ''
-                            })
-                          }}
-                          required
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih kelas" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {classrooms.map((classroom) => (
-                              <SelectItem key={classroom.id} value={classroom.id.toString()}>
-                                {classroom.name} - {classroom.angkatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1" disabled={!formData.classroomId || isAdding}>
-                          {isAdding ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Menambahkan...
-                            </>
-                          ) : (
-                            'Tambah'
-                          )}
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)} disabled={isAdding}>
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Edit Dialog */}
-                <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                  <DialogContent className="max-w-md mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Edit Siswa</DialogTitle>
-                      <DialogDescription>
-                        Update data siswa
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleEditSiswa} className="space-y-4">
-                      <div>
-                        <Label htmlFor="edit-nis">NIS</Label>
-                        <Input
-                          id="edit-nis"
-                          value={formData.nis}
-                          onChange={(e) => setFormData({...formData, nis: e.target.value})}
-                          placeholder="Masukkan NIS"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-namaLengkap">Nama Lengkap</Label>
-                        <Input
-                          id="edit-namaLengkap"
-                          value={formData.namaLengkap}
-                          onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
-                          placeholder="Masukkan nama lengkap"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="edit-classroom">Kelas</Label>
-                        <Select
-                          value={formData.classroomId}
-                          onValueChange={(value) => {
-                            const selectedClass = classrooms.find(c => c.id.toString() === value)
-                            setFormData({
-                              ...formData, 
-                              classroomId: value,
-                              kelas: selectedClass ? selectedClass.name : ''
-                            })
-                          }}
-                          required
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Pilih kelas" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {classrooms.map((classroom) => (
-                              <SelectItem key={classroom.id} value={classroom.id.toString()}>
-                                {classroom.name} - {classroom.angkatan}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1" disabled={!formData.classroomId || isEditing}>
-                          {isEditing ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Mengupdate...
-                            </>
-                          ) : (
-                            'Update'
-                          )}
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => {
-                            setShowEditDialog(false)
-                            setSelectedSiswa(null)
-                            setFormData({ nis: '', namaLengkap: '', kelas: '', classroomId: '' })
-                          }}
-                          disabled={isEditing}
-                        >
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={showImportDialog} onOpenChange={(open) => {
-                  if (!isImporting) {
-                    setShowImportDialog(open)
-                    if (!open) {
-                      setImportProgress({ current: 0, total: 0, message: '' })
-                    }
+      {/* Data Siswa */}
+      <Card>
+        <DataTableToolbar
+          title="Data Siswa"
+          icon={Users}
+          description={
+            <>
+              Total {siswa.length} siswa terdaftar
+              {filteredSiswa.length !== siswa.length && (
+                <span className="ml-2">({filteredSiswa.length} hasil filter)</span>
+              )}
+              {filteredSiswa.length > 0 && (
+                <span className="ml-2">
+                  Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredSiswa.length)} dari {filteredSiswa.length}
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
+              <Dialog open={showImportDialog} onOpenChange={(open) => {
+                if (!isImporting) {
+                  setShowImportDialog(open)
+                  if (!open) {
+                    setImportProgress({ current: 0, total: 0, message: '' })
                   }
-                }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
-                      <Upload className="w-4 h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Import</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Import Data Siswa</DialogTitle>
-                      <DialogDescription>
-                        Upload file Excel dengan kolom: nis, nama_lengkap, kelas
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    {!isImporting ? (
-                      <>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                          <p className="text-sm text-blue-900 mb-2">
-                            Belum punya template? Download template terlebih dahulu
-                          </p>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleDownloadTemplate}
-                            className="w-full"
-                          >
-                            <Download className="w-4 h-4 mr-2" />
-                            Download Template Excel
-                          </Button>
-                        </div>
+                }
+              }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Import Data Siswa</DialogTitle>
+                    <DialogDescription>
+                      Upload file Excel dengan kolom: nis, nama_lengkap, kelas
+                    </DialogDescription>
+                  </DialogHeader>
 
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                          <p className="text-xs text-amber-800">
-                            <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
-                          </p>
-                        </div>
+                  {!isImporting ? (
+                    <>
+                      <div className="rounded-lg border bg-muted/50 p-3">
+                        <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileSpreadsheet className="size-4" />
+                          Belum punya template? Download terlebih dahulu.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDownloadTemplate}
+                          className="w-full"
+                        >
+                          <Download />
+                          Download Template Excel
+                        </Button>
+                      </div>
 
-                        <form onSubmit={handleImportCSV} className="space-y-4">
-                          <div>
-                            <Label htmlFor="xlsFile">File Excel</Label>
-                            <Input
-                              id="xlsFile"
-                              name="xlsFile"
-                              type="file"
-                              accept=".xls,.xlsx"
-                              required
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button type="submit" size="sm" className="flex-1" disabled={isImporting}>
-                              <Upload className="w-4 h-4 mr-2" />
-                              Import
-                            </Button>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
-                              Batal
-                            </Button>
-                          </div>
-                        </form>
-                      </>
-                    ) : (
-                      <div className="space-y-4 py-4">
-                        <div className="flex items-center justify-center">
-                          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-                        </div>
+                      <Alert>
+                        <Info className="size-4" />
+                        <AlertDescription className="text-xs">
+                          <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
+                        </AlertDescription>
+                      </Alert>
+
+                      <form onSubmit={handleImportCSV} className="space-y-4">
                         <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Progress</span>
-                            {importProgress.total > 0 && (
-                              <span className="font-medium text-blue-600">
-                                {importProgress.current} / {importProgress.total}
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2.5 rounded-full transition-all duration-300 ease-out"
-                              style={{ 
-                                width: importProgress.total > 0 
-                                  ? `${(importProgress.current / importProgress.total) * 100}%`
-                                  : '100%',
-                                animation: importProgress.total === 0 ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
-                              }}
-                            ></div>
-                          </div>
-                          <p className="text-center text-sm text-gray-600 mt-2">
-                            {importProgress.message || 'Memproses data...'}
-                          </p>
+                          <Label htmlFor="xlsFile">File Excel</Label>
+                          <Input
+                            id="xlsFile"
+                            name="xlsFile"
+                            type="file"
+                            accept=".xls,.xlsx"
+                            required
+                          />
                         </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                          <p className="text-xs text-blue-800 text-center">
-                            Mohon tunggu, jangan tutup dialog ini...
-                          </p>
+                        <DialogFooter className="gap-2">
+                          <Button type="submit" size="sm" disabled={isImporting}>
+                            <Upload />
+                            Import
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
+                            Batal
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center justify-center">
+                        <RefreshCw className="size-8 animate-spin text-primary" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progress</span>
+                          {importProgress.total > 0 && (
+                            <span className="font-medium">
+                              {importProgress.current} / {importProgress.total}
+                            </span>
+                          )}
+                        </div>
+                        <Progress
+                          value={importProgress.total > 0
+                            ? (importProgress.current / importProgress.total) * 100
+                            : 100}
+                        />
+                        <p className="mt-2 text-center text-sm text-muted-foreground">
+                          {importProgress.message || 'Memproses data...'}
+                        </p>
+                      </div>
+                      <Alert>
+                        <AlertDescription className="text-center text-xs">
+                          Mohon tunggu, jangan tutup dialog ini...
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" onClick={handleExportTokens}>
+                <Download />
+                Export
+              </Button>
+
+              <Dialog open={showPrintDialog} onOpenChange={(open) => {
+                setShowPrintDialog(open)
+                if (!open) {
+                  setPrintMode('class')
+                  setSelectedSiswaForPrint([])
+                  setSelectedClassForPrint('all')
+                  setPrintSearchTerm('')
+                }
+              }}>
+                <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Cetak Kartu Pemilih</DialogTitle>
+                    <DialogDescription>
+                      Pilih cara mencetak kartu peserta
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-3 border-b pb-4">
+                      <Label className="text-base font-semibold">Mode Cetak</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            id="mode-class"
+                            name="printMode"
+                            value="class"
+                            checked={printMode === 'class'}
+                            onChange={() => {
+                              setPrintMode('class')
+                              setSelectedSiswaForPrint([])
+                            }}
+                            className="size-4 cursor-pointer"
+                          />
+                          <Label htmlFor="mode-class" className="cursor-pointer font-medium">
+                            Cetak Berdasarkan Kelas
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            id="mode-individual"
+                            name="printMode"
+                            value="individual"
+                            checked={printMode === 'individual'}
+                            onChange={() => setPrintMode('individual')}
+                            className="size-4 cursor-pointer"
+                          />
+                          <Label htmlFor="mode-individual" className="cursor-pointer font-medium">
+                            Pilih Peserta
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {printMode === 'class' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="print-class">Pilih Kelas</Label>
+                        <Select
+                          value={selectedClassForPrint}
+                          onValueChange={setSelectedClassForPrint}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih kelas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Semua Kelas ({siswa.length} siswa)</SelectItem>
+                            {uniqueClasses.map((kelas) => {
+                              const count = siswa.filter(s => s.kelas === kelas).length
+                              return (
+                                <SelectItem key={kelas} value={kelas}>
+                                  {kelas} ({count} siswa)
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {printMode === 'individual' && (
+                      <div className="space-y-3">
+                        <InputGroup>
+                          <InputGroupAddon>
+                            <Search className="size-4" />
+                          </InputGroupAddon>
+                          <InputGroupInput
+                            placeholder="Cari NIS, nama, atau kelas..."
+                            value={printSearchTerm}
+                            onChange={(e) => setPrintSearchTerm(e.target.value)}
+                          />
+                        </InputGroup>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const searchedSiswa = getSearchedSiswaForSelection()
+                              const allSearchedIds = searchedSiswa.map(s => s.id)
+                              const allSelected = allSearchedIds.every(id => selectedSiswaForPrint.includes(id))
+
+                              if (allSelected) {
+                                setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => !allSearchedIds.includes(id)))
+                              } else {
+                                const newSelected = new Set(selectedSiswaForPrint)
+                                allSearchedIds.forEach(id => newSelected.add(id))
+                                setSelectedSiswaForPrint(Array.from(newSelected))
+                              }
+                            }}
+                            className="text-xs font-medium text-primary underline hover:opacity-80"
+                          >
+                            {printSearchTerm ? 'Pilih/Batal Hasil Pencarian' : 'Pilih/Batal Semua'}
+                          </button>
+                          <span className="text-xs text-muted-foreground">
+                            ({selectedSiswaForPrint.length}/{siswa.length})
+                          </span>
+                        </div>
+                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border p-3">
+                          {getSearchedSiswaForSelection().length > 0 ? (
+                            getSearchedSiswaForSelection().map((s) => (
+                              <div key={s.id} className="flex items-center gap-2 rounded p-2 hover:bg-muted/50">
+                                <Checkbox
+                                  id={`print-siswa-${s.id}`}
+                                  checked={selectedSiswaForPrint.includes(s.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setSelectedSiswaForPrint([...selectedSiswaForPrint, s.id])
+                                    } else {
+                                      setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => id !== s.id))
+                                    }
+                                  }}
+                                />
+                                <Label htmlFor={`print-siswa-${s.id}`} className="flex-1 cursor-pointer text-sm">
+                                  <span className="font-medium">{s.namaLengkap}</span>
+                                  <span className="ml-2 text-muted-foreground">({s.nis}) - {s.kelas}</span>
+                                </Label>
+                              </div>
+                            ))
+                          ) : printSearchTerm ? (
+                            <p className="py-4 text-center text-sm text-muted-foreground">
+                              Tidak ada siswa yang cocok dengan pencarian
+                            </p>
+                          ) : (
+                            <p className="py-4 text-center text-sm text-muted-foreground">
+                              Tidak ada siswa yang terdaftar
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
-                  </DialogContent>
-                </Dialog>
 
-                <Button size="sm" onClick={handleExportTokens} className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
-                  <Download className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Export</span>
-                </Button>
+                    <Alert>
+                      <AlertDescription className="text-sm">
+                        <strong>Preview:</strong> {getFilteredSiswaForPrint().length} kartu akan dicetak
+                      </AlertDescription>
+                    </Alert>
+                    <DialogFooter className="gap-2">
+                      <Button
+                        type="button"
+                        onClick={handlePrintCards}
+                        disabled={getFilteredSiswaForPrint().length === 0}
+                      >
+                        <Printer />
+                        Cetak ({getFilteredSiswaForPrint().length})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowPrintDialog(false)}
+                      >
+                        Batal
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
-                <Dialog open={showPrintDialog} onOpenChange={(open) => {
-                  setShowPrintDialog(open)
-                  if (!open) {
-                    setPrintMode('class')
-                    setSelectedSiswaForPrint([])
-                    setSelectedClassForPrint('all')
-                    setPrintSearchTerm('')
-                  }
-                }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
-                      <Printer className="w-4 h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Cetak Kartu</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Cetak Kartu Pemilih</DialogTitle>
-                      <DialogDescription>
-                        Pilih cara mencetak kartu peserta
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      {/* Print Mode Selector */}
-                      <div className="space-y-3 border-b pb-4">
-                        <Label className="text-base font-semibold">Mode Cetak</Label>
-                        <div className="flex gap-4">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              id="mode-class"
-                              name="printMode"
-                              value="class"
-                              checked={printMode === 'class'}
-                              onChange={() => {
-                                setPrintMode('class')
-                                setSelectedSiswaForPrint([])
-                              }}
-                              className="w-4 h-4 cursor-pointer"
-                            />
-                            <Label htmlFor="mode-class" className="font-medium cursor-pointer">
-                              Cetak Berdasarkan Kelas
-                            </Label>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              id="mode-individual"
-                              name="printMode"
-                              value="individual"
-                              checked={printMode === 'individual'}
-                              onChange={() => setPrintMode('individual')}
-                              className="w-4 h-4 cursor-pointer"
-                            />
-                            <Label htmlFor="mode-individual" className="font-medium cursor-pointer">
-                              Pilih Peserta
-                            </Label>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Class Mode */}
-                      {printMode === 'class' && (
-                        <div>
-                          <Label htmlFor="print-class">Pilih Kelas</Label>
-                          <Select
-                            value={selectedClassForPrint}
-                            onValueChange={setSelectedClassForPrint}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Pilih kelas" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Semua Kelas ({siswa.length} siswa)</SelectItem>
-                              {uniqueClasses.map((kelas) => {
-                                const count = siswa.filter(s => s.kelas === kelas).length
-                                return (
-                                  <SelectItem key={kelas} value={kelas}>
-                                    {kelas} ({count} siswa)
-                                  </SelectItem>
-                                )
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* Individual Mode */}
-                      {printMode === 'individual' && (
-                        <div className="space-y-3">
-                          <div>
-                            <div className="relative">
-                              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                              <Input
-                                placeholder="Cari NIS, nama, atau kelas..."
-                                value={printSearchTerm}
-                                onChange={(e) => setPrintSearchTerm(e.target.value)}
-                                className="pl-10 text-sm"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const searchedSiswa = getSearchedSiswaForSelection()
-                                const allSearchedIds = searchedSiswa.map(s => s.id)
-                                const allSelected = allSearchedIds.every(id => selectedSiswaForPrint.includes(id))
-                                
-                                if (allSelected) {
-                                  setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => !allSearchedIds.includes(id)))
-                                } else {
-                                  const newSelected = new Set(selectedSiswaForPrint)
-                                  allSearchedIds.forEach(id => newSelected.add(id))
-                                  setSelectedSiswaForPrint(Array.from(newSelected))
-                                }
-                              }}
-                              className="text-xs font-medium text-blue-600 hover:text-blue-700 underline"
-                            >
-                              {printSearchTerm ? 'Pilih/Batal Hasil Pencarian' : 'Pilih/Batal Semua'}
-                            </button>
-                            <span className="text-xs text-gray-500">
-                              ({selectedSiswaForPrint.length}/{siswa.length})
-                            </span>
-                          </div>
-                          <div className="border rounded-lg max-h-64 overflow-y-auto p-3 space-y-2">
-                            {getSearchedSiswaForSelection().length > 0 ? (
-                              getSearchedSiswaForSelection().map((s) => (
-                                <div key={s.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                                  <Checkbox
-                                    id={`print-siswa-${s.id}`}
-                                    checked={selectedSiswaForPrint.includes(s.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedSiswaForPrint([...selectedSiswaForPrint, s.id])
-                                      } else {
-                                        setSelectedSiswaForPrint(selectedSiswaForPrint.filter(id => id !== s.id))
-                                      }
-                                    }}
-                                  />
-                                  <Label htmlFor={`print-siswa-${s.id}`} className="flex-1 cursor-pointer text-sm">
-                                    <span className="font-medium">{s.namaLengkap}</span>
-                                    <span className="text-gray-500 ml-2">({s.nis}) - {s.kelas}</span>
-                                  </Label>
-                                </div>
-                              ))
-                            ) : printSearchTerm ? (
-                              <p className="text-center text-sm text-gray-500 py-4">
-                                Tidak ada siswa yang cocok dengan pencarian
-                              </p>
-                            ) : (
-                              <p className="text-center text-sm text-gray-500 py-4">
-                                Tidak ada siswa yang terdaftar
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-900">
-                          <strong>Preview:</strong> {getFilteredSiswaForPrint().length} kartu akan dicetak
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          type="button" 
-                          className="flex-1" 
-                          onClick={handlePrintCards}
-                          disabled={getFilteredSiswaForPrint().length === 0}
-                        >
-                          <Printer className="w-4 h-4 mr-2" />
-                          Cetak ({getFilteredSiswaForPrint().length})
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => setShowPrintDialog(false)}
-                        >
-                          Batal
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                <Button size="sm" onClick={fetchSiswa} className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white border-0 shadow-md hover:shadow-lg transition-all">
-                  <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Cari NIS, nama, atau kelas..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 text-sm sm:text-base"
-                  />
-                </div>
-              </div>
-              <div className="w-full sm:w-48">
-                <Select
-                  value={statusFilter}
-                  onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
-                >
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Filter Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="sudah">Sudah Memilih</SelectItem>
-                    <SelectItem value="belum">Belum Memilih</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Table - Desktop View */}
-            <div className="hidden sm:block rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={isAllSelected}
-                        onCheckedChange={handleSelectAll}
-                        aria-label="Select all"
+              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Tambah Siswa Baru</DialogTitle>
+                    <DialogDescription>
+                      Masukkan data siswa yang akan ditambahkan
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddSiswa} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nis">NIS</Label>
+                      <Input
+                        id="nis"
+                        value={formData.nis}
+                        onChange={(e) => setFormData({...formData, nis: e.target.value})}
+                        placeholder="Masukkan NIS"
+                        required
                       />
-                    </TableHead>
-                    <TableHead>NIS</TableHead>
-                    <TableHead>Nama Lengkap</TableHead>
-                    <TableHead>Kelas</TableHead>
-                    <TableHead>Token</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Aksi</TableHead>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="namaLengkap">Nama Lengkap</Label>
+                      <Input
+                        id="namaLengkap"
+                        value={formData.namaLengkap}
+                        onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
+                        placeholder="Masukkan nama lengkap"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kelas</Label>
+                      <Select
+                        value={formData.classroomId}
+                        onValueChange={(value) => {
+                          const selectedClass = classrooms.find(c => c.id.toString() === value)
+                          setFormData({
+                            ...formData,
+                            classroomId: value,
+                            kelas: selectedClass ? selectedClass.name : ''
+                          })
+                        }}
+                        required
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih kelas" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classrooms.map((classroom) => (
+                            <SelectItem key={classroom.id} value={classroom.id.toString()}>
+                              {classroom.name} - {classroom.angkatan}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <Button type="submit" size="sm" disabled={!formData.classroomId || isAdding}>
+                        {isAdding ? (
+                          <>
+                            <RefreshCw className="animate-spin" />
+                            Menambahkan...
+                          </>
+                        ) : (
+                          'Tambah'
+                        )}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)} disabled={isAdding}>
+                        Batal
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" onClick={fetchSiswa}>
+                <RefreshCw />
+                Refresh
+              </Button>
+            </>
+          }
+        />
+        <CardContent>
+          <BulkActionBar
+            selectedCount={selectedIds.length}
+            itemLabel="siswa"
+            onClear={() => setSelectedIds([])}
+            onDelete={openBulkDeleteDialog}
+            deleteLabel={`Hapus ${selectedIds.length} Siswa`}
+          />
+          {selectedIds.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mb-4"
+              onClick={() => handleRegenerateToken(selectedIds)}
+              disabled={regeneratingIds.length > 0}
+            >
+              <Key />
+              Generate Token ({selectedIds.length})
+            </Button>
+          )}
+
+          {/* Search & Filter */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <InputGroup className="flex-1">
+              <InputGroupAddon>
+                <Search className="size-4" />
+              </InputGroupAddon>
+              <InputGroupInput
+                placeholder="Cari NIS, nama, atau kelas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </InputGroup>
+            <div className="w-full sm:w-48">
+              <Select
+                value={statusFilter}
+                onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="sudah">Sudah Memilih</SelectItem>
+                  <SelectItem value="belum">Belum Memilih</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Table - Desktop */}
+          <div className="hidden rounded-md border sm:block">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+                      onCheckedChange={(v) => handleSelectAll(v === true)}
+                      aria-label="Pilih semua"
+                    />
+                  </TableHead>
+                  <TableHead>NIS</TableHead>
+                  <TableHead>Nama Lengkap</TableHead>
+                  <TableHead>Kelas</TableHead>
+                  <TableHead>Token</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-24 text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentItems.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-10">
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Users />
+                          </EmptyMedia>
+                          <EmptyTitle>
+                            {searchTerm ? 'Tidak ada siswa yang cocok' : 'Belum ada data siswa'}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            {searchTerm ? 'Coba ubah kata kunci pencarian.' : 'Tambahkan siswa atau import dari Excel.'}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        {searchTerm ? 'Tidak ada siswa yang cocok dengan pencarian' : 'Belum ada data siswa'}
+                ) : (
+                  currentItems.map((s) => (
+                    <TableRow
+                      key={s.id}
+                      data-state={selectedIds.includes(s.id) ? 'selected' : undefined}
+                      className="data-[state=selected]:bg-muted"
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(s.id)}
+                          onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
+                          aria-label={`Pilih ${s.namaLengkap}`}
+                        />
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentItems.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedIds.includes(s.id)}
-                            onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
-                            aria-label={`Select ${s.namaLengkap}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{s.nis}</TableCell>
-                        <TableCell>{s.namaLengkap}</TableCell>
-                        <TableCell>{s.kelas}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="px-2 py-1 bg-slate-100 rounded text-xs font-mono">
-                              {s.plainToken}
-                            </code>
-                            <button
-                              onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
-                              className="p-1 rounded hover:bg-slate-100 transition-colors"
-                              title="Copy token"
-                            >
-                              <Copy className="w-3 h-3 text-slate-500" />
-                            </button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={s.sudahMemilih ? "default" : "secondary"}>
-                            {s.sudahMemilih ? (
-                              <>
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Sudah Memilih
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-3 h-3 mr-1" />
-                                Belum Memilih
-                              </>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => openEditDialog(s)}
-                              className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
-                              title="Edit siswa"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
+                      <TableCell className="font-medium">{s.nis}</TableCell>
+                      <TableCell>{s.namaLengkap}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{s.kelas}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
+                            {s.plainToken}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
+                            title="Copy token"
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={s.sudahMemilih ? 'default' : 'secondary'}>
+                          {s.sudahMemilih ? (
+                            <>
+                              <CheckCircle className="size-3" />
+                              Sudah Memilih
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="size-3" />
+                              Belum Memilih
+                            </>
+                          )}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreHorizontal />
+                              <span className="sr-only">Menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(s)}>
+                              <Pencil />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleRegenerateToken([s.id])}
                               disabled={regeneratingIds.includes(s.id)}
-                              className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                              title="Generate ulang token"
                             >
                               {regeneratingIds.includes(s.id) ? (
-                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                <RefreshCw className="animate-spin" />
                               ) : (
-                                <Key className="w-4 h-4" />
+                                <Key />
                               )}
-                            </button>
+                              Generate Token
+                            </DropdownMenuItem>
                             {s.sudahMemilih && (
-                              <button
-                                onClick={() => handleResetStatus(s.id)}
-                                className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
-                                title="Reset status pemilihan"
-                              >
-                                <RefreshCw className="w-4 h-4" />
-                              </button>
+                              <DropdownMenuItem onClick={() => handleResetStatus(s.id)}>
+                                <RefreshCw />
+                                Reset Status
+                              </DropdownMenuItem>
                             )}
-                            <button
-                              onClick={() => openDeleteDialog(s.id)}
-                              className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
-                              title="Hapus siswa"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" onClick={() => openDeleteDialog(s.id)}>
+                              <Trash2 />
+                              Hapus
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-            {/* Table - Mobile View */}
-            <div className="sm:hidden space-y-3">
-              {currentItems.length === 0 ? (
-                <div className="text-center py-8 bg-white rounded-lg border">
-                  {searchTerm ? 'Tidak ada siswa yang cocok dengan pencarian' : 'Belum ada data siswa'}
-                </div>
-              ) : (
-                currentItems.map((s) => (
-                  <div key={s.id} className="bg-white rounded-lg border p-4 space-y-3">
-                    <div className="flex gap-3 items-start">
-                      <Checkbox
-                        checked={selectedIds.includes(s.id)}
-                        onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
-                        aria-label={`Select ${s.namaLengkap}`}
-                        className="mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm">{s.namaLengkap}</p>
-                            <p className="text-xs text-gray-500">NIS: {s.nis}</p>
-                            <p className="text-xs text-gray-500">Kelas: {s.kelas}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <code className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">
-                                {s.plainToken}
-                              </code>
-                              <button
-                                onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
-                                className="p-1 rounded hover:bg-slate-100"
-                              >
-                                <Copy className="w-3 h-3 text-slate-500" />
-                              </button>
-                            </div>
+          {/* Table - Mobile */}
+          <div className="space-y-3 sm:hidden">
+            {currentItems.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Users />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {searchTerm ? 'Tidak ada siswa yang cocok' : 'Belum ada data siswa'}
+                  </EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              currentItems.map((s) => (
+                <div
+                  key={s.id}
+                  className={`space-y-3 rounded-lg border p-4 transition-colors ${
+                    selectedIds.includes(s.id) ? 'bg-muted' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedIds.includes(s.id)}
+                      onCheckedChange={(checked) => handleSelectOne(s.id, checked as boolean)}
+                      aria-label={`Pilih ${s.namaLengkap}`}
+                      className="mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{s.namaLengkap}</p>
+                          <p className="text-xs text-muted-foreground">NIS: {s.nis}</p>
+                          <p className="text-xs text-muted-foreground">Kelas: {s.kelas}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                              {s.plainToken}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-6"
+                              onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
+                            >
+                              <Copy className="size-3" />
+                            </Button>
                           </div>
-                          <Badge variant={s.sudahMemilih ? "default" : "secondary"} className="text-xs flex-shrink-0">
-                            {s.sudahMemilih ? 'Sudah' : 'Belum'}
-                          </Badge>
                         </div>
+                        <Badge variant={s.sudahMemilih ? 'default' : 'secondary'} className="shrink-0 text-xs">
+                          {s.sudahMemilih ? 'Sudah' : 'Belum'}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-8 flex-wrap">
-                      <button
-                        onClick={() => openEditDialog(s)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleRegenerateToken([s.id])}
-                        disabled={regeneratingIds.includes(s.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium disabled:opacity-50"
-                      >
-                        {regeneratingIds.includes(s.id) ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Key className="w-3.5 h-3.5" />
-                        )}
-                        Token
-                      </button>
-                      {s.sudahMemilih && (
-                        <button
-                          onClick={() => handleResetStatus(s.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Reset
-                        </button>
+                  </div>
+                  <div className="ml-8 flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(s)}>
+                      <Pencil />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRegenerateToken([s.id])}
+                      disabled={regeneratingIds.includes(s.id)}
+                    >
+                      {regeneratingIds.includes(s.id) ? (
+                        <RefreshCw className="animate-spin" />
+                      ) : (
+                        <Key />
                       )}
-                      <button
-                        onClick={() => openDeleteDialog(s.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-sm hover:shadow-md transition-all duration-200 text-xs font-medium"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Pagination Controls */}
-            {filteredSiswa.length > 0 && (
-              <div className="flex flex-col gap-4 mt-4">
-                {/* Mobile View */}
-                <div className="sm:hidden flex flex-col gap-3">
-                  <div className="flex items-center justify-center gap-2">
+                      Token
+                    </Button>
+                    {s.sudahMemilih && (
+                      <Button variant="outline" size="sm" onClick={() => handleResetStatus(s.id)}>
+                        <RefreshCw />
+                        Reset
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 text-xs"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => openDeleteDialog(s.id)}
                     >
-                      <ChevronLeft className="w-3 h-3" />
+                      <Trash2 />
+                      Hapus
                     </Button>
-                    
-                    <span className="text-xs text-muted-foreground px-2">
-                      Hal {currentPage} dari {totalPages}
-                    </span>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 text-xs"
-                    >
-                      <ChevronRight className="w-3 h-3" />
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 text-xs">
-                    <span className="text-gray-600">Tampilkan:</span>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                    >
-                      <SelectTrigger className="w-12 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-gray-600">data/halaman</span>
                   </div>
                 </div>
-
-                {/* Desktop View */}
-                <div className="hidden sm:flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Tampilkan:</span>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                    >
-                      <SelectTrigger className="w-16 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">data per halaman</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                      {(() => {
-                        const pages = []
-                        const maxVisible = 5
-
-                        if (totalPages <= maxVisible) {
-                          // Show all pages if total pages <= maxVisible
-                          for (let i = 1; i <= totalPages; i++) {
-                            pages.push(i)
-                          }
-                        } else {
-                          // Show first page
-                          pages.push(1)
-
-                          if (currentPage > 3) {
-                            pages.push('...')
-                          }
-
-                          // Show pages around current page
-                          const start = Math.max(2, currentPage - 1)
-                          const end = Math.min(totalPages - 1, currentPage + 1)
-
-                          for (let i = start; i <= end; i++) {
-                            if (i !== 1 && i !== totalPages) {
-                              pages.push(i)
-                            }
-                          }
-
-                          if (currentPage < totalPages - 2) {
-                            pages.push('...')
-                          }
-
-                          // Show last page
-                          if (totalPages > 1) {
-                            pages.push(totalPages)
-                          }
-                        }
-
-                        return pages.map((page, index) => {
-                          if (page === '...') {
-                            return (
-                              <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-gray-500">
-                                ...
-                              </span>
-                            )
-                          }
-
-                          return (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => handlePageChange(page as number)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {page}
-                            </Button>
-                          )
-                        })
-                      })()}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    Halaman {currentPage} dari {totalPages}
-                  </div>
-                </div>
-              </div>
+              ))
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="max-w-md mx-4">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="w-5 h-5" />
-                Konfirmasi Hapus
-              </DialogTitle>
-              <DialogDescription>
-                {deleteType === 'single' 
-                  ? 'Apakah Anda yakin ingin menghapus siswa ini? Tindakan ini tidak dapat dibatalkan.'
-                  : `Apakah Anda yakin ingin menghapus ${selectedIds.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-3 sm:gap-3">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowDeleteDialog(false)}
-                className="flex-1 sm:flex-none"
+          {/* Pagination */}
+          {filteredSiswa.length > 0 && (
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Siswa</DialogTitle>
+            <DialogDescription>
+              Update data siswa
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSiswa} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-nis">NIS</Label>
+              <Input
+                id="edit-nis"
+                value={formData.nis}
+                onChange={(e) => setFormData({...formData, nis: e.target.value})}
+                placeholder="Masukkan NIS"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-namaLengkap">Nama Lengkap</Label>
+              <Input
+                id="edit-namaLengkap"
+                value={formData.namaLengkap}
+                onChange={(e) => setFormData({...formData, namaLengkap: e.target.value})}
+                placeholder="Masukkan nama lengkap"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Kelas</Label>
+              <Select
+                value={formData.classroomId}
+                onValueChange={(value) => {
+                  const selectedClass = classrooms.find(c => c.id.toString() === value)
+                  setFormData({
+                    ...formData,
+                    classroomId: value,
+                    kelas: selectedClass ? selectedClass.name : ''
+                  })
+                }}
+                required
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classrooms.map((classroom) => (
+                    <SelectItem key={classroom.id} value={classroom.id.toString()}>
+                      {classroom.name} - {classroom.angkatan}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="submit" size="sm" disabled={!formData.classroomId || isEditing}>
+                {isEditing ? (
+                  <>
+                    <RefreshCw className="animate-spin" />
+                    Mengupdate...
+                  </>
+                ) : (
+                  'Update'
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowEditDialog(false)
+                  setSelectedSiswa(null)
+                  setFormData({ nis: '', namaLengkap: '', kelas: '', classroomId: '' })
+                }}
+                disabled={isEditing}
               >
                 Batal
               </Button>
-              <Button 
-                type="button" 
-                variant="destructive" 
-                onClick={handleDeleteConfirm}
-                className="flex-1 sm:flex-none"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Ya, Hapus
-              </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Konfirmasi Hapus"
+        description={
+          deleteType === 'single'
+            ? 'Apakah Anda yakin ingin menghapus siswa ini? Tindakan ini tidak dapat dibatalkan.'
+            : `Apakah Anda yakin ingin menghapus ${selectedIds.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`
+        }
+        isLoading={isDeleting}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Print Area - Hidden on screen, visible on print */}
       <div className="print-only">
@@ -1537,69 +1343,69 @@ export default function SiswaManagementPage() {
               size: A4;
               margin: 10mm;
             }
-            
+
             body * {
               visibility: hidden;
             }
-            
+
             .print-only, .print-only * {
               visibility: visible;
             }
-            
+
             .print-only {
               position: absolute;
               left: 0;
               top: 0;
               width: 100%;
             }
-            
+
             .print-page {
               page-break-after: always;
               width: 100%;
             }
-            
+
             .print-page:last-child {
               page-break-after: auto;
             }
-            
+
             .print-header {
               text-align: center;
               margin-bottom: 10px;
               padding: 10px;
               border-bottom: 2px solid #333;
             }
-            
+
             .print-header h2 {
               margin: 0;
               font-size: 18px;
               font-weight: bold;
             }
-            
+
             .print-cards-grid {
               display: grid;
               grid-template-columns: repeat(4, 1fr);
               gap: 6px;
               width: 100%;
             }
-            
+
             .voter-card {
               page-break-inside: avoid;
               width: 100%;
             }
           }
-          
+
           @media screen {
             .print-only {
               display: none;
             }
           }
         `}</style>
-        
+
         <div>
           {(() => {
             const siswaList = getFilteredSiswaForPrint()
-            const pages = []
-            
+            const pages: React.ReactNode[] = []
+
             // Group students by kelas
             const groupedByKelas: { [key: string]: typeof siswaList } = {}
             siswaList.forEach(s => {
@@ -1608,7 +1414,7 @@ export default function SiswaManagementPage() {
               }
               groupedByKelas[s.kelas].push(s)
             })
-            
+
             // Create one page per kelas
             Object.keys(groupedByKelas).sort().forEach(kelas => {
               const kelasStudents = groupedByKelas[kelas]
@@ -1625,7 +1431,7 @@ export default function SiswaManagementPage() {
                 </div>
               )
             })
-            
+
             return pages
           })()}
         </div>
