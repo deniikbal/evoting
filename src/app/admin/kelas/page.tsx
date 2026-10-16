@@ -14,6 +14,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,7 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
-  ChevronLeft, ChevronRight, Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet,
+  Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet,
   ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, X
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -37,6 +46,29 @@ interface Classroom {
   name: string
   angkatan: string
   createdAt: string
+}
+
+// Build a compact page list with ellipsis, e.g. [1, 'ellipsis', 4, 5, 6, 'ellipsis', 20]
+function getPageNumbers(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
+  const pages: (number | 'ellipsis')[] = []
+  const maxVisible = 5
+
+  if (totalPages <= maxVisible) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+    return pages
+  }
+
+  pages.push(1)
+  if (currentPage > 3) pages.push('ellipsis')
+
+  const start = Math.max(2, currentPage - 1)
+  const end = Math.min(totalPages - 1, currentPage + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+
+  if (currentPage < totalPages - 2) pages.push('ellipsis')
+  pages.push(totalPages)
+
+  return pages
 }
 
 export default function KelasManagementPage() {
@@ -801,157 +833,89 @@ export default function KelasManagementPage() {
 
           {/* Pagination Controls */}
           {classrooms.length > 0 && (
-            <div className="mt-4 flex flex-col gap-4">
-              {/* Mobile View */}
-              <div className="flex flex-col gap-3 sm:hidden">
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft />
-                  </Button>
-
-                  <span className="px-2 text-xs text-muted-foreground">
-                    Hal {currentPage} dari {totalPages}
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight />
-                  </Button>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-xs">
-                  <span className="text-muted-foreground">Tampilkan:</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                  >
-                    <SelectTrigger className="h-7 w-14 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-muted-foreground">data/halaman</span>
-                </div>
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* Rows per page */}
+              <div className="flex items-center justify-center gap-2 sm:justify-start">
+                <span className="text-sm text-muted-foreground">Tampilkan</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => handleItemsPerPageChange(Number(value))}
+                >
+                  <SelectTrigger className="h-8 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">per halaman</span>
               </div>
 
-              {/* Desktop View */}
-              <div className="hidden items-center justify-between gap-4 sm:flex">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Tampilkan:</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                  >
-                    <SelectTrigger className="h-8 w-16">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">data per halaman</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft />
-                    Previous
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {(() => {
-                      const pages: (number | string)[] = []
-                      const maxVisible = 5
-
-                      if (totalPages <= maxVisible) {
-                        for (let i = 1; i <= totalPages; i++) {
-                          pages.push(i)
-                        }
-                      } else {
-                        pages.push(1)
-
-                        if (currentPage > 3) {
-                          pages.push('...')
-                        }
-
-                        const start = Math.max(2, currentPage - 1)
-                        const end = Math.min(totalPages - 1, currentPage + 1)
-
-                        for (let i = start; i <= end; i++) {
-                          if (i !== 1 && i !== totalPages) {
-                            pages.push(i)
-                          }
-                        }
-
-                        if (currentPage < totalPages - 2) {
-                          pages.push('...')
-                        }
-
-                        if (totalPages > 1) {
-                          pages.push(totalPages)
-                        }
+              {/* Pagination */}
+              <Pagination className="mx-0 w-auto justify-center sm:justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      aria-disabled={currentPage === 1}
+                      tabIndex={currentPage === 1 ? -1 : undefined}
+                      className={
+                        currentPage === 1
+                          ? 'pointer-events-none opacity-50'
+                          : undefined
                       }
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (currentPage > 1) handlePageChange(currentPage - 1)
+                      }}
+                    />
+                  </PaginationItem>
 
-                      return pages.map((page, index) => {
-                        if (page === '...') {
-                          return (
-                            <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-muted-foreground">
-                              ...
-                            </span>
-                          )
-                        }
+                  {getPageNumbers(currentPage, totalPages).map((page, index) => (
+                    <PaginationItem key={`${page}-${index}`}>
+                      {page === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          isActive={currentPage === page}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(page as number)
+                          }}
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
 
-                        return (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? 'default' : 'outline'}
-                            size="icon"
-                            onClick={() => handlePageChange(page as number)}
-                          >
-                            {page}
-                          </Button>
-                        )
-                      })
-                    })()}
-                  </div>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      aria-disabled={currentPage === totalPages}
+                      tabIndex={currentPage === totalPages ? -1 : undefined}
+                      className={
+                        currentPage === totalPages
+                          ? 'pointer-events-none opacity-50'
+                          : undefined
+                      }
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (currentPage < totalPages) handlePageChange(currentPage + 1)
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                    <ChevronRight />
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Halaman {currentPage} dari {totalPages}
-                </div>
-              </div>
+              <p className="text-center text-sm text-muted-foreground sm:text-right">
+                Halaman <span className="font-medium text-foreground">{currentPage}</span> dari{' '}
+                <span className="font-medium text-foreground">{totalPages}</span>
+              </p>
             </div>
           )}
         </CardContent>
