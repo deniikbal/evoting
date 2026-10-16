@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  School, Plus, Edit, Trash2, RefreshCw, AlertTriangle, Upload, Download, ChevronLeft, ChevronRight
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import {
+  School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
+  ChevronLeft, ChevronRight, Calendar, Layers, ListChecks, TriangleAlert, FileSpreadsheet
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -37,11 +43,11 @@ export default function KelasManagementPage() {
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  
+
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -239,6 +245,17 @@ export default function KelasManagementPage() {
   const endIndex = startIndex + itemsPerPage
   const currentItems = classrooms.slice(startIndex, endIndex)
 
+  // Statistik turunan (derived) - tidak mengubah data/logic
+  const statistik = useMemo(() => {
+    const angkatanList = Array.from(new Set(classrooms.map((c) => c.angkatan)))
+    const sortedAngkatan = [...angkatanList].sort((a, b) => Number(b) - Number(a))
+    return {
+      totalKelas: classrooms.length,
+      totalAngkatan: angkatanList.length,
+      angkatanTerbaru: sortedAngkatan[0] ?? '-',
+    }
+  }, [classrooms])
+
   // Pagination functions
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -251,504 +268,578 @@ export default function KelasManagementPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-blue-900">Memuat data kelas...</p>
+      <div className="flex flex-1 flex-col gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
         </div>
+        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-
-      <div className="contents">
-        <Card className="rounded-sm">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                  <School className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Data Kelas
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm mt-1">
-                  Total {classrooms.length} kelas terdaftar
-                  {classrooms.length > 0 && (
-                    <span className="text-gray-600 block sm:inline ml-0 sm:ml-2">
-                      • Menampilkan {startIndex + 1}-{Math.min(endIndex, classrooms.length)} dari {classrooms.length}
-                    </span>
-                  )}
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Upload className="w-4 h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Import</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Import Data Kelas</DialogTitle>
-                      <DialogDescription>
-                        Upload file Excel dengan kolom: name, angkatan
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                      <p className="text-sm text-blue-900 mb-2">
-                        Belum punya template? Download template terlebih dahulu
-                      </p>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleDownloadTemplate}
-                        className="w-full"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Template Excel
-                      </Button>
-                    </div>
-
-                    <form onSubmit={handleImportExcel} className="space-y-4">
-                      <div>
-                        <Label htmlFor="xlsFile">File Excel</Label>
-                        <Input
-                          id="xlsFile"
-                          name="xlsFile"
-                          type="file"
-                          accept=".xls,.xlsx"
-                          required
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1" disabled={isImporting}>
-                          {isImporting ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Mengimpor...
-                            </>
-                          ) : (
-                            'Import'
-                          )}
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="w-4 h-4 mr-1 sm:mr-2" />
-                      Tambah
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md mx-4">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Kelas Baru</DialogTitle>
-                      <DialogDescription>
-                        Masukkan data kelas yang akan ditambahkan
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAdd} className="space-y-4">
-                      <div>
-                        <Label htmlFor="name">Nama Kelas</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({...formData, name: e.target.value})}
-                          placeholder="Contoh: XII IPA 1"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="angkatan">Angkatan</Label>
-                        <Input
-                          id="angkatan"
-                          value={formData.angkatan}
-                          onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
-                          placeholder="Contoh: 2024"
-                          required
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" className="flex-1">
-                          Tambah
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)}>
-                          Batal
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-
-                <Button variant="outline" size="sm" onClick={fetchClassrooms}>
-                  <RefreshCw className="w-4 h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-              </div>
-            </div>
+      {/* Statistik Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Kelas</CardTitle>
+            <School className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {/* Desktop View */}
-            <div className="hidden sm:block rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nama Kelas</TableHead>
-                    <TableHead>Angkatan</TableHead>
-                    <TableHead>Tanggal Dibuat</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    currentItems.map((classroom) => (
-                      <TableRow key={classroom.id}>
-                        <TableCell className="font-medium">{classroom.name}</TableCell>
-                        <TableCell>{classroom.angkatan}</TableCell>
-                        <TableCell>
-                          {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => openEditDialog(classroom)}
-                              className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 hover:scale-105"
-                              title="Edit kelas"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openDeleteDialog(classroom)}
-                              className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 hover:scale-105"
-                              title="Hapus kelas"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Mobile View */}
-            <div className="sm:hidden space-y-3">
-              {currentItems.length === 0 ? (
-                <div className="text-center py-8 bg-white rounded-lg border">
-                  {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
-                </div>
-              ) : (
-                currentItems.map((classroom) => (
-                  <div key={classroom.id} className="bg-white rounded-lg border p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-sm">{classroom.name}</p>
-                        <p className="text-xs text-gray-500">Angkatan: {classroom.angkatan}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditDialog(classroom)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 text-xs font-medium flex-1"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => openDeleteDialog(classroom)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition-all duration-200 text-xs font-medium flex-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Pagination Controls */}
-            {classrooms.length > 0 && (
-              <div className="flex flex-col gap-4 mt-4">
-                {/* Mobile View */}
-                <div className="sm:hidden flex flex-col gap-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-2 text-xs"
-                    >
-                      <ChevronLeft className="w-3 h-3" />
-                    </Button>
-                    
-                    <span className="text-xs text-muted-foreground px-2">
-                      Hal {currentPage} dari {totalPages}
-                    </span>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-2 text-xs"
-                    >
-                      <ChevronRight className="w-3 h-3" />
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 text-xs">
-                    <span className="text-gray-600">Tampilkan:</span>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                    >
-                      <SelectTrigger className="w-12 h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-gray-600">data/halaman</span>
-                  </div>
-                </div>
-
-                {/* Desktop View */}
-                <div className="hidden sm:flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Tampilkan:</span>
-                    <Select
-                      value={itemsPerPage.toString()}
-                      onValueChange={(value) => handleItemsPerPageChange(Number(value))}
-                    >
-                      <SelectTrigger className="w-16 h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-gray-600">data per halaman</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                      {(() => {
-                        const pages = []
-                        const maxVisible = 5
-
-                        if (totalPages <= maxVisible) {
-                          for (let i = 1; i <= totalPages; i++) {
-                            pages.push(i)
-                          }
-                        } else {
-                          pages.push(1)
-
-                          if (currentPage > 3) {
-                            pages.push('...')
-                          }
-
-                          const start = Math.max(2, currentPage - 1)
-                          const end = Math.min(totalPages - 1, currentPage + 1)
-
-                          for (let i = start; i <= end; i++) {
-                            if (i !== 1 && i !== totalPages) {
-                              pages.push(i)
-                            }
-                          }
-
-                          if (currentPage < totalPages - 2) {
-                            pages.push('...')
-                          }
-
-                          if (totalPages > 1) {
-                            pages.push(totalPages)
-                          }
-                        }
-
-                        return pages.map((page, index) => {
-                          if (page === '...') {
-                            return (
-                              <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-gray-500">
-                                ...
-                              </span>
-                            )
-                          }
-
-                          return (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => handlePageChange(page as number)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {page}
-                            </Button>
-                          )
-                        })
-                      })()}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    Halaman {currentPage} dari {totalPages}
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="text-2xl font-bold">{statistik.totalKelas}</div>
+            <p className="text-xs text-muted-foreground">Kelas terdaftar</p>
           </CardContent>
         </Card>
 
-        {/* Edit Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-md mx-4">
-            <DialogHeader>
-              <DialogTitle>Edit Kelas</DialogTitle>
-              <DialogDescription>
-                Update data kelas
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleEdit} className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">Nama Kelas</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Contoh: XII IPA 1"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-angkatan">Angkatan</Label>
-                <Input
-                  id="edit-angkatan"
-                  value={formData.angkatan}
-                  onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
-                  placeholder="Contoh: 2024"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" className="flex-1">
-                  Update
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    setShowEditDialog(false)
-                    setSelectedClassroom(null)
-                    setFormData({ name: '', angkatan: '' })
-                  }}
-                >
-                  Batal
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Angkatan</CardTitle>
+            <Layers className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistik.totalAngkatan}</div>
+            <p className="text-xs text-muted-foreground">Angkatan berbeda</p>
+          </CardContent>
+        </Card>
 
-        {/* Delete Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="max-w-md mx-4">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-600">
-                <AlertTriangle className="w-5 h-5" />
-                Konfirmasi Hapus
-              </DialogTitle>
-              <DialogDescription>
-                Apakah Anda yakin ingin menghapus kelas <strong>{selectedClassroom?.name}</strong>? 
-                Tindakan ini tidak dapat dibatalkan.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-3 sm:gap-3">
-              <Button 
-                type="button" 
-                variant="outline" 
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Angkatan Terbaru</CardTitle>
+            <Calendar className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{statistik.angkatanTerbaru}</div>
+            <p className="text-xs text-muted-foreground">Tahun terakhir</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Data / Halaman</CardTitle>
+            <ListChecks className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{itemsPerPage}</div>
+            <p className="text-xs text-muted-foreground">
+              Halaman {currentPage} dari {totalPages || 1}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data Kelas */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <School className="size-5" />
+                Data Kelas
+              </CardTitle>
+              <CardDescription>
+                Total {classrooms.length} kelas terdaftar
+                {classrooms.length > 0 && (
+                  <span className="ml-2">
+                    • Menampilkan {startIndex + 1}-{Math.min(endIndex, classrooms.length)} dari {classrooms.length}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Upload />
+                    Import
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Import Data Kelas</DialogTitle>
+                    <DialogDescription>
+                      Upload file Excel dengan kolom: name, angkatan
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="rounded-lg border bg-muted/50 p-3">
+                    <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileSpreadsheet className="size-4" />
+                      Belum punya template? Download terlebih dahulu.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadTemplate}
+                      className="w-full"
+                    >
+                      <Download />
+                      Download Template Excel
+                    </Button>
+                  </div>
+
+                  <form onSubmit={handleImportExcel} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="xlsFile">File Excel</Label>
+                      <Input
+                        id="xlsFile"
+                        name="xlsFile"
+                        type="file"
+                        accept=".xls,.xlsx"
+                        required
+                      />
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <Button type="submit" size="sm" disabled={isImporting}>
+                        {isImporting ? (
+                          <>
+                            <RefreshCw className="animate-spin" />
+                            Mengimpor...
+                          </>
+                        ) : (
+                          'Import'
+                        )}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
+                        Batal
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus />
+                    Tambah
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Tambah Kelas Baru</DialogTitle>
+                    <DialogDescription>
+                      Masukkan data kelas yang akan ditambahkan
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAdd} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nama Kelas</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        placeholder="Contoh: XII IPA 1"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="angkatan">Angkatan</Label>
+                      <Input
+                        id="angkatan"
+                        value={formData.angkatan}
+                        onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
+                        placeholder="Contoh: 2024"
+                        required
+                      />
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <Button type="submit" size="sm">
+                        Tambah
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setShowAddDialog(false)}>
+                        Batal
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" onClick={fetchClassrooms}>
+                <RefreshCw />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Desktop View */}
+          <div className="hidden rounded-md border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Kelas</TableHead>
+                  <TableHead>Angkatan</TableHead>
+                  <TableHead>Tanggal Dibuat</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-10">
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <School />
+                          </EmptyMedia>
+                          <EmptyTitle>
+                            {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
+                          </EmptyTitle>
+                          <EmptyDescription>
+                            {classrooms.length === 0
+                              ? 'Tambahkan kelas baru atau import dari Excel untuk memulai.'
+                              : 'Coba pindah ke halaman lain.'}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  currentItems.map((classroom) => (
+                    <TableRow key={classroom.id}>
+                      <TableCell className="font-medium">{classroom.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{classroom.angkatan}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(classroom)}
+                            title="Edit kelas"
+                          >
+                            <Pencil />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openDeleteDialog(classroom)}
+                            title="Hapus kelas"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="space-y-3 sm:hidden">
+            {currentItems.length === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <School />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
+                  </EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              currentItems.map((classroom) => (
+                <div key={classroom.id} className="space-y-3 rounded-lg border p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">{classroom.name}</p>
+                      <p className="text-xs text-muted-foreground">Angkatan {classroom.angkatan}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{classroom.angkatan}</Badge>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => openEditDialog(classroom)}
+                    >
+                      <Pencil />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => openDeleteDialog(classroom)}
+                    >
+                      <Trash2 />
+                      Hapus
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Pagination Controls */}
+          {classrooms.length > 0 && (
+            <div className="mt-4 flex flex-col gap-4">
+              {/* Mobile View */}
+              <div className="flex flex-col gap-3 sm:hidden">
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft />
+                  </Button>
+
+                  <span className="px-2 text-xs text-muted-foreground">
+                    Hal {currentPage} dari {totalPages}
+                  </span>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight />
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Tampilkan:</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => handleItemsPerPageChange(Number(value))}
+                  >
+                    <SelectTrigger className="h-7 w-14 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-muted-foreground">data/halaman</span>
+                </div>
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden items-center justify-between gap-4 sm:flex">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Tampilkan:</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => handleItemsPerPageChange(Number(value))}
+                  >
+                    <SelectTrigger className="h-8 w-16">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">data per halaman</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const pages: (number | string)[] = []
+                      const maxVisible = 5
+
+                      if (totalPages <= maxVisible) {
+                        for (let i = 1; i <= totalPages; i++) {
+                          pages.push(i)
+                        }
+                      } else {
+                        pages.push(1)
+
+                        if (currentPage > 3) {
+                          pages.push('...')
+                        }
+
+                        const start = Math.max(2, currentPage - 1)
+                        const end = Math.min(totalPages - 1, currentPage + 1)
+
+                        for (let i = start; i <= end; i++) {
+                          if (i !== 1 && i !== totalPages) {
+                            pages.push(i)
+                          }
+                        }
+
+                        if (currentPage < totalPages - 2) {
+                          pages.push('...')
+                        }
+
+                        if (totalPages > 1) {
+                          pages.push(totalPages)
+                        }
+                      }
+
+                      return pages.map((page, index) => {
+                        if (page === '...') {
+                          return (
+                            <span key={`ellipsis-${index}`} className="px-2 py-1 text-sm text-muted-foreground">
+                              ...
+                            </span>
+                          )
+                        }
+
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="icon"
+                            onClick={() => handlePageChange(page as number)}
+                          >
+                            {page}
+                          </Button>
+                        )
+                      })
+                    })()}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight />
+                  </Button>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Halaman {currentPage} dari {totalPages}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Kelas</DialogTitle>
+            <DialogDescription>
+              Update data kelas
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nama Kelas</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Contoh: XII IPA 1"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-angkatan">Angkatan</Label>
+              <Input
+                id="edit-angkatan"
+                value={formData.angkatan}
+                onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
+                placeholder="Contoh: 2024"
+                required
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="submit" size="sm">
+                Update
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => {
-                  setShowDeleteDialog(false)
+                  setShowEditDialog(false)
                   setSelectedClassroom(null)
+                  setFormData({ name: '', angkatan: '' })
                 }}
-                disabled={isDeleting}
-                className="flex-1 sm:flex-none"
               >
                 Batal
               </Button>
-              <Button 
-                type="button" 
-                variant="destructive" 
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex-1 sm:flex-none"
-              >
-                {isDeleting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Menghapus...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Ya, Hapus
-                  </>
-                )}
-              </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+
+      {/* Delete AlertDialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="size-5 text-destructive" />
+              Konfirmasi Hapus
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus kelas <strong>{selectedClassroom?.name}</strong>?
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setSelectedClassroom(null)}
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleDelete()
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                <>
+                  <Trash2 />
+                  Ya, Hapus
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
