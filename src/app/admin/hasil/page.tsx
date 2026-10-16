@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
   Dialog,
   DialogContent,
@@ -14,9 +18,11 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  BarChart3, RefreshCw, Trophy, Users, 
-  Trash2, Sparkles
+import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
+import {
+  BarChart3, RefreshCw, Trophy, Users, UserCheck, UserX, Percent,
+  Trash2, Sparkles, TriangleAlert,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -84,7 +90,7 @@ export default function HasilVotingPage() {
     const session = JSON.parse(sessionData)
     setAdmin(session)
     setAdminRole(session.role || 'admin')
-    
+
     // Check if admin is regular admin (not superadmin)
     // If voting is active, redirect regular admin to dashboard
     fetchDataWithRole(session.role)
@@ -105,7 +111,7 @@ export default function HasilVotingPage() {
       if (statistikResponse.ok) {
         const statistikData = await statistikResponse.json()
         setStatistik(statistikData)
-        
+
         // Access Control: Admin can only view results when voting is NOT active
         // SuperAdmin can always view results
         // But we don't redirect - just show notice instead
@@ -115,11 +121,6 @@ export default function HasilVotingPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
   }
 
   const handleResetVoting = async () => {
@@ -155,268 +156,258 @@ export default function HasilVotingPage() {
   }
 
   const totalSuara = statistik.sudahMemilih
-  const sortedKandidat = [...kandidat].sort((a, b) => b.jumlahSuara - a.jumlahSuara)
-  const winner = sortedKandidat[0]
+  const sortedKandidat = useMemo(
+    () => [...kandidat].sort((a, b) => b.jumlahSuara - a.jumlahSuara),
+    [kandidat]
+  )
+  const persentasePartisipasi = statistik.totalVoters > 0
+    ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100)
+    : 0
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-blue-900">Memuat data hasil voting...</p>
-        </div>
+      <div className="flex flex-1 flex-col gap-6">
+        <StatCardGrid>
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full" />)}
+        </StatCardGrid>
+        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 flex-col gap-6">
+      {/* Voting Active Notice - Show only if voting active AND user is NOT superadmin */}
+      {statistik.votingAktif && adminRole !== 'superadmin' ? (
+        <>
+          {/* Statistik tetap tampil */}
+          <StatCardGrid>
+            <StatCard title="Total Suara" value={statistik.sudahMemilih} description="Suara masuk" icon={BarChart3} />
+            <StatCard title="Sudah Memilih" value={statistik.sudahMemilih} description={`dari ${statistik.totalVoters} pemilih`} icon={UserCheck} />
+            <StatCard title="Belum Memilih" value={statistik.belumMemilih} description="Pemilih tersisa" icon={UserX} />
+            <StatCard title="Partisipasi" value={`${persentasePartisipasi}%`} description="Tingkat partisipasi" icon={Percent} />
+          </StatCardGrid>
 
-      <div className="contents">
-        {/* Voting Active Notice - Show only if voting active AND user is NOT superadmin */}
-        {statistik.votingAktif && adminRole !== 'superadmin' ? (
-          <Card className="rounded-sm mb-6 bg-gradient-to-br from-blue-100 to-cyan-100 border-2 border-blue-300 shadow-lg">
-            <CardContent className="pt-8 pb-8 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                <Sparkles className="w-10 h-10 text-white" />
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-muted">
+                <Sparkles className="size-10 text-muted-foreground" />
               </div>
-              <h2 className="text-2xl font-bold text-blue-900 mb-3">Voting Sedang Berlangsung</h2>
-              <p className="text-blue-700 mb-6 max-w-md mx-auto">
+              <h2 className="mb-3 text-2xl font-bold">Voting Sedang Berlangsung</h2>
+              <p className="mx-auto mb-6 max-w-md text-muted-foreground">
                 Hasil voting akan ditampilkan setelah voting selesai
               </p>
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/60 backdrop-blur rounded-full">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span className="font-semibold text-blue-900">
+              <div className="inline-flex items-center gap-3 rounded-full border bg-muted/50 px-6 py-3">
+                <Users className="size-5 text-muted-foreground" />
+                <span className="font-semibold">
                   {statistik.sudahMemilih} dari {statistik.totalVoters} pemilih sudah memilih
                 </span>
               </div>
-              <p className="text-sm text-blue-600 mt-4">
+              <p className="mt-4 text-sm text-muted-foreground">
                 Nonaktifkan voting untuk melihat hasil lengkap
               </p>
             </CardContent>
           </Card>
-        ) : (
-          <>
-            {/* Winner Announcement - 2 Columns */}
-            {sortedKandidat.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {['mitratama', 'mitramuda'].map((roleType) => {
-                  const roleWinner = sortedKandidat.find(k => k.role === roleType)
-                  const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                  const bgColor = roleType === 'mitramuda' 
-                    ? 'from-blue-100 via-cyan-100 to-blue-100 border-cyan-300'
-                    : 'from-purple-100 via-pink-100 to-purple-100 border-pink-300'
-                  const accentColor = roleType === 'mitramuda'
-                    ? 'from-blue-400 to-cyan-500'
-                    : 'from-purple-400 to-pink-500'
-                  
-                  return (
-                    <Card key={roleType} className={`rounded-sm bg-gradient-to-br ${bgColor} border-2 shadow-xl`}>
-                      <CardContent className="pt-8 pb-8 text-center relative overflow-hidden">
-                        <div className={`absolute inset-0 bg-gradient-to-br ${roleType === 'mitramuda' ? 'from-cyan-200/20 to-blue-200/20' : 'from-pink-200/20 to-purple-200/20'}`}></div>
-                        <div className="relative">
-                          <div className={`text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block ${roleType === 'mitramuda' ? 'bg-cyan-200 text-cyan-800' : 'bg-pink-200 text-pink-800'}`}>
-                            {roleLabel}
-                          </div>
-                          <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${accentColor} rounded-full flex items-center justify-center shadow-xl animate-pulse`}>
-                            <Trophy className="w-8 h-8 text-white" />
-                          </div>
-                          {roleWinner && roleWinner.jumlahSuara > 0 ? (
-                            <>
-                              <h2 className={`text-lg font-bold mb-3 ${roleType === 'mitramuda' ? 'text-cyan-900' : 'text-purple-900'}`}>🏆 Pemenang 🏆</h2>
-                              <div className={`inline-block px-3 py-1 ${roleType === 'mitramuda' ? 'bg-blue-100/80' : 'bg-purple-100/80'} backdrop-blur rounded-full mb-3`}>
-                                <span className={`text-xs font-semibold ${roleType === 'mitramuda' ? 'text-blue-800' : 'text-purple-800'}`}>No. {roleWinner.nomorUrut}</span>
-                              </div>
-                              <h3 className={`text-xl font-bold mb-3 ${roleType === 'mitramuda' ? 'text-cyan-900' : 'text-purple-900'}`}>{roleWinner.namaCalon}</h3>
-                              <div className={`inline-flex items-baseline gap-2 px-4 py-2 bg-gradient-to-r ${accentColor} rounded-full shadow-lg`}>
-                                <span className="text-2xl font-bold text-white">{roleWinner.jumlahSuara}</span>
-                                <span className="text-sm text-white/90">suara</span>
-                                <span className="text-xs text-white/80">({totalSuara > 0 ? Math.round((roleWinner.jumlahSuara / totalSuara) * 100) : 0}%)</span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className={`py-6 ${roleType === 'mitramuda' ? 'text-cyan-600' : 'text-purple-600'}`}>
-                              <p className="font-semibold">Belum ada data</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+        </>
+      ) : (
+        <>
+          {/* Statistik Cards */}
+          <StatCardGrid>
+            <StatCard title="Total Suara" value={totalSuara} description="Suara masuk" icon={BarChart3} />
+            <StatCard title="Sudah Memilih" value={statistik.sudahMemilih} description={`dari ${statistik.totalVoters} pemilih`} icon={UserCheck} />
+            <StatCard title="Belum Memilih" value={statistik.belumMemilih} description="Pemilih tersisa" icon={UserX} />
+            <StatCard title="Partisipasi" value={`${persentasePartisipasi}%`} description="Tingkat partisipasi" icon={Percent} />
+          </StatCardGrid>
 
-            {/* Results Table */}
-            <Card className="rounded-sm bg-white/80 backdrop-blur shadow-xl">
-              <CardHeader className="bg-white border-b">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-xl text-gray-900">
-                      <BarChart3 className="w-5 h-5" />
-                      Perolehan Suara Detail
-                    </CardTitle>
-                    <CardDescription className="text-gray-600 mt-1">
-                      Hasil lengkap pemilihan Ketua OSIS
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => fetchDataWithRole(adminRole)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors text-sm font-medium"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      <span className="hidden sm:inline">Refresh</span>
-                    </button>
-                    <button
-                      onClick={openResetDialog}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 transition-colors text-sm font-medium"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Reset</span>
-                    </button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {kandidat.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center">
-                      <BarChart3 className="w-8 h-8 text-blue-500" />
-                    </div>
-                    <p className="text-gray-500">Belum ada data voting</p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {['mitratama', 'mitramuda'].map((roleType) => {
-                      const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
-                      const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                      const roleColor = roleType === 'mitramuda' ? 'text-blue-600' : 'text-purple-600'
-                      
-                      if (roleKandidat.length === 0) return null
-                      
-                      return (
-                        <div key={roleType}>
-                          <div className="mb-6 flex items-center gap-4">
-                            <div className={`px-4 py-2 rounded-full font-bold text-white text-sm ${roleType === 'mitramuda' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'}`}>
-                              {roleLabel}
-                            </div>
-                            <div className="flex-1 h-0.5 bg-gradient-to-r from-gray-300 to-transparent"></div>
+          {/* Winner Announcement - 2 Columns */}
+          {sortedKandidat.length > 0 && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {['mitratama', 'mitramuda'].map((roleType) => {
+                const roleWinner = sortedKandidat.find(k => k.role === roleType)
+                const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+
+                return (
+                  <Card key={roleType}>
+                    <CardContent className="py-8 text-center">
+                      <Badge variant="outline" className="mb-4 px-3 py-1 text-xs font-bold">
+                        {roleLabel}
+                      </Badge>
+                      <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+                        <Trophy className="size-8 text-primary" />
+                      </div>
+                      {roleWinner && roleWinner.jumlahSuara > 0 ? (
+                        <>
+                          <h2 className="mb-3 text-lg font-bold">🏆 Pemenang 🏆</h2>
+                          <Badge variant="secondary" className="mb-3">
+                            No. {roleWinner.nomorUrut}
+                          </Badge>
+                          <h3 className="mb-3 text-xl font-bold">{roleWinner.namaCalon}</h3>
+                          <div className="inline-flex items-baseline gap-2 rounded-full border bg-muted/50 px-4 py-2">
+                            <span className="text-2xl font-bold">{roleWinner.jumlahSuara}</span>
+                            <span className="text-sm text-muted-foreground">suara</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({totalSuara > 0 ? Math.round((roleWinner.jumlahSuara / totalSuara) * 100) : 0}%)
+                            </span>
                           </div>
-                          <div className="space-y-4">
-                            {roleKandidat.map((k, index) => {
-                      const persentase = totalSuara > 0 ? Math.round((k.jumlahSuara / totalSuara) * 100) : 0
-                      const isWinner = index === 0 && k.jumlahSuara > 0
-                      
-                      return (
-                        <div 
-                          key={k.id} 
-                          className={`p-4 rounded-xl border-2 transition-all ${
-                            isWinner 
-                              ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-yellow-300 shadow-md' 
-                              : 'bg-white border-gray-200 hover:shadow-md'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
-                                isWinner 
-                                  ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-md' 
-                                  : 'bg-gray-200 text-gray-700'
-                              }`}>
-                                {isWinner ? <Trophy className="w-5 h-5" /> : index + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Badge variant="secondary" className="text-xs">No. {k.nomorUrut}</Badge>
-                                  {isWinner && (
-                                    <Badge className="bg-gradient-to-r from-yellow-400 to-amber-400 text-white text-xs">
-                                      Pemenang
-                                    </Badge>
-                                  )}
-                                </div>
-                                <span className="font-semibold text-gray-900 block truncate">{k.namaCalon}</span>
-                              </div>
-                            </div>
-                            <div className="text-right ml-4">
-                              <div className="text-2xl font-bold text-gray-900">{k.jumlahSuara}</div>
-                              <div className="text-xs text-gray-600">suara</div>
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Persentase</span>
-                              <span className={`font-semibold ${isWinner ? 'text-amber-600' : 'text-gray-700'}`}>{persentase}%</span>
-                            </div>
-                            <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${
-                                  isWinner 
-                                    ? 'bg-gradient-to-r from-yellow-400 to-amber-500' 
-                                    : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                        </>
+                      ) : (
+                        <div className="py-6 text-muted-foreground">
+                          <p className="font-semibold">Belum ada data</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Results Table */}
+          <Card>
+            <DataTableToolbar
+              title="Perolehan Suara Detail"
+              icon={BarChart3}
+              description="Hasil lengkap pemilihan Ketua OSIS"
+              actions={
+                <>
+                  <Button variant="outline" size="sm" onClick={() => fetchDataWithRole(adminRole)}>
+                    <RefreshCw />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={openResetDialog}
+                  >
+                    <Trash2 />
+                    Reset
+                  </Button>
+                </>
+              }
+            />
+            <CardContent>
+              {kandidat.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BarChart3 />
+                    </EmptyMedia>
+                    <EmptyTitle>Belum ada data voting</EmptyTitle>
+                    <EmptyDescription>
+                      Hasil perolehan suara akan muncul di sini setelah ada suara masuk.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="space-y-8">
+                  {['mitratama', 'mitramuda'].map((roleType) => {
+                    const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
+                    const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
+
+                    if (roleKandidat.length === 0) return null
+
+                    return (
+                      <div key={roleType}>
+                        <div className="mb-6 flex items-center gap-4">
+                          <Badge variant="outline" className="px-4 py-1.5 text-sm font-bold">
+                            {roleLabel}
+                          </Badge>
+                          <Separator className="flex-1" />
+                        </div>
+                        <div className="space-y-4">
+                          {roleKandidat.map((k, index) => {
+                            const persentase = totalSuara > 0 ? Math.round((k.jumlahSuara / totalSuara) * 100) : 0
+                            const isWinner = index === 0 && k.jumlahSuara > 0
+
+                            return (
+                              <div
+                                key={k.id}
+                                className={`rounded-xl border p-4 transition-all ${
+                                  isWinner ? 'border-primary/40 bg-primary/5 shadow-sm' : 'hover:shadow-sm'
                                 }`}
-                                style={{ width: `${persentase}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                              >
+                                <div className="mb-3 flex items-center justify-between">
+                                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    <div className={`flex size-10 items-center justify-center rounded-full text-sm font-bold ${
+                                      isWinner ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                                    }`}>
+                                      {isWinner ? <Trophy className="size-5" /> : index + 1}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="mb-1 flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-xs">No. {k.nomorUrut}</Badge>
+                                        {isWinner && (
+                                          <Badge className="text-xs">Pemenang</Badge>
+                                        )}
+                                      </div>
+                                      <span className="block truncate font-semibold">{k.namaCalon}</span>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4 text-right">
+                                    <div className="text-2xl font-bold">{k.jumlahSuara}</div>
+                                    <div className="text-xs text-muted-foreground">suara</div>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Persentase</span>
+                                    <span className={`font-semibold ${isWinner ? 'text-primary' : ''}`}>{persentase}%</span>
+                                  </div>
+                                  <Progress value={persentase} className="h-3" />
+                                </div>
+                              </div>
                             )
-                            })}
-                          </div>
+                          })}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Reset Voting Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex items-center gap-2 text-red-600 mb-2">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <Trash2 className="w-6 h-6" />
-              </div>
+            <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-destructive/10">
+              <TriangleAlert className="size-6 text-destructive" />
             </div>
             <DialogTitle className="text-xl">Reset Semua Hasil Voting</DialogTitle>
-            <DialogDescription className="text-base">
+            <DialogDescription>
               Tindakan ini akan menghapus semua hasil voting dan mengatur ulang status voting semua siswa.
-              <span className="block mt-2 font-semibold text-red-600">
+              <span className="mt-2 block font-semibold text-destructive">
                 ⚠️ Tindakan ini tidak dapat dibatalkan!
               </span>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="reset-password" className="text-sm font-medium">
-                Masukkan password untuk konfirmasi:
-              </Label>
-              <Input
-                id="reset-password"
-                type="password"
-                placeholder="Masukkan password"
-                value={resetPassword}
-                onChange={(e) => setResetPassword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isResetting) {
-                    handleResetVoting()
-                  }
-                }}
-                className="h-10"
-              />
-            </div>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="reset-password">
+              Masukkan password untuk konfirmasi:
+            </Label>
+            <Input
+              id="reset-password"
+              type="password"
+              placeholder="Masukkan password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isResetting) {
+                  handleResetVoting()
+                }
+              }}
+              className="h-10"
+            />
           </div>
           <DialogFooter className="gap-3 sm:gap-3">
             <Button
               variant="outline"
               onClick={() => setShowResetDialog(false)}
               disabled={isResetting}
-              className="flex-1 sm:flex-none"
             >
               Batal
             </Button>
@@ -424,16 +415,15 @@ export default function HasilVotingPage() {
               variant="destructive"
               onClick={handleResetVoting}
               disabled={isResetting || !resetPassword}
-              className="flex-1 sm:flex-none"
             >
               {isResetting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="animate-spin" />
                   Menghapus...
                 </>
               ) : (
                 <>
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <Trash2 />
                   Ya, Reset
                 </>
               )}
