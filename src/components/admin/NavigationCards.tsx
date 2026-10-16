@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Users2, Trophy, BarChart3, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -35,25 +35,25 @@ export default function NavigationCards() {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-      {navigationItems.map((item, index) => {
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+      {navigationItems.map((item) => {
         const Icon = item.icon
         return (
-          <Card 
-            key={index}
-            className="bg-white rounded-sm shadow-sm hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer col-span-1 border border-gray-200" 
+          <Card
+            key={item.href}
+            className="cursor-pointer transition-all hover:border-primary/40 hover:shadow-md"
             onClick={() => router.push(item.href)}
           >
-            <CardHeader className="pb-3 sm:pb-6">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="p-2 bg-blue-50 rounded-sm">
-                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <div className="rounded-md bg-muted p-2">
+                  <Icon className="size-5 shrink-0" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-sm sm:text-base leading-tight text-gray-800">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-sm leading-tight sm:text-base">
                     {item.title}
                   </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm mt-1 leading-tight text-gray-600">
+                  <CardDescription className="mt-1 text-xs leading-tight sm:text-sm">
                     {item.description}
                   </CardDescription>
                 </div>

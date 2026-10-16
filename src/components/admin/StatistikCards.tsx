@@ -22,63 +22,61 @@ interface StatistikCardsProps {
 }
 
 export default function StatistikCards({ statistik }: StatistikCardsProps) {
-  const persentaseMemilih = statistik.totalVoters > 0 
+  const persentaseMemilih = statistik.totalVoters > 0
     ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100)
     : 0
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+      <Card className="col-span-2 sm:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs sm:text-sm font-medium text-slate-700">Total Pemilih</CardTitle>
-          <Users className="h-4 w-4 text-slate-400" />
+          <CardTitle className="text-xs font-medium sm:text-sm">Total Pemilih</CardTitle>
+          <Users className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900">{statistik.totalVoters}</div>
-          <p className="text-xs text-slate-500">
+          <div className="text-xl font-bold sm:text-2xl">{statistik.totalVoters}</div>
+          <p className="text-xs text-muted-foreground">
             Siswa ({statistik.totalSiswa}) + Pegawai ({statistik.totalPegawai})
           </p>
         </CardContent>
       </Card>
 
-      <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+      <Card className="col-span-2 sm:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs sm:text-sm font-medium text-emerald-700">Sudah Memilih</CardTitle>
-          <UserCheck className="h-4 w-4 text-emerald-400" />
+          <CardTitle className="text-xs font-medium sm:text-sm">Sudah Memilih</CardTitle>
+          <UserCheck className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold text-emerald-900">{statistik.sudahMemilih}</div>
-          <p className="text-xs text-emerald-600">
+          <div className="text-xl font-bold sm:text-2xl">{statistik.sudahMemilih}</div>
+          <p className="text-xs text-muted-foreground">
             {persentaseMemilih}% dari total
           </p>
         </CardContent>
       </Card>
 
-      <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+      <Card className="col-span-2 sm:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs sm:text-sm font-medium text-amber-700">Belum Memilih</CardTitle>
-          <UserX className="h-4 w-4 text-amber-400" />
+          <CardTitle className="text-xs font-medium sm:text-sm">Belum Memilih</CardTitle>
+          <UserX className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold text-amber-900">{statistik.belumMemilih}</div>
-          <p className="text-xs text-amber-600">
+          <div className="text-xl font-bold sm:text-2xl">{statistik.belumMemilih}</div>
+          <p className="text-xs text-muted-foreground">
             {100 - persentaseMemilih}% dari total
           </p>
         </CardContent>
       </Card>
 
-      <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200">
+      <Card className="col-span-2 sm:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xs sm:text-sm font-medium text-indigo-700">Status Voting</CardTitle>
-          <BarChart3 className="h-4 w-4 text-indigo-400" />
+          <CardTitle className="text-xs font-medium sm:text-sm">Status Voting</CardTitle>
+          <BarChart3 className="size-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold">
-            <Badge variant={statistik.votingAktif ? "default" : "secondary"} className={statistik.votingAktif ? "bg-indigo-600" : ""}>
-              {statistik.votingAktif ? "Aktif" : "Non-Aktif"}
-            </Badge>
-          </div>
-          <p className="text-xs text-indigo-600">
+          <Badge variant={statistik.votingAktif ? 'default' : 'secondary'}>
+            {statistik.votingAktif ? 'Aktif' : 'Non-Aktif'}
+          </Badge>
+          <p className="mt-2 text-xs text-muted-foreground">
             Status saat ini
           </p>
         </CardContent>

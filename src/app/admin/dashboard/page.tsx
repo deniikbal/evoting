@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import DashboardHeader from '@/components/admin/DashboardHeader'
 import StatistikCards from '@/components/admin/StatistikCards'
 import QuickResults from '@/components/admin/QuickResults'
 import StatistikCharts from '@/components/admin/StatistikCharts'
 import AccessControlInfo from '@/components/admin/AccessControlInfo'
+import { Spinner } from '@/components/ui/spinner'
 
 interface Statistik {
   totalVoters: number
@@ -119,55 +119,42 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
-    router.push('/login/admin')
-  }
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-blue-900">Memuat data...</p>
+      <div className="flex flex-1 items-center justify-center py-20">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Spinner className="size-6" />
+          <p>Memuat data...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
-      <DashboardHeader admin={admin} onLogout={handleLogout} />
-      
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-        {/* Access Control Info - Show only for Admin role */}
-        {adminRole !== 'superadmin' && (
-          <AccessControlInfo 
-            adminRole={adminRole}
-            votingAktif={statistik.votingAktif}
-            canViewResults={!statistik.votingAktif || adminRole === 'superadmin'}
-          />
-        )}
-
-        {/* Statistik Cards */}
-        <div className="mb-8">
-          <StatistikCards statistik={statistik} />
-        </div>
-
-        {/* Quick Results */}
-        <QuickResults 
-          kandidat={kandidat} 
-          sudahMemilih={statistik.sudahMemilih}
-          votingAktif={statistik.votingAktif}
-          admin={admin}
+    <div className="flex flex-1 flex-col gap-6">
+      {/* Access Control Info - Show only for Admin role */}
+      {adminRole !== 'superadmin' && (
+        <AccessControlInfo
           adminRole={adminRole}
+          votingAktif={statistik.votingAktif}
+          canViewResults={!statistik.votingAktif || adminRole === 'superadmin'}
         />
+      )}
 
-        {/* Statistik Charts */}
-        <div className="mt-8">
-          <StatistikCharts votingAktif={statistik.votingAktif} adminRole={adminRole} />
-        </div>
-      </main>
+      {/* Statistik Cards */}
+      <StatistikCards statistik={statistik} />
+
+      {/* Quick Results */}
+      <QuickResults
+        kandidat={kandidat}
+        sudahMemilih={statistik.sudahMemilih}
+        votingAktif={statistik.votingAktif}
+        admin={admin ?? undefined}
+        adminRole={adminRole}
+      />
+
+      {/* Statistik Charts */}
+      <StatistikCharts votingAktif={statistik.votingAktif} adminRole={adminRole} />
     </div>
   )
 }

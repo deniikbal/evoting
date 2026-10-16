@@ -1,7 +1,8 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle2, LockIcon } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CheckCircle2, Lock, Info } from 'lucide-react'
 
 interface AccessControlInfoProps {
   adminRole?: string
@@ -12,62 +13,57 @@ interface AccessControlInfoProps {
 export default function AccessControlInfo({ adminRole, votingAktif, canViewResults }: AccessControlInfoProps) {
   const statusLabel = adminRole === 'superadmin' ? 'SuperAdmin' : 'Admin'
   const votingStatus = votingAktif ? 'Voting Berlangsung' : 'Voting Selesai'
-  
+
   return (
-    <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className={adminRole === 'superadmin' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200'}>
+    <Alert>
+      <Info className="size-4" />
+      <AlertDescription>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant={adminRole === 'superadmin' ? 'default' : 'secondary'}>
             {statusLabel}
           </Badge>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className={votingAktif ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'}>
+          <Badge variant="outline">
             {votingStatus}
           </Badge>
+
+          <div className="flex items-center gap-1.5">
+            {canViewResults ? (
+              <>
+                <CheckCircle2 className="size-4 text-primary" />
+                <span className="text-sm font-medium">Hasil Terlihat</span>
+              </>
+            ) : (
+              <>
+                <Lock className="size-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Hasil Tersembunyi</span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-2">
-          {canViewResults ? (
-            <>
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-green-700 font-medium">Hasil Terlihat</span>
-            </>
-          ) : (
-            <>
-              <LockIcon className="w-4 h-4 text-orange-600" />
-              <span className="text-sm text-orange-700 font-medium">Hasil Tersembunyi</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Status Explanation */}
-      <div className="mt-3 text-xs text-slate-600 space-y-1">
-        {adminRole === 'superadmin' ? (
-          <>
+        {/* Status Explanation */}
+        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+          {adminRole === 'superadmin' ? (
             <p className="flex items-center gap-2">
-              <CheckCircle2 className="w-3 h-3 text-green-600" />
+              <CheckCircle2 className="size-3" />
               SuperAdmin dapat melihat hasil kapan saja (voting aktif atau tidak)
             </p>
-          </>
-        ) : (
-          <>
-            {votingAktif ? (
+          ) : (
+            votingAktif ? (
               <p className="flex items-center gap-2">
-                <LockIcon className="w-3 h-3 text-orange-600" />
+                <Lock className="size-3" />
                 Admin hanya bisa melihat hasil ketika voting selesai
               </p>
             ) : (
               <p className="flex items-center gap-2">
-                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                <CheckCircle2 className="size-3" />
                 Admin bisa melihat hasil karena voting sudah selesai
               </p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            )
+          )}
+        </div>
+      </AlertDescription>
+    </Alert>
   )
 }

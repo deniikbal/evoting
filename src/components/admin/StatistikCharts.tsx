@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { ChartContainer, ChartTooltip, ChartLegend, ChartLegendContent } from '@/components/ui/chart'
+import { PieChart, Pie, Cell } from 'recharts'
 import { Lock } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 interface ChartData {
   byAngkatan: Array<{
@@ -32,7 +34,25 @@ interface StatistikChartsProps {
   adminRole?: string
 }
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#ef4444']
+const CHART_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+]
+
+const chartConfig = {
+  value: {
+    label: 'Suara',
+  },
+}
+
+interface VoteItem {
+  name: string
+  value: number
+  percentage: number
+}
 
 export default function StatistikCharts({ votingAktif, adminRole }: StatistikChartsProps) {
   const [chartData, setChartData] = useState<ChartData | null>(null)
@@ -53,7 +73,7 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
   useEffect(() => {
     // Fetch data if voting is NOT active, OR if admin is SuperAdmin
     const shouldFetchData = !votingAktif || adminRole === 'superadmin'
-    
+
     if (shouldFetchData) {
       fetchChartData()
       fetchRoleVotes()
@@ -65,7 +85,7 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
   useEffect(() => {
     // Fetch selectedAngkatan data if voting is NOT active, OR if admin is SuperAdmin
     const shouldFetchData = !votingAktif || adminRole === 'superadmin'
-    
+
     if (selectedAngkatan && shouldFetchData) {
       fetchKandidatVotes('angkatan', selectedAngkatan, selectedAngkatanRole)
     }
@@ -74,7 +94,7 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
   useEffect(() => {
     // Fetch selectedKelas data if voting is NOT active, OR if admin is SuperAdmin
     const shouldFetchData = !votingAktif || adminRole === 'superadmin'
-    
+
     if (selectedKelas && shouldFetchData) {
       fetchKandidatVotes('kelas', selectedKelas, selectedKelasRole)
     }
@@ -118,7 +138,7 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
       if (role !== 'semua') {
         url += `&role=${encodeURIComponent(role)}`
       }
-      
+
       console.log(`Fetching ${type} votes:`, url)
       const response = await fetch(url)
       if (response.ok) {
@@ -147,7 +167,7 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
     try {
       setLoadingMitraTamaVotes(true)
       setLoadingMitraMudaVotes(true)
-      
+
       const [tamaResponse, mudaResponse] = await Promise.all([
         fetch('/api/admin/kandidat-votes?type=role&value=mitratama'),
         fetch('/api/admin/kandidat-votes?type=role&value=mitramuda')
@@ -172,21 +192,14 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {[1, 2].map((i) => (
+          <Card key={i}>
+            <CardContent className="flex h-64 items-center justify-center pt-6">
+              <Spinner className="size-8" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
@@ -196,72 +209,52 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
 
   if (!shouldShowCharts) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl text-slate-800">Statistik per Angkatan</CardTitle>
-            <CardDescription className="text-sm text-slate-600">
-              Hasil pemilihan berdasarkan angkatan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                <Lock className="w-8 h-8 text-slate-400" />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {[
+          { title: 'Statistik per Angkatan', desc: 'Hasil pemilihan berdasarkan angkatan' },
+          { title: 'Statistik per Kelas', desc: 'Hasil pemilihan berdasarkan kelas' },
+        ].map((item) => (
+          <Card key={item.title}>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">{item.title}</CardTitle>
+              <CardDescription>{item.desc}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="py-8 text-center">
+                <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+                  <Lock className="size-8 text-muted-foreground" />
+                </div>
+                <p className="mb-2 font-medium">Data Disembunyikan</p>
+                <p className="text-sm text-muted-foreground">
+                  Voting sedang berlangsung. Nonaktifkan voting untuk melihat statistik.
+                </p>
               </div>
-              <p className="font-medium mb-2 text-slate-800">Data Disembunyikan</p>
-              <p className="text-sm text-slate-600">
-                Voting sedang berlangsung. Nonaktifkan voting untuk melihat statistik.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl text-slate-800">Statistik per Kelas</CardTitle>
-            <CardDescription className="text-sm text-slate-600">
-              Hasil pemilihan berdasarkan kelas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                <Lock className="w-8 h-8 text-slate-400" />
-              </div>
-              <p className="font-medium mb-2 text-slate-800">Data Disembunyikan</p>
-              <p className="text-sm text-slate-600">
-                Voting sedang berlangsung. Nonaktifkan voting untuk melihat statistik.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
 
   if (!chartData) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-sm">
-          <CardContent className="pt-6">
-            <p className="text-center text-slate-500 py-8">Gagal memuat data chart</p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-sm">
-          <CardContent className="pt-6">
-            <p className="text-center text-slate-500 py-8">Gagal memuat data chart</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {[1, 2].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-6">
+              <p className="py-8 text-center text-muted-foreground">Gagal memuat data chart</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
 
   // Prepare data for kandidat votes chart by angkatan
   const totalAngkatanVotes = angkatanKandidatVotes.reduce((sum, k) => sum + k.jumlahSuara, 0)
-  const angkatanKandidatChartData = angkatanKandidatVotes
-    .filter(k => k.jumlahSuara > 0)
-    .map(item => ({
+  const angkatanKandidatChartData: VoteItem[] = angkatanKandidatVotes
+    .filter((k) => k.jumlahSuara > 0)
+    .map((item) => ({
       name: `No. ${item.nomorUrut} - ${item.namaCalon}`,
       value: item.jumlahSuara,
       percentage: totalAngkatanVotes > 0 ? Math.round((item.jumlahSuara / totalAngkatanVotes) * 100) : 0
@@ -269,9 +262,9 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
 
   // Prepare data for kandidat votes chart by kelas
   const totalKelasVotes = kelasKandidatVotes.reduce((sum, k) => sum + k.jumlahSuara, 0)
-  const kelasKandidatChartData = kelasKandidatVotes
-    .filter(k => k.jumlahSuara > 0)
-    .map(item => ({
+  const kelasKandidatChartData: VoteItem[] = kelasKandidatVotes
+    .filter((k) => k.jumlahSuara > 0)
+    .map((item) => ({
       name: `No. ${item.nomorUrut} - ${item.namaCalon}`,
       value: item.jumlahSuara,
       percentage: totalKelasVotes > 0 ? Math.round((item.jumlahSuara / totalKelasVotes) * 100) : 0
@@ -279,9 +272,9 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
 
   // Prepare data for Mitra Tama votes
   const totalMitraTamaVotes = mitraTamaVotes.reduce((sum, k) => sum + k.jumlahSuara, 0)
-  const mitraTamaChartData = mitraTamaVotes
-    .filter(k => k.jumlahSuara > 0)
-    .map(item => ({
+  const mitraTamaChartData: VoteItem[] = mitraTamaVotes
+    .filter((k) => k.jumlahSuara > 0)
+    .map((item) => ({
       name: `No. ${item.nomorUrut} - ${item.namaCalon}`,
       value: item.jumlahSuara,
       percentage: totalMitraTamaVotes > 0 ? Math.round((item.jumlahSuara / totalMitraTamaVotes) * 100) : 0
@@ -289,291 +282,206 @@ export default function StatistikCharts({ votingAktif, adminRole }: StatistikCha
 
   // Prepare data for Mitra Muda votes
   const totalMitraMudaVotes = mitraMudaVotes.reduce((sum, k) => sum + k.jumlahSuara, 0)
-  const mitraMudaChartData = mitraMudaVotes
-    .filter(k => k.jumlahSuara > 0)
-    .map(item => ({
+  const mitraMudaChartData: VoteItem[] = mitraMudaVotes
+    .filter((k) => k.jumlahSuara > 0)
+    .map((item) => ({
       name: `No. ${item.nomorUrut} - ${item.namaCalon}`,
       value: item.jumlahSuara,
       percentage: totalMitraMudaVotes > 0 ? Math.round((item.jumlahSuara / totalMitraMudaVotes) * 100) : 0
     }))
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border border-slate-200">
-          <p className="font-semibold text-slate-800">{data.name}</p>
-          <p className="text-sm text-slate-600">
-            {data.value} suara ({data.percentage}%)
-          </p>
-        </div>
-      )
-    }
-    return null
-  }
-
-  const renderCustomLabel = (entry: any) => {
-    return `${entry.percentage}%`
-  }
+  const renderPie = (data: VoteItem[]) => (
+    <ChartContainer config={chartConfig} className="mx-auto aspect-square h-80">
+      <PieChart>
+        <ChartTooltip
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null
+            const item = payload[0].payload as VoteItem
+            return (
+              <div className="rounded-lg border bg-background p-3 shadow-lg">
+                <p className="font-semibold">{item.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {item.value} suara ({item.percentage}%)
+                </p>
+              </div>
+            )
+          }}
+        />
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          labelLine={false}
+          label={(entry) => `${(entry as unknown as VoteItem).percentage}%`}
+          outerRadius={100}
+          dataKey="value"
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+          ))}
+        </Pie>
+        <ChartLegend
+          content={<ChartLegendContent nameKey="name" />}
+          className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
+        />
+      </PieChart>
+    </ChartContainer>
+  )
 
   return (
     <div className="space-y-6">
       {/* Row 1: Charts by Angkatan and Kelas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Chart 1: By Angkatan */}
-      <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-        <CardHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div>
-                <CardTitle className="text-lg sm:text-xl text-slate-800">Suara Kandidat per Angkatan</CardTitle>
-              </div>
-              <div className="flex gap-1.5 sm:gap-2 ml-auto">
-                <div className="flex-1 sm:flex-none sm:w-32">
-                  <Select value={selectedAngkatan} onValueChange={setSelectedAngkatan}>
-                    <SelectTrigger className="text-xs h-7 px-2">
-                      <SelectValue placeholder="Angkatan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {chartData?.byAngkatan.map((item) => (
-                        <SelectItem key={item.angkatan} value={item.angkatan}>
-                          Angkatan {item.angkatan}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Chart 1: By Angkatan */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <CardTitle className="text-lg sm:text-xl">Suara Kandidat per Angkatan</CardTitle>
+                <div className="ml-auto flex gap-1.5 sm:gap-2">
+                  <div className="flex-1 sm:w-32 sm:flex-none">
+                    <Select value={selectedAngkatan} onValueChange={setSelectedAngkatan}>
+                      <SelectTrigger className="h-7 px-2 text-xs">
+                        <SelectValue placeholder="Angkatan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chartData?.byAngkatan.map((item) => (
+                          <SelectItem key={item.angkatan} value={item.angkatan}>
+                            Angkatan {item.angkatan}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1 sm:w-32 sm:flex-none">
+                    <Select value={selectedAngkatanRole} onValueChange={setSelectedAngkatanRole}>
+                      <SelectTrigger className="h-7 px-2 text-xs">
+                        <SelectValue placeholder="Kategori" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="semua">Semua</SelectItem>
+                        <SelectItem value="mitratama">Mitra Tama</SelectItem>
+                        <SelectItem value="mitramuda">Mitra Muda</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex-1 sm:flex-none sm:w-32">
-                  <Select value={selectedAngkatanRole} onValueChange={setSelectedAngkatanRole}>
-                    <SelectTrigger className="text-xs h-7 px-2">
-                      <SelectValue placeholder="Kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="semua">Semua</SelectItem>
-                      <SelectItem value="mitratama">Mitra Tama</SelectItem>
-                      <SelectItem value="mitramuda">Mitra Muda</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+              <CardDescription>
+                Distribusi suara kandidat berdasarkan angkatan
+              </CardDescription>
             </div>
-            <CardDescription className="text-xs sm:text-sm text-slate-600">
-              Distribusi suara kandidat berdasarkan angkatan
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loadingAngkatanVotes ? (
-            <div className="flex items-center justify-center h-80">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : angkatanKandidatChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">Belum ada data voting untuk angkatan ini</p>
-          ) : (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={angkatanKandidatChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {angkatanKandidatChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value, entry: any) => `${value} (${entry.payload.value} suara)`}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {loadingAngkatanVotes ? (
+              <div className="flex h-80 items-center justify-center">
+                <Spinner className="size-8" />
+              </div>
+            ) : angkatanKandidatChartData.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">Belum ada data voting untuk angkatan ini</p>
+            ) : (
+              renderPie(angkatanKandidatChartData)
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Chart 2: By Kelas */}
-      <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-        <CardHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div>
-                <CardTitle className="text-lg sm:text-xl text-slate-800">Suara Kandidat per Kelas</CardTitle>
-              </div>
-              <div className="flex gap-1.5 sm:gap-2 ml-auto">
-                <div className="flex-1 sm:flex-none sm:w-32">
-                  <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                    <SelectTrigger className="text-xs h-7 px-2">
-                      <SelectValue placeholder="Kelas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {chartData?.byKelas.map((item) => (
-                        <SelectItem key={item.name} value={item.name}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* Chart 2: By Kelas */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <CardTitle className="text-lg sm:text-xl">Suara Kandidat per Kelas</CardTitle>
+                <div className="ml-auto flex gap-1.5 sm:gap-2">
+                  <div className="flex-1 sm:w-32 sm:flex-none">
+                    <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+                      <SelectTrigger className="h-7 px-2 text-xs">
+                        <SelectValue placeholder="Kelas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chartData?.byKelas.map((item) => (
+                          <SelectItem key={item.name} value={item.name}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1 sm:w-32 sm:flex-none">
+                    <Select value={selectedKelasRole} onValueChange={setSelectedKelasRole}>
+                      <SelectTrigger className="h-7 px-2 text-xs">
+                        <SelectValue placeholder="Kategori" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="semua">Semua</SelectItem>
+                        <SelectItem value="mitratama">Mitra Tama</SelectItem>
+                        <SelectItem value="mitramuda">Mitra Muda</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex-1 sm:flex-none sm:w-32">
-                  <Select value={selectedKelasRole} onValueChange={setSelectedKelasRole}>
-                    <SelectTrigger className="text-xs h-7 px-2">
-                      <SelectValue placeholder="Kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="semua">Semua</SelectItem>
-                      <SelectItem value="mitratama">Mitra Tama</SelectItem>
-                      <SelectItem value="mitramuda">Mitra Muda</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+              <CardDescription>
+                Distribusi suara kandidat berdasarkan kelas
+              </CardDescription>
             </div>
-            <CardDescription className="text-xs sm:text-sm text-slate-600">
-              Distribusi suara kandidat berdasarkan kelas
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loadingKelasVotes ? (
-            <div className="flex items-center justify-center h-80">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : kelasKandidatChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">Belum ada data voting untuk kelas ini</p>
-          ) : (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={kelasKandidatChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {kelasKandidatChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value, entry: any) => `${value} (${entry.payload.value} suara)`}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {loadingKelasVotes ? (
+              <div className="flex h-80 items-center justify-center">
+                <Spinner className="size-8" />
+              </div>
+            ) : kelasKandidatChartData.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">Belum ada data voting untuk kelas ini</p>
+            ) : (
+              renderPie(kelasKandidatChartData)
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Row 2: Charts by Role (Mitra Tama & Mitra Muda) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Chart 3: By Mitra Tama */}
-      <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl text-slate-800">Suara Kandidat Mitra Tama</CardTitle>
-          <CardDescription className="text-sm text-slate-600">
-            Distribusi suara kandidat Mitra Tama (Kelas XI)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingMitraTamaVotes ? (
-            <div className="flex items-center justify-center h-80">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
-          ) : mitraTamaChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">Belum ada data voting untuk Mitra Tama</p>
-          ) : (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={mitraTamaChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {mitraTamaChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#a855f7', '#ec4899', '#f97316', '#8b5cf6', '#d946ef', '#f43f5e', '#fb923c', '#fbbf24'][index % 8]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value, entry: any) => `${value} (${entry.payload.value} suara)`}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Chart 3: By Mitra Tama */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Suara Kandidat Mitra Tama</CardTitle>
+            <CardDescription>
+              Distribusi suara kandidat Mitra Tama (Kelas XI)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingMitraTamaVotes ? (
+              <div className="flex h-80 items-center justify-center">
+                <Spinner className="size-8" />
+              </div>
+            ) : mitraTamaChartData.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">Belum ada data voting untuk Mitra Tama</p>
+            ) : (
+              renderPie(mitraTamaChartData)
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Chart 4: By Mitra Muda */}
-      <Card className="rounded-sm bg-gradient-to-br from-white to-slate-50 border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl text-slate-800">Suara Kandidat Mitra Muda</CardTitle>
-          <CardDescription className="text-sm text-slate-600">
-            Distribusi suara kandidat Mitra Muda (Kelas X)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingMitraMudaVotes ? (
-            <div className="flex items-center justify-center h-80">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : mitraMudaChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">Belum ada data voting untuk Mitra Muda</p>
-          ) : (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={mitraMudaChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {mitraMudaChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#3b82f6', '#0ea5e9', '#06b6d4', '#00d4ff', '#4f46e5', '#1e40af', '#0369a1', '#0c4a6e'][index % 8]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value, entry: any) => `${value} (${entry.payload.value} suara)`}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Chart 4: By Mitra Muda */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl">Suara Kandidat Mitra Muda</CardTitle>
+            <CardDescription>
+              Distribusi suara kandidat Mitra Muda (Kelas X)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingMitraMudaVotes ? (
+              <div className="flex h-80 items-center justify-center">
+                <Spinner className="size-8" />
+              </div>
+            ) : mitraMudaChartData.length === 0 ? (
+              <p className="py-8 text-center text-muted-foreground">Belum ada data voting untuk Mitra Muda</p>
+            ) : (
+              renderPie(mitraMudaChartData)
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
