@@ -35,16 +35,10 @@ const nextConfig: NextConfig = {
         aggregateTimeout: 300,
         ignored: ['**/node_modules', '**/.next'],
       };
-      
-      // Fast refresh
-      config.devtool = 'cheap-module-source-map';
     }
     
     return config;
   },
-  
-  // SWC optimization (built-in, faster than Babel)
-  swcMinify: true,
   
   // Experimental speedup
   experimental: {
