@@ -16,7 +16,6 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, Key, Copy, Printer
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import DashboardHeader from '@/components/admin/DashboardHeader'
 import VoterCard from '@/components/admin/VoterCard'
 import { toast } from 'sonner'
 
@@ -529,10 +528,9 @@ export default function SiswaManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
-      <DashboardHeader admin={admin} onLogout={handleLogout} />
+    <div className="flex flex-1 flex-col gap-6">
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="contents">
         {/* Statistik Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Card className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-sm bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200">
@@ -1529,7 +1527,7 @@ export default function SiswaManagementPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
 
       {/* Print Area - Hidden on screen, visible on print */}
       <div className="print-only">

@@ -15,7 +15,6 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Image from 'next/image'
-import DashboardHeader from '@/components/admin/DashboardHeader'
 
 interface Admin {
   id: number
@@ -321,10 +320,9 @@ export default function KandidatManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
-      <DashboardHeader admin={admin} onLogout={handleLogout} />
+    <div className="flex flex-1 flex-col gap-6">
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="contents">
         {/* Actions */}
         <Card className="rounded-sm mb-6">
           <CardHeader>
@@ -578,7 +576,7 @@ export default function KandidatManagementPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import DashboardHeader from '@/components/admin/DashboardHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -551,8 +550,7 @@ export default function PegawaiPage() {
   }, [searchQuery, roleFilter])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
-      <DashboardHeader admin={admin} onLogout={handleLogout} />
+    <div className="flex flex-1 flex-col gap-6">
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="mb-8">
