@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 import {
   Camera, Keyboard, CheckCircle, XCircle, User, Vote, ArrowRight,
-  ScanLine, RotateCcw, TriangleAlert, Users,
+  ScanLine, RotateCcw, TriangleAlert, Users, SwitchCamera, Maximize, Minimize,
 } from 'lucide-react'
 
 interface Kandidat {
@@ -66,6 +66,15 @@ export default function KioskPage() {
   const lastScanRef = useRef<{ nis: string; at: number }>({ nis: '', at: 0 })
   const stepRef = useRef<Step>('scan')
   stepRef.current = step
+
+  // Kamera: pilihan depan/belakang + mode layar penuh
+  const [facing, setFacing] = useState<'environment' | 'user'>('environment')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const camWrapRef = useRef<HTMLDivElement>(null)
+  // Mengganti kamera = stop() lalu start() pada elemen DOM yang sama.
+  // html5-qrcode menolak start kalau elemen belum benar-benar dibersihkan,
+  // jadi stop sebelumnya di-await dulu.
+  const stopPromiseRef = useRef<Promise<unknown> | null>(null)
 
   /* ============ RESET ============ */
   const resetToScan = useCallback(() => {
@@ -206,7 +215,24 @@ export default function KioskPage() {
 
     let cancelled = false
 
+    // Elemen #kiosk-qr-reader dipakai ulang saat mengganti kamera. Kalau
+    // scanner lama masih hidup, start() baru langsung gagal — jadi tunggu
+    // proses stop selesai dulu.
+    const stopPrevious = async () => {
+      const scanner = scannerRef.current
+      scannerRef.current = null
+      if (!scanner) return
+      try {
+        await scanner.stop()
+        await scanner.clear()
+      } catch {
+        // scanner memang belum/tidak jalan — aman diabaikan
+      }
+    }
+
     const startScanner = async () => {
+      await stopPromiseRef.current
+      if (cancelled) return
       try {
         const { Html5Qrcode } = await import('html5-qrcode')
         if (cancelled) return
@@ -218,13 +244,14 @@ export default function KioskPage() {
         scannerRef.current = scanner
 
         await scanner.start(
-          { facingMode: 'environment' },
+          { facingMode: facing },
           {
             fps: 10,
             qrbox: (vw: number, vh: number) => {
               const size = Math.floor(Math.min(vw, vh) * 0.7)
               return { width: size, height: size }
             },
+            aspectRatio: 1,
           },
           (decodedText: string) => {
             // QR berisi qr_id (UUID) untuk kartu baru, atau NIS untuk kartu lama
@@ -241,35 +268,60 @@ export default function KioskPage() {
         console.error('Kamera gagal:', err)
         if (!cancelled) {
           setScanError(
-            'Kamera tidak dapat diakses (butuh HTTPS/izin). Gunakan mode Manual atau Scanner USB.'
+            `Kamera ${facing === 'user' ? 'depan' : 'belakang'} tidak dapat diakses. ` +
+              'Coba ganti kamera, atau pakai mode Manual / Scanner USB.'
           )
         }
       }
     }
 
     // Delay kecil agar DOM siap
-    const t = setTimeout(startScanner, 300)
+    const p = (async () => {
+      await new Promise((r) => setTimeout(r, 300))
+      if (!cancelled) await startScanner()
+    })()
+    stopPromiseRef.current = p
 
     return () => {
       cancelled = true
-      clearTimeout(t)
-      const scanner = scannerRef.current
-      scannerRef.current = null
-      if (scanner) {
-        // scanner.stop() bisa MELEMPAR sinkron ("Cannot stop, scanner is not
-        // running or paused") ketika kamera gagal start — .catch() tidak
-        // menangkapnya, halaman jadi client-side exception saat pindah mode.
-        try {
-          scanner
-            .stop()
-            .then(() => scanner.clear())
-            .catch(() => {})
-        } catch {
-          // scanner memang belum jalan — tidak ada yang perlu dihentikan
-        }
-      }
+      // scanner.stop() bisa MELEMPAR sinkron ("Cannot stop, scanner is not
+      // running or paused") ketika kamera gagal start — .catch() tidak
+      // menangkapnya, halaman jadi client-side exception saat pindah mode.
+      stopPromiseRef.current = stopPrevious()
     }
-  }, [step, scanMode, authenticateNis])
+  }, [step, scanMode, facing, authenticateNis])
+
+  /* ============ LAYAR PENUH UNTUK AREA KAMERA ============ */
+  const toggleFullscreen = useCallback(async () => {
+    const el = camWrapRef.current
+    if (!el) return
+    try {
+      if (!document.fullscreenElement) {
+        await el.requestFullscreen()
+        setIsFullscreen(true)
+      } else {
+        await document.exitFullscreen()
+        setIsFullscreen(false)
+      }
+    } catch (err) {
+      console.error('Layar penuh gagal:', err)
+    }
+  }, [])
+
+  // Sinkronkan state kalau user keluar fullscreen lewat Esc / tombol sistem
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  // Keluar fullscreen otomatis kalau langkah berpindah dari 'scan' (mis. kartu
+  // terbaca) supaya layar konfirmasi tidak terkurung di area kamera.
+  useEffect(() => {
+    if (step !== 'scan' && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    }
+  }, [step])
 
   /* ============ AUTO-CLOSE SETELAH SELESAI ============ */
   useEffect(() => {
@@ -311,34 +363,35 @@ export default function KioskPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-indigo-50 dark:from-slate-950 dark:via-sky-950/30 dark:to-indigo-950/30">
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow">
+      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow">
               <Vote className="size-5" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold leading-tight sm:text-base">Bilik Voting</h1>
-              <p className="text-[11px] text-muted-foreground">E-Voting OSIS</p>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-bold leading-tight sm:text-base">Bilik Voting</h1>
+              <p className="truncate text-[11px] text-muted-foreground">E-Voting OSIS</p>
             </div>
           </div>
-          <Badge variant="outline" className="gap-1">
+          <Badge variant="outline" className="shrink-0 gap-1">
             <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
             Siap
           </Badge>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6">
 
         {/* ================= STEP: SCAN ================= */}
         {step === 'scan' && (
           <div className="space-y-4">
             {/* Mode switch */}
-            <div className="flex justify-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-center">
               <Button
                 variant={scanMode === 'camera' ? 'default' : 'outline'}
-                size="sm"
+                size="lg"
+                className="w-full sm:w-auto"
                 onClick={() => setScanMode('camera')}
               >
                 <Camera />
@@ -346,28 +399,87 @@ export default function KioskPage() {
               </Button>
               <Button
                 variant={scanMode === 'manual' ? 'default' : 'outline'}
-                size="sm"
+                size="lg"
+                className="w-full sm:w-auto"
                 onClick={() => setScanMode('manual')}
               >
                 <Keyboard />
-                Manual / Scanner USB
+                <span className="truncate">Manual / Scanner USB</span>
               </Button>
             </div>
 
             <Card className="overflow-hidden">
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center gap-2 text-xl">
-                  <ScanLine className="size-6 text-sky-500" />
+              <CardHeader className="px-4 text-center sm:px-6">
+                <CardTitle className="flex items-center justify-center gap-2 text-lg sm:text-xl">
+                  <ScanLine className="size-5 shrink-0 text-sky-500 sm:size-6" />
                   Scan Kartu QR
                 </CardTitle>
-                <CardDescription>
-                  Arahkan QR Code siswa ke kamera. Setelah muncul nama siswa, pastikan sesuai lalu tekan &quot;Mulai Memilih&quot;.
+                <CardDescription className="text-xs sm:text-sm">
+                  Arahkan QR Code ke kamera. Setelah muncul nama, pastikan sesuai lalu tekan
+                  &quot;Mulai Memilih&quot;.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 px-3 sm:px-6">
                 {scanMode === 'camera' ? (
-                  <div className="overflow-hidden rounded-xl border-2 border-dashed border-sky-300 bg-black/5">
-                    <div id="kiosk-qr-reader" className="mx-auto w-full max-w-md" />
+                  <div
+                    ref={camWrapRef}
+                    className={
+                      isFullscreen
+                        ? 'flex h-screen w-screen flex-col justify-center bg-black p-3'
+                        : 'space-y-3'
+                    }
+                  >
+                    <div
+                      className={
+                        isFullscreen
+                          ? 'relative overflow-hidden rounded-xl border-2 border-sky-400/40 bg-black'
+                          : 'relative overflow-hidden rounded-xl border-2 border-dashed border-sky-300 bg-black/5'
+                      }
+                    >
+                      <div
+                        id="kiosk-qr-reader"
+                        className={
+                          isFullscreen
+                            ? 'mx-auto w-full [&_video]:!w-full [&_video]:!object-cover'
+                            : 'mx-auto w-full max-w-md'
+                        }
+                        style={
+                          // Kamera depan di-mirror supaya gerak panitia terasa
+                          // natural. Tidak memengaruhi pembacaan QR.
+                          facing === 'user' ? { transform: 'scaleX(-1)' } : undefined
+                        }
+                      />
+                    </div>
+
+                    <div
+                      className={
+                        isFullscreen
+                          ? 'mt-3 flex justify-center gap-2'
+                          : 'flex flex-wrap justify-center gap-2'
+                      }
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setFacing((f) => (f === 'environment' ? 'user' : 'environment'))
+                        }
+                      >
+                        <SwitchCamera />
+                        {facing === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={toggleFullscreen}>
+                        {isFullscreen ? <Minimize /> : <Maximize />}
+                        {isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
+                      </Button>
+                    </div>
+
+                    {!isFullscreen && (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Kamera aktif: <strong>{facing === 'user' ? 'Depan' : 'Belakang'}</strong>. Pakai
+                        Layar Penuh agar QR lebih mudah dibidik.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <form
@@ -382,10 +494,10 @@ export default function KioskPage() {
                       value={manualNis}
                       onChange={(e) => setManualNis(e.target.value)}
                       placeholder="Scan QR, atau ketik kode / NIS lalu Enter"
-                      className="h-12 text-center text-lg font-bold tracking-widest"
+                      className="h-12 text-center text-base font-bold tracking-wider sm:text-lg"
                       autoFocus
                     />
-                    <Button type="submit" className="h-12" disabled={isAuthenticating}>
+                    <Button type="submit" className="h-12 shrink-0" disabled={isAuthenticating}>
                       {isAuthenticating ? <Spinner className="size-5" /> : <ArrowRight />}
                       Proses
                     </Button>
@@ -402,7 +514,7 @@ export default function KioskPage() {
                 {scanError && (
                   <Alert variant="destructive">
                     <TriangleAlert className="size-4" />
-                    <AlertDescription>{scanError}</AlertDescription>
+                    <AlertDescription className="text-xs sm:text-sm">{scanError}</AlertDescription>
                   </Alert>
                 )}
               </CardContent>
@@ -412,16 +524,16 @@ export default function KioskPage() {
 
         {/* ================= STEP: CONFIRM ================= */}
         {step === 'confirm' && siswa && (
-          <Card className="mx-auto max-w-lg border-2 border-sky-200 shadow-lg dark:border-sky-900">
-            <CardHeader className="text-center">
+          <Card className="mx-auto w-full max-w-lg border-2 border-sky-200 shadow-lg dark:border-sky-900">
+            <CardHeader className="px-4 text-center sm:px-6">
               <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg">
                 <User className="size-8" />
               </div>
               <CardDescription>Pastikan ini benar identitas Anda</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-center">
+            <CardContent className="space-y-4 px-4 text-center sm:px-6">
               <div className="space-y-1">
-                <h2 className="text-2xl font-bold sm:text-3xl">{siswa.namaLengkap}</h2>
+                <h2 className="text-xl font-bold leading-tight sm:text-3xl">{siswa.namaLengkap}</h2>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {siswa.type === 'siswa' ? (
                     <Badge variant="secondary">NIS: {siswa.nis}</Badge>
@@ -445,11 +557,11 @@ export default function KioskPage() {
               </Alert>
 
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" className="flex-1" onClick={resetToScan}>
+                <Button variant="outline" size="lg" className="w-full sm:flex-1" onClick={resetToScan}>
                   <RotateCcw />
                   Batal
                 </Button>
-                <Button className="flex-1" onClick={startVoting}>
+                <Button size="lg" className="w-full sm:flex-1" onClick={startVoting}>
                   <Vote />
                   Mulai Memilih
                 </Button>
@@ -462,13 +574,15 @@ export default function KioskPage() {
         {step === 'voting' && siswa && (
           <div className="space-y-4">
             <Card>
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-2">
-                  <User className="size-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{siswa.namaLengkap}</span>
-                  <Badge variant="secondary" className="text-xs">{siswa.kelas}</Badge>
+              <CardContent className="flex items-center justify-between gap-2 px-3 py-3 sm:px-6">
+                <div className="flex min-w-0 items-center gap-2">
+                  <User className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm font-medium">{siswa.namaLengkap}</span>
+                  <Badge variant="secondary" className="hidden shrink-0 text-xs sm:inline-flex">
+                    {siswa.kelas}
+                  </Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={resetToScan}>
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={resetToScan}>
                   <RotateCcw />
                   Batal
                 </Button>
@@ -491,13 +605,13 @@ export default function KioskPage() {
 
                   return (
                     <div key={roleType}>
-                      <div className="mb-3 flex items-center gap-3">
+                      <div className="mb-3 flex items-center gap-2 sm:gap-3">
                         <Badge
                           variant="outline"
                           className={
                             isMuda
-                              ? 'border-cyan-300 bg-cyan-100 px-3 py-1 font-bold text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-100'
-                              : 'border-fuchsia-300 bg-fuchsia-100 px-3 py-1 font-bold text-fuchsia-800 dark:bg-fuchsia-900/60 dark:text-fuchsia-100'
+                              ? 'border-cyan-300 bg-cyan-100 px-2 py-1 text-xs font-bold text-cyan-800 sm:px-3 sm:text-sm dark:bg-cyan-900/60 dark:text-cyan-100'
+                              : 'border-fuchsia-300 bg-fuchsia-100 px-2 py-1 text-xs font-bold text-fuchsia-800 sm:px-3 sm:text-sm dark:bg-fuchsia-900/60 dark:text-fuchsia-100'
                           }
                         >
                           {label}
@@ -511,7 +625,7 @@ export default function KioskPage() {
                             <Card
                               key={k.id}
                               onClick={() => selectKandidat(k)}
-                              className={`cursor-pointer overflow-hidden transition-all ${
+                              className={`cursor-pointer overflow-hidden transition-all active:scale-[0.98] ${
                                 isSelected
                                   ? isMuda
                                     ? 'border-2 border-cyan-500 ring-2 ring-cyan-300'
@@ -519,7 +633,7 @@ export default function KioskPage() {
                                   : 'hover:shadow-md'
                               }`}
                             >
-                              <div className="relative h-40 bg-muted">
+                              <div className="relative h-32 bg-muted sm:h-40">
                                 {k.fotoUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={k.fotoUrl} alt={k.namaCalon} className="size-full object-cover" />
@@ -537,8 +651,10 @@ export default function KioskPage() {
                                   <Badge className="text-xs">No. {k.nomorUrut}</Badge>
                                 </div>
                               </div>
-                              <CardContent className="p-3">
-                                <p className="text-center text-sm font-bold leading-tight">{k.namaCalon}</p>
+                              <CardContent className="p-2 sm:p-3">
+                                <p className="text-center text-xs font-bold leading-tight sm:text-sm">
+                                  {k.namaCalon}
+                                </p>
                               </CardContent>
                             </Card>
                           )
@@ -555,7 +671,7 @@ export default function KioskPage() {
                   </Alert>
                 )}
 
-                <div className="sticky bottom-0 border-t bg-background/95 py-3 backdrop-blur">
+                <div className="sticky bottom-0 border-t bg-background/95 px-3 py-3 backdrop-blur sm:px-0">
                   <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded-lg border bg-muted/40 p-2">
                       <p className="text-muted-foreground">Mitra Tama</p>
@@ -567,7 +683,8 @@ export default function KioskPage() {
                     </div>
                   </div>
                   <Button
-                    className="h-12 w-full text-base font-semibold"
+                    className="h-14 w-full text-base font-semibold"
+                    size="lg"
                     onClick={submitVote}
                     disabled={!canSubmit || isVoting}
                   >
@@ -591,24 +708,24 @@ export default function KioskPage() {
 
         {/* ================= STEP: DONE ================= */}
         {step === 'done' && (
-          <Card className="mx-auto max-w-md border-2 border-emerald-200 text-center shadow-lg dark:border-emerald-900">
-            <CardContent className="space-y-4 py-10">
+          <Card className="mx-auto w-full max-w-md border-2 border-emerald-200 text-center shadow-lg dark:border-emerald-900">
+            <CardContent className="space-y-4 px-4 py-8 sm:px-6 sm:py-10">
               <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-lg">
                 <CheckCircle className="size-10" />
               </div>
-              <h2 className="text-2xl font-bold">Terima Kasih!</h2>
+              <h2 className="text-xl font-bold sm:text-2xl">Terima Kasih!</h2>
               <p className="text-muted-foreground">Suara Anda sudah tersimpan.</p>
               <Alert>
                 <AlertDescription className="text-center text-sm">
                   Kembali ke layar scan dalam{' '}
                   <span className="text-lg font-bold text-foreground">{countdown}</span> detik
                   <br />
-                  <span className="text-xs">Silakan siswa berikutnya bersiap.</span>
+                  <span className="text-xs">Silakan pemilih berikutnya bersiap.</span>
                 </AlertDescription>
               </Alert>
-              <Button className="w-full" onClick={resetToScan}>
+              <Button size="lg" className="w-full" onClick={resetToScan}>
                 <RotateCcw />
-                Scan Siswa Berikutnya
+                Scan Pemilih Berikutnya
               </Button>
             </CardContent>
           </Card>
@@ -616,7 +733,7 @@ export default function KioskPage() {
       </main>
 
       {/* Footer hint */}
-      <footer className="mx-auto max-w-5xl px-4 pb-6">
+      <footer className="mx-auto max-w-5xl px-3 pb-6 sm:px-4">
         <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
           <Users className="size-3.5" />
           Satu siswa satu suara — jangan tinggalkan bilik saat proses.
