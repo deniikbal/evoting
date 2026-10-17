@@ -275,12 +275,14 @@ export default function KioskPage() {
       }
     }
 
-    // Delay kecil agar DOM siap
-    const p = (async () => {
+    // Delay kecil agar DOM siap. stopPromiseRef SENGAJA tidak diisi promise
+    // start ini: startScanner menunggu stopPromiseRef (milik cleanup
+    // sebelumnya). Mengisinya dengan promise sendiri = deadlock, kamera tidak
+    // pernah menyala.
+    ;(async () => {
       await new Promise((r) => setTimeout(r, 300))
       if (!cancelled) await startScanner()
-    })()
-    stopPromiseRef.current = p
+    })().catch((err) => console.error('Scanner start gagal:', err))
 
     return () => {
       cancelled = true
