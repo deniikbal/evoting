@@ -1,17 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 import {
   Camera, Keyboard, CheckCircle, XCircle, User, Vote, ArrowRight,
   ScanLine, RotateCcw, TriangleAlert, Users, SwitchCamera, Maximize, Minimize,
+  ShieldCheck, Lock, Sparkles, ChevronLeft,
 } from 'lucide-react'
+import { Panel, ToolButton, StepTag } from './ui'
 
 interface Kandidat {
   id: number
@@ -33,7 +29,6 @@ interface VoterInfo {
 }
 
 type Step = 'scan' | 'confirm' | 'voting' | 'done'
-type ScanMode = 'camera' | 'manual'
 
 // Setelah suara tersimpan, layar "Terima Kasih" hanya tampil sebentar lalu
 // langsung balik ke kamera supaya antrean cepat.
@@ -41,10 +36,8 @@ const AUTOCLOSE_SECONDS = 1
 
 export default function KioskPage() {
   const [step, setStep] = useState<Step>('scan')
-  const [scanMode, setScanMode] = useState<ScanMode>('camera')
 
   // Scan input
-  const [manualNis, setManualNis] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [scanError, setScanError] = useState('')
 
@@ -64,7 +57,6 @@ export default function KioskPage() {
 
   // Scanner refs
   const scannerRef = useRef<any>(null)
-  const manualInputRef = useRef<HTMLInputElement>(null)
   const lastScanRef = useRef<{ nis: string; at: number }>({ nis: '', at: 0 })
   const stepRef = useRef<Step>('scan')
   stepRef.current = step
@@ -87,9 +79,7 @@ export default function KioskPage() {
     setSelectedMitraMuda(null)
     setVoteError('')
     setScanError('')
-    setManualNis('')
     setCountdown(AUTOCLOSE_SECONDS)
-    setTimeout(() => manualInputRef.current?.focus(), 100)
   }, [])
 
   /* ============ AUTH QR (qr_id / NIS lama) ============ */
@@ -126,7 +116,6 @@ export default function KioskPage() {
       }
 
       setSiswa(data.voter)
-      setManualNis('')
       setStep('confirm')
     } catch (err) {
       setScanError('Terjadi kesalahan. Coba lagi.')
@@ -211,7 +200,7 @@ export default function KioskPage() {
   /* ============ CAMERA SCANNER (html5-qrcode) ============ */
   useEffect(() => {
     // Hanya aktifkan kamera saat step=scan & mode=camera
-    if (step !== 'scan' || scanMode !== 'camera') {
+    if (step !== 'scan') {
       return
     }
 
@@ -293,7 +282,7 @@ export default function KioskPage() {
       // menangkapnya, halaman jadi client-side exception saat pindah mode.
       stopPromiseRef.current = stopPrevious()
     }
-  }, [step, scanMode, facing, authenticateNis])
+  }, [step, facing, authenticateNis])
 
   /* ============ LAYAR PENUH (SELURUH HALAMAN) ============ */
   // Dulu yang di-fullscreen hanya kotak kamera. Akibatnya: begitu panitia
@@ -345,13 +334,6 @@ export default function KioskPage() {
     return () => clearInterval(interval)
   }, [step, resetToScan])
 
-  /* ============ FOCUS INPUT MANUAL ============ */
-  useEffect(() => {
-    if (step === 'scan' && scanMode === 'manual') {
-      manualInputRef.current?.focus()
-    }
-  }, [step, scanMode])
-
   /* ============ PILIH KANDIDAT ============ */
   const selectKandidat = (k: Kandidat) => {
     if (k.role === 'mitratama') {
@@ -365,35 +347,77 @@ export default function KioskPage() {
 
   /* ============ RENDER ============ */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-indigo-50 dark:from-slate-950 dark:via-sky-950/30 dark:to-indigo-950/30">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
               <Vote className="size-5" />
             </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold leading-tight sm:text-base">Bilik Voting</h1>
-              <p className="truncate text-[11px] text-muted-foreground">E-Voting OSIS</p>
+            <div className="min-w-0 leading-tight">
+              <h1 className="truncate text-[15px] font-bold text-slate-900 sm:text-base">
+                Bilik Voting
+              </h1>
+              <p className="truncate text-xs font-medium text-slate-500">
+                Pemilihan Ketua OSIS · SMAN 1 Bantarujeg
+              </p>
             </div>
           </div>
-          <Badge variant="outline" className="shrink-0 gap-1">
-            <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
-            Siap
-          </Badge>
-          {isFullscreen && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-              onClick={toggleFullscreen}
-              title="Keluar layar penuh (Esc)"
-            >
-              <Minimize />
-              <span className="hidden sm:inline">Keluar</span>
-            </Button>
-          )}
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              Siap
+            </span>
+            {isFullscreen && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                title="Keluar layar penuh (Esc)"
+                className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              >
+                <Minimize className="size-4" />
+                <span className="sr-only">Keluar layar penuh</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Penanda tahap: satu garis, selalu tahu posisi */}
+        <div className="mx-auto flex max-w-5xl items-center gap-2 border-t border-slate-100 px-3 py-2 sm:px-4">
+          {([
+            ['scan', 'Pindai Kartu'],
+            ['confirm', 'Konfirmasi'],
+            ['voting', 'Pilih Kandidat'],
+          ] as const).map(([key, label], i) => {
+            const order = ['scan', 'confirm', 'voting', 'done']
+            const aktifIdx = order.indexOf(step)
+            const iniIdx = order.indexOf(key)
+            const lewat = aktifIdx > iniIdx
+            const aktif = aktifIdx === iniIdx
+            return (
+              <div key={key} className="flex flex-1 items-center gap-2">
+                <span
+                  className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                    lewat || aktif
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-400'
+                  }`}
+                >
+                  {lewat ? '✓' : i + 1}
+                </span>
+                <span
+                  className={`truncate text-xs font-semibold ${
+                    aktif ? 'text-indigo-700' : lewat ? 'text-slate-500' : 'text-slate-400'
+                  }`}
+                >
+                  {label}
+                </span>
+                {i < 2 && <span className="h-px flex-1 bg-slate-200" />}
+              </div>
+            )
+          })}
         </div>
       </header>
 
@@ -405,184 +429,178 @@ export default function KioskPage() {
 
         {/* ================= STEP: SCAN ================= */}
         {step === 'scan' && (
-          <div className="space-y-4">
-            {/* Mode switch */}
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-center">
-              <Button
-                variant={scanMode === 'camera' ? 'default' : 'outline'}
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={() => setScanMode('camera')}
-              >
-                <Camera />
-                Kamera
-              </Button>
-              <Button
-                variant={scanMode === 'manual' ? 'default' : 'outline'}
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={() => setScanMode('manual')}
-              >
-                <Keyboard />
-                <span className="truncate">Manual / Scanner USB</span>
-              </Button>
-            </div>
-
-            <Card className="overflow-hidden">
-              <CardHeader className="px-4 text-center sm:px-6">
-                <CardTitle className="flex items-center justify-center gap-2 text-lg sm:text-xl">
-                  <ScanLine className="size-5 shrink-0 text-sky-500 sm:size-6" />
-                  Scan Kartu QR
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Arahkan QR Code ke kamera. Setelah muncul nama, pastikan sesuai lalu tekan
-                  &quot;Mulai Memilih&quot;.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 px-3 sm:px-6">
-                {scanMode === 'camera' ? (
-                  <div ref={camWrapRef} className="space-y-3">
-                    <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-sky-300 bg-black/5">
-                      <div
-                        id="kiosk-qr-reader"
-                        className="mx-auto w-full max-w-md"
-                        style={
-                          // Kamera depan di-mirror supaya gerak panitia terasa
-                          // natural. Tidak memengaruhi pembacaan QR.
-                          facing === 'user' ? { transform: 'scaleX(-1)' } : undefined
-                        }
-                      />
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setFacing((f) => (f === 'environment' ? 'user' : 'environment'))
-                        }
-                      >
-                        <SwitchCamera />
-                        {facing === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={toggleFullscreen}>
-                        {isFullscreen ? <Minimize /> : <Maximize />}
-                        {isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
-                      </Button>
-                    </div>
-
-                    <p className="text-center text-xs text-muted-foreground">
-                      Kamera aktif: <strong>{facing === 'user' ? 'Depan' : 'Belakang'}</strong>. Pakai
-                      Layar Penuh agar semua langkah tampil penuh.
-                    </p>
+          <div className="mx-auto w-full max-w-2xl space-y-4">
+            <Panel className="overflow-hidden">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <ScanLine className="size-4 shrink-0 text-indigo-600" />
+                    <h2 className="text-sm font-bold text-slate-900 sm:text-[15px]">
+                      Pindai Kartu Pemilih
+                    </h2>
                   </div>
-                ) : (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      authenticateNis(manualNis)
-                    }}
-                    className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row"
-                  >
-                    <Input
-                      ref={manualInputRef}
-                      value={manualNis}
-                      onChange={(e) => setManualNis(e.target.value)}
-                      placeholder="Scan QR, atau ketik kode / NIS lalu Enter"
-                      className="h-12 text-center text-base font-bold tracking-wider sm:text-lg"
-                      autoFocus
+                  <p className="mt-1 text-xs text-slate-500">
+                    Arahkan QR ke kamera. Nama pemilih akan muncul untuk diperiksa panitia.
+                  </p>
+                </div>
+                <StepTag>Langkah 1</StepTag>
+              </div>
+
+              <div className="px-3 py-4 sm:px-5">
+                <div ref={camWrapRef} className="space-y-3">
+                  <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-slate-900 ring-1 ring-slate-900/10">
+                    {/* Sudut bingkai bidik — petunjuk visual tanpa menutupi kamera */}
+                    <div className="pointer-events-none absolute inset-0 z-10">
+                      <span className="absolute left-3 top-3 size-6 rounded-tl-lg border-l-2 border-t-2 border-white/80" />
+                      <span className="absolute right-3 top-3 size-6 rounded-tr-lg border-r-2 border-t-2 border-white/80" />
+                      <span className="absolute bottom-3 left-3 size-6 rounded-bl-lg border-b-2 border-l-2 border-white/80" />
+                      <span className="absolute bottom-3 right-3 size-6 rounded-br-lg border-b-2 border-r-2 border-white/80" />
+                    </div>
+                    <div
+                      id="kiosk-qr-reader"
+                      className="mx-auto w-full [&_video]:block [&_video]:w-full"
+                      style={
+                        // Kamera depan di-mirror supaya gerak terasa natural.
+                        // Tidak memengaruhi pembacaan QR.
+                        facing === 'user' ? { transform: 'scaleX(-1)' } : undefined
+                      }
                     />
-                    <Button type="submit" className="h-12 shrink-0" disabled={isAuthenticating}>
-                      {isAuthenticating ? <Spinner className="size-5" /> : <ArrowRight />}
-                      Proses
-                    </Button>
-                  </form>
-                )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <ToolButton
+                      onClick={() =>
+                        setFacing((f) => (f === 'environment' ? 'user' : 'environment'))
+                      }
+                      icon={<SwitchCamera />}
+                      title="Ganti kamera depan/belakang"
+                    >
+                      {facing === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
+                    </ToolButton>
+                    <ToolButton
+                      onClick={toggleFullscreen}
+                      icon={isFullscreen ? <Minimize /> : <Maximize />}
+                      title="Layar penuh untuk semua langkah"
+                    >
+                      {isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
+                    </ToolButton>
+                  </div>
+
+                  <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
+                    <Camera className="size-3.5" />
+                    Kamera {facing === 'user' ? 'depan' : 'belakang'} aktif
+                  </p>
+                </div>
 
                 {isAuthenticating && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-500">
                     <Spinner className="size-4" />
-                    Memeriksa kode QR...
+                    Memeriksa kartu…
                   </div>
                 )}
 
                 {scanError && (
-                  <Alert variant="destructive">
-                    <TriangleAlert className="size-4" />
-                    <AlertDescription className="text-xs sm:text-sm">{scanError}</AlertDescription>
-                  </Alert>
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                    <p className="text-xs leading-relaxed text-rose-800 sm:text-sm">{scanError}</p>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 text-xs text-slate-500 sm:px-5">
+                <ShieldCheck className="size-3.5 shrink-0 text-emerald-600" />
+                Satu pemilih satu suara. Panitia wajib memeriksa identitas sebelum memulai.
+              </div>
+            </Panel>
           </div>
         )}
 
         {/* ================= STEP: CONFIRM ================= */}
         {step === 'confirm' && siswa && (
-          <Card className="mx-auto w-full max-w-lg border-2 border-sky-200 shadow-lg dark:border-sky-900">
-            <CardHeader className="px-4 text-center sm:px-6">
-              <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg">
-                <User className="size-8" />
+          <Panel className="mx-auto w-full max-w-lg overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-sky-500 to-teal-400" />
+
+            <div className="px-4 pb-5 pt-6 text-center sm:px-6">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                <User className="size-7" />
               </div>
-              <CardDescription>Pastikan ini benar identitas Anda</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 px-4 text-center sm:px-6">
-              <div className="space-y-1">
-                <h2 className="text-xl font-bold leading-tight sm:text-3xl">{siswa.namaLengkap}</h2>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {siswa.type === 'siswa' ? (
-                    <Badge variant="secondary">NIS: {siswa.nis}</Badge>
-                  ) : (
-                    <Badge variant="secondary">
-                      {siswa.type === 'guru' ? 'GURU' : 'TENAGA KEPENDIDIKAN'}
-                    </Badge>
-                  )}
-                  <Badge variant="outline">
-                    {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
-                  </Badge>
-                </div>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Langkah 2 · Konfirmasi identitas
+              </p>
+              <h2 className="mt-1.5 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
+                {siswa.namaLengkap}
+              </h2>
+
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                {siswa.type === 'siswa' ? (
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-semibold text-slate-700">
+                    NIS {siswa.nis}
+                  </span>
+                ) : (
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                    {siswa.type === 'guru' ? 'Guru' : 'Tenaga Kependidikan'}
+                  </span>
+                )}
+                <span className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                  {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
+                </span>
               </div>
 
-              <Alert>
-                <TriangleAlert className="size-4" />
-                <AlertDescription className="text-left text-xs">
-                  <strong>Perhatian panitia:</strong> cek nama di layar sudah sesuai dengan pemilih yang berdiri di depan.
-                  Jika bukan, tekan Batal.
-                </AlertDescription>
-              </Alert>
+              <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-left">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <p className="text-xs leading-relaxed text-amber-900">
+                  <strong className="font-semibold">Periksa dulu:</strong> pastikan wajah pemilih di
+                  depan cocok dengan nama di atas. Kalau bukan, tekan Batal.
+                </p>
+              </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" size="lg" className="w-full sm:flex-1" onClick={resetToScan}>
-                  <RotateCcw />
-                  Batal
-                </Button>
-                <Button size="lg" className="w-full sm:flex-1" onClick={startVoting}>
-                  <Vote />
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={startVoting}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 sm:flex-1"
+                >
+                  <Vote className="size-4" />
                   Mulai Memilih
-                </Button>
+                </button>
+                <button
+                  type="button"
+                  onClick={resetToScan}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-[15px] font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 sm:flex-1"
+                >
+                  <ChevronLeft className="size-4" />
+                  Batal
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </Panel>
         )}
 
         {/* ================= STEP: VOTING ================= */}
         {step === 'voting' && siswa && (
           <div className="space-y-4">
-            <Card>
-              <CardContent className="flex items-center justify-between gap-2 px-3 py-3 sm:px-6">
-                <div className="flex min-w-0 items-center gap-2">
-                  <User className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate text-sm font-medium">{siswa.namaLengkap}</span>
-                  <Badge variant="secondary" className="hidden shrink-0 text-xs sm:inline-flex">
-                    {siswa.kelas}
-                  </Badge>
+            {/* Bilah identitas pemilih */}
+            <div className="sticky top-[7.25rem] z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur sm:px-4">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                  <User className="size-4" />
                 </div>
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={resetToScan}>
-                  <RotateCcw />
-                  Batal
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-sm font-semibold text-slate-900">{siswa.namaLengkap}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={resetToScan}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+              >
+                <RotateCcw className="size-3.5" />
+                Batal
+              </button>
+            </div>
 
             {isLoadingKandidat ? (
               <div className="flex h-64 items-center justify-center">
@@ -592,109 +610,138 @@ export default function KioskPage() {
               <>
                 {['mitratama', 'mitramuda'].map((roleType) => {
                   const list = kandidat.filter((k) => k.role === roleType)
-                  const label = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                  const selected = roleType === 'mitratama' ? selectedMitraTama : selectedMitraMuda
                   const isMuda = roleType === 'mitramuda'
+                  const label = isMuda ? 'Mitra Muda' : 'Mitra Tama'
+                  const sub = isMuda ? 'Kelas X' : 'Kelas XI'
+                  const selected = isMuda ? selectedMitraMuda : selectedMitraTama
 
                   if (list.length === 0) return null
 
                   return (
-                    <div key={roleType}>
-                      <div className="mb-3 flex items-center gap-2 sm:gap-3">
-                        <Badge
-                          variant="outline"
-                          className={
+                    <section key={roleType} className="space-y-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold ${
                             isMuda
-                              ? 'border-cyan-300 bg-cyan-100 px-2 py-1 text-xs font-bold text-cyan-800 sm:px-3 sm:text-sm dark:bg-cyan-900/60 dark:text-cyan-100'
-                              : 'border-fuchsia-300 bg-fuchsia-100 px-2 py-1 text-xs font-bold text-fuchsia-800 sm:px-3 sm:text-sm dark:bg-fuchsia-900/60 dark:text-fuchsia-100'
-                          }
+                              ? 'bg-teal-100 text-teal-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
                         >
-                          {label}
-                        </Badge>
-                        <Separator className="flex-1" />
+                          {isMuda ? 'Mitra Muda' : 'Mitra Tama'}
+                        </span>
+                        <span className="text-xs font-medium text-slate-500">{sub}</span>
+                        <span className="h-px flex-1 bg-slate-200" />
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {selected ? 'Terpilih' : 'Pilih satu'}
+                        </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+
+                      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                         {list.map((k) => {
                           const isSelected = selected?.id === k.id
+                          const ring = isMuda ? 'ring-teal-500' : 'ring-amber-500'
+                          const check = isMuda ? 'bg-teal-600' : 'bg-amber-600'
                           return (
-                            <Card
+                            <button
                               key={k.id}
+                              type="button"
                               onClick={() => selectKandidat(k)}
-                              className={`cursor-pointer overflow-hidden transition-all active:scale-[0.98] ${
+                              aria-pressed={isSelected}
+                              className={`group relative overflow-hidden rounded-xl border bg-white text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
                                 isSelected
-                                  ? isMuda
-                                    ? 'border-2 border-cyan-500 ring-2 ring-cyan-300'
-                                    : 'border-2 border-fuchsia-500 ring-2 ring-fuchsia-300'
-                                  : 'hover:shadow-md'
+                                  ? `border-transparent ring-2 ${ring}`
+                                  : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
                               }`}
                             >
-                              <div className="relative h-32 bg-muted sm:h-40">
+                              <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
                                 {k.fotoUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={k.fotoUrl} alt={k.namaCalon} className="size-full object-cover" />
+                                  <img
+                                    src={k.fotoUrl}
+                                    alt={k.namaCalon}
+                                    className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                  />
                                 ) : (
                                   <div className="flex size-full items-center justify-center">
-                                    <User className="size-14 text-muted-foreground/40" />
+                                    <User className="size-12 text-slate-300" />
                                   </div>
                                 )}
+
+                                <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-1.5 py-0.5 font-mono text-xs font-bold text-white">
+                                  {String(k.nomorUrut).padStart(2, '0')}
+                                </span>
+
                                 {isSelected && (
-                                  <div className="absolute right-2 top-2 rounded-full bg-emerald-500 p-1 text-white">
-                                    <CheckCircle className="size-5" />
-                                  </div>
+                                  <span
+                                    className={`absolute right-2 top-2 flex size-6 items-center justify-center rounded-full ${check} text-white shadow`}
+                                  >
+                                    <CheckCircle className="size-3.5" />
+                                  </span>
                                 )}
-                                <div className="absolute left-2 top-2">
-                                  <Badge className="text-xs">No. {k.nomorUrut}</Badge>
-                                </div>
                               </div>
-                              <CardContent className="p-2 sm:p-3">
-                                <p className="text-center text-xs font-bold leading-tight sm:text-sm">
+
+                              <div className="px-2 py-2">
+                                <p className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 sm:text-[13px]">
                                   {k.namaCalon}
                                 </p>
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </button>
                           )
                         })}
                       </div>
-                    </div>
+                    </section>
                   )
                 })}
 
                 {voteError && (
-                  <Alert variant="destructive">
-                    <XCircle className="size-4" />
-                    <AlertDescription>{voteError}</AlertDescription>
-                  </Alert>
+                  <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+                    <XCircle className="mt-0.5 size-4 shrink-0 text-rose-600" />
+                    <p className="text-xs text-rose-800 sm:text-sm">{voteError}</p>
+                  </div>
                 )}
 
-                <div className="sticky bottom-0 border-t bg-background/95 px-3 py-3 backdrop-blur sm:px-0">
-                  <div className="mb-2 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-lg border bg-muted/40 p-2">
-                      <p className="text-muted-foreground">Mitra Tama</p>
-                      <p className="truncate font-semibold">{selectedMitraTama?.namaCalon || '-'}</p>
+                {/* Ringkasan pilihan + tombol kirim: menempel di bawah */}
+                <div className="sticky bottom-0 z-10 -mx-3 border-t border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4">
+                  <div className="mb-2 grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-2.5 py-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                        Mitra Tama
+                      </p>
+                      <p className="truncate text-xs font-semibold text-slate-900">
+                        {selectedMitraTama?.namaCalon || 'Belum dipilih'}
+                      </p>
                     </div>
-                    <div className="rounded-lg border bg-muted/40 p-2">
-                      <p className="text-muted-foreground">Mitra Muda</p>
-                      <p className="truncate font-semibold">{selectedMitraMuda?.namaCalon || '-'}</p>
+                    <div className="rounded-lg border border-teal-200 bg-teal-50/70 px-2.5 py-1.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">
+                        Mitra Muda
+                      </p>
+                      <p className="truncate text-xs font-semibold text-slate-900">
+                        {selectedMitraMuda?.namaCalon || 'Belum dipilih'}
+                      </p>
                     </div>
                   </div>
-                  <Button
-                    className="h-14 w-full text-base font-semibold"
-                    size="lg"
+
+                  <button
+                    type="button"
                     onClick={submitVote}
                     disabled={!canSubmit || isVoting}
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     {isVoting ? (
                       <>
-                        <Spinner className="size-5" />
-                        Menyimpan...
+                        <Spinner className="size-4" />
+                        Menyimpan suara…
                       </>
                     ) : (
                       <>
-                        <CheckCircle />
-                        Konfirmasi Pilihan
+                        <Lock className="size-4" />
+                        Konfirmasi &amp; Simpan Suara
                       </>
                     )}
-                  </Button>
+                  </button>
+                  <p className="mt-1.5 text-center text-xs text-slate-500">
+                    Suara tidak dapat diubah setelah disimpan.
+                  </p>
                 </div>
               </>
             )}
@@ -703,35 +750,61 @@ export default function KioskPage() {
 
         {/* ================= STEP: DONE ================= */}
         {step === 'done' && (
-          <Card className="mx-auto w-full max-w-md border-2 border-emerald-200 text-center shadow-lg dark:border-emerald-900">
-            <CardContent className="space-y-4 px-4 py-8 sm:px-6 sm:py-10">
-              <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-lg">
-                <CheckCircle className="size-10" />
+          <Panel className="mx-auto w-full max-w-md overflow-hidden text-center">
+            <div className="h-1.5 w-full bg-emerald-500" />
+            <div className="px-5 py-7">
+              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200">
+                <CheckCircle className="size-9 text-emerald-600" />
               </div>
-              <h2 className="text-xl font-bold sm:text-2xl">Terima Kasih!</h2>
-              <p className="text-muted-foreground">Suara Anda sudah tersimpan.</p>
-              <Alert>
-                <AlertDescription className="text-center text-sm">
-                  Kembali ke layar scan dalam{' '}
-                  <span className="text-lg font-bold text-foreground">{countdown}</span> detik
-                  <br />
-                  <span className="text-xs">Silakan pemilih berikutnya bersiap.</span>
-                </AlertDescription>
-              </Alert>
-              <Button size="lg" className="w-full" onClick={resetToScan}>
-                <RotateCcw />
-                Scan Pemilih Berikutnya
-              </Button>
-            </CardContent>
-          </Card>
+              <h2 className="mt-4 text-xl font-bold text-slate-900">Suara Tersimpan</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Terima kasih, {siswa?.namaLengkap?.split(' ')[0] || 'pemilih'}.
+              </p>
+
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <p className="text-xs text-slate-600">
+                  Kembali ke kamera dalam{' '}
+                  <span className="font-mono text-base font-bold text-slate-900">{countdown}</span>{' '}
+                  detik
+                </p>
+                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-1000 ease-linear"
+                    style={{
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, ((AUTOCLOSE_SECONDS - countdown) / AUTOCLOSE_SECONDS) * 100),
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={resetToScan}
+                className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+              >
+                <RotateCcw className="size-4" />
+                Pindai Pemilih Berikutnya
+              </button>
+            </div>
+          </Panel>
         )}
       </main>
 
-      {/* Footer hint */}
-      <footer className="mx-auto max-w-5xl px-3 pb-6 sm:px-4">
-        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-          <Users className="size-3.5" />
-          Satu siswa satu suara — jangan tinggalkan bilik saat proses.
+      {/* Footer */}
+      <footer className="mx-auto max-w-5xl px-3 pb-6 pt-2 sm:px-4">
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1">
+            <ShieldCheck className="size-3.5" />
+            Satu pemilih satu suara
+          </span>
+          <span className="text-slate-300">·</span>
+          <span className="inline-flex items-center gap-1">
+            <Sparkles className="size-3.5" />
+            E-Voting OSIS SMAN 1 Bantarujeg
+          </span>
         </p>
       </footer>
     </div>
