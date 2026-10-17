@@ -260,7 +260,8 @@ export default function KioskPage() {
         if (!cancelled) {
           setScanError(
             `Kamera ${facing === 'user' ? 'depan' : 'belakang'} tidak dapat diakses. ` +
-              'Coba ganti kamera, atau pakai mode Manual / Scanner USB.'
+              'Coba tekan tombol Kamera Depan/Belakang, pastikan izin kamera diizinkan browser, ' +
+              'lalu muat ulang halaman.'
           )
         }
       }
