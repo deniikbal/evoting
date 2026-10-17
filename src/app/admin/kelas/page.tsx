@@ -17,15 +17,9 @@ import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { BulkActionBar } from '@/components/admin/bulk-action-bar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
   Calendar, Layers, ListChecks, FileSpreadsheet, FileDown,
-  ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -643,7 +637,7 @@ export default function KelasManagementPage() {
                       )}
                     </Button>
                   </TableHead>
-                  <TableHead className="w-24 text-right">Aksi</TableHead>
+                  <TableHead className="w-28 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -689,31 +683,38 @@ export default function KelasManagementPage() {
                         {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal />
-                              <span className="sr-only">Buka menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleKartuKelas(classroom)}>
-                              <FileDown />
-                              Kartu PDF
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditDialog(classroom)}>
-                              <Pencil />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => openDeleteDialog(classroom)}
-                            >
-                              <Trash2 />
-                              Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Kartu PDF kelas ini"
+                            onClick={() => handleKartuKelas(classroom)}
+                          >
+                            <FileDown />
+                            <span className="sr-only">Kartu PDF</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Edit kelas"
+                            onClick={() => openEditDialog(classroom)}
+                          >
+                            <Pencil />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            title="Hapus kelas"
+                            onClick={() => openDeleteDialog(classroom)}
+                          >
+                            <Trash2 />
+                            <span className="sr-only">Hapus</span>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -760,24 +761,26 @@ export default function KelasManagementPage() {
                     </div>
                     <Badge variant="secondary">{classroom.angkatan}</Badge>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex justify-end gap-1">
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="flex-1"
+                      size="icon"
+                      className="size-8"
+                      title="Edit kelas"
                       onClick={() => openEditDialog(classroom)}
                     >
                       <Pencil />
-                      Edit
+                      <span className="sr-only">Edit</span>
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      size="icon"
+                      className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title="Hapus kelas"
                       onClick={() => openDeleteDialog(classroom)}
                     >
                       <Trash2 />
-                      Hapus
+                      <span className="sr-only">Hapus</span>
                     </Button>
                   </div>
                 </div>

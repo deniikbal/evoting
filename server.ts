@@ -1,11 +1,12 @@
 // server.ts - Next.js Standalone + Socket.IO
+import 'dotenv/config';
 import { setupSocket } from '@/lib/socket';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import next from 'next';
 
 const dev = process.env.NODE_ENV !== 'production';
-const currentPort = 3000;
+const currentPort = Number(process.env.PORT) || 3000;
 const hostname = '0.0.0.0';
 
 // Custom server with Socket.IO integration
