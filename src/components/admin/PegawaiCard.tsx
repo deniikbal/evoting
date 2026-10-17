@@ -54,13 +54,6 @@ export default function PegawaiCard({ pegawai }: PegawaiCardProps) {
             <span className="w-14 font-semibold text-gray-700">NAMA</span>
             <span className="flex-1 truncate">: {pegawai.nama}</span>
           </div>
-
-          <div className="flex text-[7px] leading-tight">
-            <span className="w-14 font-semibold text-gray-700">TOKEN</span>
-            <span className="flex-1">
-              : <span className="text-[10px] font-bold tracking-wide">{pegawai.tokenPlain}</span>
-            </span>
-          </div>
         </div>
       </div>
 
