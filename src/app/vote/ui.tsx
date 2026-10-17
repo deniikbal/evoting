@@ -1,11 +1,9 @@
 'use client'
 
-// Palet & potongan UI bersama untuk halaman bilik voting.
-// Aksen: indigo (utama) · teal (mitra muda) · amber (mitra tama) · emerald (sukses).
-// Sengaja tanpa efek berlebihan (tanpa glassmorphism, tanpa gradien 3 warna
-// bertumpuk) supaya tetap enak dibaca panitia di layar HP.
+// Palet: token shadcn default (netral). Aksen hanya --primary (aksi utama)
+// dan --destructive (tindakan berbahaya). Tidak ada warna karangan.
 
-/** Tombol sekunder yang rapi: satu garis, ikon sejajar, area sentuh cukup. */
+/** Tombol sekunder dengan target sentuh minimal 44px (R-03). */
 export function ToolButton({
   onClick,
   icon,
@@ -25,7 +23,7 @@ export function ToolButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="group inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0"
+      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0"
     >
       {icon}
       <span className="truncate">{children}</span>
@@ -33,16 +31,7 @@ export function ToolButton({
   )
 }
 
-/** Label kecil berpita untuk menandai tahap. */
-export function StepTag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
-      {children}
-    </span>
-  )
-}
-
-/** Kartu putih dengan garis tipis — dipakai semua tahap agar konsisten. */
+/** Kartu dasar. */
 export function Panel({
   children,
   className = '',
@@ -51,10 +40,17 @@ export function Panel({
   className?: string
 }) {
   return (
-    <div
-      className={`rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-16px_rgba(15,23,42,0.18)] ${className}`}
-    >
+    <div className={`rounded-lg border border-border bg-card text-card-foreground ${className}`}>
       {children}
     </div>
+  )
+}
+
+/** Label kecil netral untuk penanda tahap. */
+export function StepTag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground">
+      {children}
+    </span>
   )
 }

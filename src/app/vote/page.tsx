@@ -348,27 +348,25 @@ export default function KioskPage() {
 
   /* ============ RENDER ============ */
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
+      <header className="sticky top-0 z-20 border-b border-border bg-background">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-3 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
-              <Vote className="size-5" />
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Vote className="size-4" />
             </div>
             <div className="min-w-0 leading-tight">
-              <h1 className="truncate text-[15px] font-bold text-slate-900 sm:text-base">
-                Bilik Voting
-              </h1>
-              <p className="truncate text-xs font-medium text-slate-500">
-                Pemilihan Ketua OSIS · SMAN 1 Bantarujeg
+              <h1 className="truncate text-sm font-semibold text-foreground">Bilik Voting</h1>
+              <p className="truncate text-[11px] text-muted-foreground">
+                Pemilihan Ketua OSIS
               </p>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 sm:inline-flex">
-              <span className="size-1.5 rounded-full bg-emerald-500" />
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden items-center gap-1.5 text-[11px] font-medium text-muted-foreground sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-foreground/60" aria-hidden="true" />
               Siap
             </span>
             {isFullscreen && (
@@ -376,49 +374,13 @@ export default function KioskPage() {
                 type="button"
                 onClick={toggleFullscreen}
                 title="Keluar layar penuh (Esc)"
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="inline-flex size-11 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Minimize className="size-4" />
                 <span className="sr-only">Keluar layar penuh</span>
               </button>
             )}
           </div>
-        </div>
-
-        {/* Penanda tahap: satu garis, selalu tahu posisi */}
-        <div className="mx-auto flex max-w-5xl items-center gap-2 border-t border-slate-100 px-3 py-2 sm:px-4">
-          {([
-            ['scan', 'Pindai Kartu'],
-            ['confirm', 'Konfirmasi'],
-            ['voting', 'Pilih Kandidat'],
-          ] as const).map(([key, label], i) => {
-            const order = ['scan', 'confirm', 'voting', 'done']
-            const aktifIdx = order.indexOf(step)
-            const iniIdx = order.indexOf(key)
-            const lewat = aktifIdx > iniIdx
-            const aktif = aktifIdx === iniIdx
-            return (
-              <div key={key} className="flex flex-1 items-center gap-2">
-                <span
-                  className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                    lewat || aktif
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  {lewat ? '✓' : i + 1}
-                </span>
-                <span
-                  className={`truncate text-xs font-semibold ${
-                    aktif ? 'text-indigo-700' : lewat ? 'text-slate-500' : 'text-slate-400'
-                  }`}
-                >
-                  {label}
-                </span>
-                {i < 2 && <span className="h-px flex-1 bg-slate-200" />}
-              </div>
-            )
-          })}
         </div>
       </header>
 
@@ -432,30 +394,27 @@ export default function KioskPage() {
         {step === 'scan' && (
           <div className="mx-auto w-full max-w-2xl space-y-4">
             <Panel className="overflow-hidden">
-              <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
+              <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <ScanLine className="size-4 shrink-0 text-indigo-600" />
-                    <h2 className="text-sm font-bold text-slate-900 sm:text-[15px]">
-                      Pindai Kartu Pemilih
-                    </h2>
+                    <ScanLine className="size-4 shrink-0 text-foreground" aria-hidden="true" />
+                    <h2 className="text-sm font-semibold text-foreground">Pindai Kartu Pemilih</h2>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Arahkan QR ke kamera. Nama pemilih akan muncul untuk diperiksa panitia.
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Arahkan QR ke kamera. Nama pemilih muncul untuk diperiksa panitia.
                   </p>
                 </div>
-                <StepTag>Langkah 1</StepTag>
+                <StepTag>Langkah 1 dari 3</StepTag>
               </div>
 
-              <div className="px-3 py-4 sm:px-5">
+              <div className="px-3 py-4 sm:px-4">
                 <div ref={camWrapRef} className="space-y-3">
-                  <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-slate-900 ring-1 ring-slate-900/10">
-                    {/* Sudut bingkai bidik — petunjuk visual tanpa menutupi kamera */}
-                    <div className="pointer-events-none absolute inset-0 z-10">
-                      <span className="absolute left-3 top-3 size-6 rounded-tl-lg border-l-2 border-t-2 border-white/80" />
-                      <span className="absolute right-3 top-3 size-6 rounded-tr-lg border-r-2 border-t-2 border-white/80" />
-                      <span className="absolute bottom-3 left-3 size-6 rounded-bl-lg border-b-2 border-l-2 border-white/80" />
-                      <span className="absolute bottom-3 right-3 size-6 rounded-br-lg border-b-2 border-r-2 border-white/80" />
+                  <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-md bg-foreground/95">
+                    <div className="pointer-events-none absolute inset-0 z-10" aria-hidden="true">
+                      <span className="absolute left-3 top-3 size-6 rounded-tl border-l-2 border-t-2 border-background/80" />
+                      <span className="absolute right-3 top-3 size-6 rounded-tr border-r-2 border-t-2 border-background/80" />
+                      <span className="absolute bottom-3 left-3 size-6 rounded-bl border-b-2 border-l-2 border-background/80" />
+                      <span className="absolute bottom-3 right-3 size-6 rounded-br border-b-2 border-r-2 border-background/80" />
                     </div>
                     <div
                       id="kiosk-qr-reader"
@@ -487,30 +446,33 @@ export default function KioskPage() {
                     </ToolButton>
                   </div>
 
-                  <p className="flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
-                    <Camera className="size-3.5" />
+                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <Camera className="size-3.5" aria-hidden="true" />
                     Kamera {facing === 'user' ? 'depan' : 'belakang'} aktif
                   </p>
                 </div>
 
                 {isAuthenticating && (
-                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-slate-500">
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Spinner className="size-4" />
-                    Memeriksa kartu…
+                    Memeriksa kartu
                   </div>
                 )}
 
                 {scanError && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
-                    <TriangleAlert className="mt-0.5 size-4 shrink-0 text-rose-600" />
-                    <p className="text-xs leading-relaxed text-rose-800 sm:text-sm">{scanError}</p>
+                  <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5">
+                    <TriangleAlert
+                      className="mt-0.5 size-4 shrink-0 text-destructive"
+                      aria-hidden="true"
+                    />
+                    <p className="text-xs leading-relaxed text-foreground sm:text-sm">{scanError}</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 text-xs text-slate-500 sm:px-5">
-                <ShieldCheck className="size-3.5 shrink-0 text-emerald-600" />
-                Satu pemilih satu suara. Panitia wajib memeriksa identitas sebelum memulai.
+              <div className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+                <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+                Satu pemilih satu suara. Panitia memeriksa identitas sebelum memulai.
               </div>
             </Panel>
           </div>
@@ -518,40 +480,41 @@ export default function KioskPage() {
 
         {/* ================= STEP: CONFIRM ================= */}
         {step === 'confirm' && siswa && (
-          <Panel className="mx-auto w-full max-w-lg overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-sky-500 to-teal-400" />
-
-            <div className="px-4 pb-5 pt-6 text-center sm:px-6">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-                <User className="size-7" />
+          <Panel className="mx-auto w-full max-w-lg">
+            <div className="px-4 py-5 text-center sm:px-6">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-border bg-secondary text-secondary-foreground">
+                <User className="size-6" aria-hidden="true" />
               </div>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Langkah 2 · Konfirmasi identitas
+              <p className="mt-3 text-[11px] font-medium text-muted-foreground">
+                Langkah 2 dari 3
               </p>
-              <h2 className="mt-1.5 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
+              <h2 className="mt-1.5 text-xl font-semibold leading-tight text-foreground sm:text-2xl">
                 {siswa.namaLengkap}
               </h2>
 
               <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
                 {siswa.type === 'siswa' ? (
-                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-semibold text-slate-700">
+                  <span className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-xs font-medium text-foreground">
                     NIS {siswa.nis}
                   </span>
                 ) : (
-                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                  <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
                     {siswa.type === 'guru' ? 'Guru' : 'Tenaga Kependidikan'}
                   </span>
                 )}
-                <span className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
                   {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
                 </span>
               </div>
 
-              <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-left">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                <p className="text-xs leading-relaxed text-amber-900">
-                  <strong className="font-semibold">Periksa dulu:</strong> pastikan wajah pemilih di
-                  depan cocok dengan nama di atas. Kalau bukan, tekan Batal.
+              <div className="mt-5 flex items-start gap-2 rounded-md border border-border bg-secondary px-3 py-2.5 text-left">
+                <TriangleAlert
+                  className="mt-0.5 size-4 shrink-0 text-foreground"
+                  aria-hidden="true"
+                />
+                <p className="text-xs leading-relaxed text-secondary-foreground">
+                  <strong className="font-semibold">Periksa dulu:</strong> pastikan wajah pemilih
+                  cocok dengan nama di atas. Kalau bukan, tekan Batal.
                 </p>
               </div>
 
@@ -559,17 +522,17 @@ export default function KioskPage() {
                 <button
                   type="button"
                   onClick={startVoting}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 sm:flex-1"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-1"
                 >
-                  <Vote className="size-4" />
+                  <Vote className="size-4" aria-hidden="true" />
                   Mulai Memilih
                 </button>
                 <button
                   type="button"
                   onClick={resetToScan}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-[15px] font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 sm:flex-1"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-5 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-1"
                 >
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft className="size-4" aria-hidden="true" />
                   Batal
                 </button>
               </div>
@@ -580,32 +543,47 @@ export default function KioskPage() {
         {/* ================= STEP: VOTING ================= */}
         {step === 'voting' && siswa && (
           <div className="space-y-4">
-            {/* Bilah identitas pemilih */}
-            <div className="sticky top-[7.25rem] z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur sm:px-4">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                  <User className="size-4" />
-                </div>
-                <div className="min-w-0 leading-tight">
-                  <p className="truncate text-sm font-semibold text-slate-900">{siswa.namaLengkap}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
-                  </p>
-                </div>
+            {/* Identitas pemilih */}
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <User className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <p className="truncate text-sm font-medium text-foreground">{siswa.namaLengkap}</p>
+                <span className="hidden shrink-0 rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">
+                  {siswa.type === 'siswa' ? siswa.kelas : siswa.kelas}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={resetToScan}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <RotateCcw className="size-3.5" />
+                <RotateCcw className="size-3.5" aria-hidden="true" />
                 Batal
               </button>
             </div>
 
             {isLoadingKandidat ? (
-              <div className="flex h-64 items-center justify-center">
-                <Spinner className="size-8" />
+              <div className="flex h-56 flex-col items-center justify-center gap-3 rounded-md border border-border bg-card">
+                <Spinner className="size-7" />
+                <p className="text-xs text-muted-foreground">Memuat daftar kandidat</p>
+              </div>
+            ) : kandidat.length === 0 ? (
+              /* R-27: state kosong yang menyebut sebab dan tindakan berikutnya */
+              <div className="flex flex-col items-center gap-2 rounded-md border border-border bg-card px-4 py-10 text-center">
+                <Users className="size-8 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">Belum ada kandidat</p>
+                <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                  Data kandidat kosong atau gagal dimuat. Panggil panitia, jangan lanjutkan
+                  pemilihan.
+                </p>
+                <button
+                  type="button"
+                  onClick={fetchKandidat}
+                  className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <RotateCcw className="size-4" aria-hidden="true" />
+                  Muat ulang
+                </button>
               </div>
             ) : (
               <>
@@ -615,24 +593,15 @@ export default function KioskPage() {
                   const label = isMuda ? 'Mitra Muda' : 'Mitra Tama'
                   const sub = isMuda ? 'Kelas X' : 'Kelas XI'
                   const selected = isMuda ? selectedMitraMuda : selectedMitraTama
-
                   if (list.length === 0) return null
 
                   return (
                     <section key={roleType} className="space-y-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold ${
-                            isMuda
-                              ? 'bg-teal-100 text-teal-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {isMuda ? 'Mitra Muda' : 'Mitra Tama'}
-                        </span>
-                        <span className="text-xs font-medium text-slate-500">{sub}</span>
-                        <span className="h-px flex-1 bg-slate-200" />
-                        <span className="text-[11px] font-semibold text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+                        <span className="text-[11px] text-muted-foreground">{sub}</span>
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="text-[11px] font-medium text-muted-foreground">
                           {selected ? 'Terpilih' : 'Pilih satu'}
                         </span>
                       </div>
@@ -640,49 +609,45 @@ export default function KioskPage() {
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                         {list.map((k) => {
                           const isSelected = selected?.id === k.id
-                          const ring = isMuda ? 'ring-teal-500' : 'ring-amber-500'
-                          const check = isMuda ? 'bg-teal-600' : 'bg-amber-600'
                           return (
                             <button
                               key={k.id}
                               type="button"
                               onClick={() => selectKandidat(k)}
                               aria-pressed={isSelected}
-                              className={`group relative overflow-hidden rounded-xl border bg-white text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
+                              className={`group relative overflow-hidden rounded-md border bg-card text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                                 isSelected
-                                  ? `border-transparent ring-2 ${ring}`
-                                  : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
+                                  ? 'border-foreground ring-1 ring-foreground'
+                                  : 'border-border hover:border-foreground/40'
                               }`}
                             >
-                              <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
+                              <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
                                 {k.fotoUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={k.fotoUrl}
                                     alt={k.namaCalon}
-                                    className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                                    className="size-full object-cover"
                                   />
                                 ) : (
                                   <div className="flex size-full items-center justify-center">
-                                    <User className="size-12 text-slate-300" />
+                                    <User className="size-10 text-muted-foreground" aria-hidden="true" />
                                   </div>
                                 )}
 
-                                <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-1.5 py-0.5 font-mono text-xs font-bold text-white">
+                                <span className="absolute left-2 top-2 rounded bg-foreground/85 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-background">
                                   {String(k.nomorUrut).padStart(2, '0')}
                                 </span>
 
                                 {isSelected && (
-                                  <span
-                                    className={`absolute right-2 top-2 flex size-6 items-center justify-center rounded-full ${check} text-white shadow`}
-                                  >
-                                    <CheckCircle className="size-3.5" />
+                                  <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                    <CheckCircle className="size-3.5" aria-hidden="true" />
                                   </span>
                                 )}
                               </div>
 
                               <div className="px-2 py-2">
-                                <p className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 sm:text-[13px]">
+                                <p className="line-clamp-2 text-xs font-medium leading-snug text-foreground sm:text-[13px]">
                                   {k.namaCalon}
                                 </p>
                               </div>
@@ -695,28 +660,23 @@ export default function KioskPage() {
                 })}
 
                 {voteError && (
-                  <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
-                    <XCircle className="mt-0.5 size-4 shrink-0 text-rose-600" />
-                    <p className="text-xs text-rose-800 sm:text-sm">{voteError}</p>
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5">
+                    <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
+                    <p className="text-xs text-foreground sm:text-sm">{voteError}</p>
                   </div>
                 )}
 
-                {/* Ringkasan pilihan + tombol kirim: menempel di bawah */}
-                <div className="sticky bottom-0 z-10 -mx-3 border-t border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4">
+                <div className="sticky bottom-0 z-10 -mx-3 border-t border-border bg-background px-3 py-3 sm:mx-0 sm:rounded-md sm:border">
                   <div className="mb-2 grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-2.5 py-1.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-                        Mitra Tama
-                      </p>
-                      <p className="truncate text-xs font-semibold text-slate-900">
+                    <div className="rounded-md border border-border px-2.5 py-1.5">
+                      <p className="text-[11px] font-medium text-muted-foreground">Mitra Tama</p>
+                      <p className="truncate text-xs font-semibold text-foreground">
                         {selectedMitraTama?.namaCalon || 'Belum dipilih'}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-teal-200 bg-teal-50/70 px-2.5 py-1.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">
-                        Mitra Muda
-                      </p>
-                      <p className="truncate text-xs font-semibold text-slate-900">
+                    <div className="rounded-md border border-border px-2.5 py-1.5">
+                      <p className="text-[11px] font-medium text-muted-foreground">Mitra Muda</p>
+                      <p className="truncate text-xs font-semibold text-foreground">
                         {selectedMitraMuda?.namaCalon || 'Belum dipilih'}
                       </p>
                     </div>
@@ -726,21 +686,21 @@ export default function KioskPage() {
                     type="button"
                     onClick={submitVote}
                     disabled={!canSubmit || isVoting}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isVoting ? (
                       <>
                         <Spinner className="size-4" />
-                        Menyimpan suara…
+                        Menyimpan suara
                       </>
                     ) : (
                       <>
-                        <Lock className="size-4" />
-                        Konfirmasi &amp; Simpan Suara
+                        <Lock className="size-4" aria-hidden="true" />
+                        Konfirmasi dan Simpan Suara
                       </>
                     )}
                   </button>
-                  <p className="mt-1.5 text-center text-xs text-slate-500">
+                  <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
                     Suara tidak dapat diubah setelah disimpan.
                   </p>
                 </div>
@@ -751,26 +711,33 @@ export default function KioskPage() {
 
         {/* ================= STEP: DONE ================= */}
         {step === 'done' && (
-          <Panel className="mx-auto w-full max-w-md overflow-hidden text-center">
-            <div className="h-1.5 w-full bg-emerald-500" />
+          <Panel className="mx-auto w-full max-w-md text-center">
             <div className="px-5 py-7">
-              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200">
-                <CheckCircle className="size-9 text-emerald-600" />
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-border bg-secondary text-secondary-foreground">
+                <CheckCircle className="size-7" aria-hidden="true" />
               </div>
-              <h2 className="mt-4 text-xl font-bold text-slate-900">Suara Tersimpan</h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <h2 className="mt-4 text-xl font-semibold text-foreground">Suara Tersimpan</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Terima kasih, {siswa?.namaLengkap?.split(' ')[0] || 'pemilih'}.
               </p>
 
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                <p className="text-xs text-slate-600">
+              <div className="mt-4 rounded-md border border-border px-3 py-2.5">
+                <p className="text-xs text-muted-foreground">
                   Kembali ke kamera dalam{' '}
-                  <span className="font-mono text-base font-bold text-slate-900">{countdown}</span>{' '}
+                  <span className="font-mono text-sm font-semibold text-foreground">
+                    {countdown}
+                  </span>{' '}
                   detik
                 </p>
-                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="mt-2 h-1 w-full overflow-hidden rounded-full bg-secondary"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={AUTOCLOSE_SECONDS}
+                  aria-valuenow={Math.max(0, AUTOCLOSE_SECONDS - countdown)}
+                >
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-1000 ease-linear"
+                    className="h-full rounded-full bg-foreground transition-all duration-1000 ease-linear"
                     style={{
                       width: `${Math.max(
                         0,
@@ -784,9 +751,9 @@ export default function KioskPage() {
               <button
                 type="button"
                 onClick={resetToScan}
-                className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <RotateCcw className="size-4" />
+                <RotateCcw className="size-4" aria-hidden="true" />
                 Pindai Pemilih Berikutnya
               </button>
             </div>
@@ -796,16 +763,13 @@ export default function KioskPage() {
 
       {/* Footer */}
       <footer className="mx-auto max-w-5xl px-3 pb-6 pt-2 sm:px-4">
-        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-slate-400">
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="size-3.5" />
+            <ShieldCheck className="size-3.5" aria-hidden="true" />
             Satu pemilih satu suara
           </span>
-          <span className="text-slate-300">·</span>
-          <span className="inline-flex items-center gap-1">
-            <Sparkles className="size-3.5" />
-            E-Voting OSIS SMAN 1 Bantarujeg
-          </span>
+          <span aria-hidden="true">/</span>
+          <span>E-Voting OSIS SMAN 1 Bantarujeg</span>
         </p>
       </footer>
     </div>
