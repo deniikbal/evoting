@@ -35,7 +35,9 @@ interface VoterInfo {
 type Step = 'scan' | 'confirm' | 'voting' | 'done'
 type ScanMode = 'camera' | 'manual'
 
-const AUTOCLOSE_SECONDS = 5
+// Setelah suara tersimpan, layar "Terima Kasih" hanya tampil sebentar lalu
+// langsung balik ke kamera supaya antrean cepat.
+const AUTOCLOSE_SECONDS = 1
 
 export default function KioskPage() {
   const [step, setStep] = useState<Step>('scan')
