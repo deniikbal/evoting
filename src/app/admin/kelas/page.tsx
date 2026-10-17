@@ -24,11 +24,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
-  Calendar, Layers, ListChecks, FileSpreadsheet,
+  Calendar, Layers, ListChecks, FileSpreadsheet, FileDown,
   ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
+import type { Siswa } from '@/app/admin/siswa/page'
 
 interface Admin {
   id: number
@@ -53,6 +55,9 @@ export default function KelasManagementPage() {
   const [, setAdmin] = useState<Admin | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Generate kartu PDF per kelas: container snapshot render hanya saat request aktif
+  const [kartuRequest, setKartuRequest] = useState<{ kelas: string; siswa: Siswa[] } | null>(null)
 
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -82,6 +87,25 @@ export default function KelasManagementPage() {
     setAdmin(session)
     fetchClassrooms()
   }, [router])
+
+  // Siapkan siswa satu kelas, lalu mount StudentPdfCards (autoDownload)
+  const handleKartuKelas = async (kelas: Classroom) => {
+    try {
+      toast.info(`Menyiapkan kartu kelas ${kelas.name}...`)
+      const response = await fetch('/api/admin/siswa')
+      const all: Siswa[] = response.ok ? await response.json() : []
+      const siswaKelas = all.filter((s) => s.kelas === kelas.name).sort((a, b) =>
+        a.namaLengkap.localeCompare(b.namaLengkap)
+      )
+      if (siswaKelas.length === 0) {
+        toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
+        return
+      }
+      setKartuRequest({ kelas: kelas.name, siswa: siswaKelas })
+    } catch {
+      toast.error('Gagal memuat data siswa')
+    }
+  }
 
   const fetchClassrooms = async () => {
     try {
@@ -673,6 +697,10 @@ export default function KelasManagementPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleKartuKelas(classroom)}>
+                              <FileDown />
+                              Kartu PDF
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditDialog(classroom)}>
                               <Pencil />
                               Edit
@@ -818,6 +846,7 @@ export default function KelasManagementPage() {
               </Button>
             </DialogFooter>
           </form>
+
         </DialogContent>
       </Dialog>
 
@@ -853,6 +882,19 @@ export default function KelasManagementPage() {
         isLoading={isBulkDeleting}
         onConfirm={handleBulkDelete}
       />
+
+      {/* Kartu PDF per kelas: mount container hidden berisi siswa satu kelas,
+          generate sekali (autoDownload), lalu unmount lewat onDone. */}
+      {kartuRequest && (
+        <StudentPdfCards
+          siswa={kartuRequest.siswa}
+          containerId="kartu-per-kelas-render"
+          hideControls
+          autoDownload
+          fileName={`kartu-pemilih-${kartuRequest.kelas.replace(/[/\\]/g, '-')}.pdf`}
+          onDone={() => setKartuRequest(null)}
+        />
+      )}
     </div>
   )
 }

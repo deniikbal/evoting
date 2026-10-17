@@ -21,6 +21,7 @@ import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
 import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { BulkActionBar } from '@/components/admin/bulk-action-bar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
 import {
   Users, Plus, Download, Upload, Pencil, Trash2, RefreshCw,
   Search, CheckCircle, XCircle, Key, Copy, Printer, MoreHorizontal,
@@ -589,6 +590,12 @@ export default function SiswaManagementPage() {
           }
           actions={
             <>
+              <StudentPdfCards
+                siswa={filteredSiswa}
+                label={`Download PDF (${filteredSiswa.length})`}
+                fileName={`kartu-pemilih-${new Date().toISOString().slice(0, 10)}.pdf`}
+              />
+
               <Dialog open={showImportDialog} onOpenChange={(open) => {
                 if (!isImporting) {
                   setShowImportDialog(open)
