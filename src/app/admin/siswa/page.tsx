@@ -14,7 +14,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
@@ -24,7 +23,7 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
 import {
   Users, Plus, Download, Upload, Pencil, Trash2, RefreshCw,
-  Search, CheckCircle, XCircle, Key, Copy, Printer, MoreHorizontal,
+  Search, CheckCircle, XCircle, Key, Printer,
   UserCheck, UserX, Percent, FileSpreadsheet, Info,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -364,38 +363,6 @@ export default function SiswaManagementPage() {
       toast.error('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
       setRegeneratingIds(prev => prev.filter(id => !studentIds.includes(id)))
-    }
-  }
-
-  const handleCopyToken = async (token: string, nama: string) => {
-    try {
-      // Try modern clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(token)
-        toast.success(`Token ${nama} berhasil disalin`)
-      } else {
-        // Fallback for non-HTTPS or older browsers
-        const textArea = document.createElement('textarea')
-        textArea.value = token
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-
-        try {
-          document.execCommand('copy')
-          textArea.remove()
-          toast.success(`Token ${nama} berhasil disalin`)
-        } catch (err) {
-          textArea.remove()
-          toast.error('Gagal menyalin token. Silakan copy manual.')
-        }
-      }
-    } catch (err) {
-      console.error('Copy failed:', err)
-      toast.error('Gagal menyalin token. Silakan copy manual.')
     }
   }
 
@@ -1018,15 +985,14 @@ export default function SiswaManagementPage() {
                   <TableHead>NIS</TableHead>
                   <TableHead>Nama Lengkap</TableHead>
                   <TableHead>Kelas</TableHead>
-                  <TableHead>Token</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Aksi</TableHead>
+                  <TableHead className="w-36 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentItems.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-10">
+                    <TableCell colSpan={6} className="py-10">
                       <Empty>
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
@@ -1062,22 +1028,6 @@ export default function SiswaManagementPage() {
                         <Badge variant="secondary">{s.kelas}</Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <code className="rounded bg-muted px-2 py-1 font-mono text-xs">
-                            {s.plainToken}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
-                            title="Copy token"
-                          >
-                            <Copy className="size-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
                         <Badge variant={s.sudahMemilih ? 'default' : 'secondary'}>
                           {s.sudahMemilih ? (
                             <>
@@ -1093,42 +1043,55 @@ export default function SiswaManagementPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8">
-                              <MoreHorizontal />
-                              <span className="sr-only">Menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(s)}>
-                              <Pencil />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleRegenerateToken([s.id])}
-                              disabled={regeneratingIds.includes(s.id)}
-                            >
-                              {regeneratingIds.includes(s.id) ? (
-                                <RefreshCw className="animate-spin" />
-                              ) : (
-                                <Key />
-                              )}
-                              Generate Token
-                            </DropdownMenuItem>
-                            {s.sudahMemilih && (
-                              <DropdownMenuItem onClick={() => handleResetStatus(s.id)}>
-                                <RefreshCw />
-                                Reset Status
-                              </DropdownMenuItem>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Edit siswa"
+                            onClick={() => openEditDialog(s)}
+                          >
+                            <Pencil />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Generate token baru"
+                            onClick={() => handleRegenerateToken([s.id])}
+                            disabled={regeneratingIds.includes(s.id)}
+                          >
+                            {regeneratingIds.includes(s.id) ? (
+                              <RefreshCw className="animate-spin" />
+                            ) : (
+                              <Key />
                             )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem variant="destructive" onClick={() => openDeleteDialog(s.id)}>
-                              <Trash2 />
-                              Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            <span className="sr-only">Generate Token</span>
+                          </Button>
+                          {s.sudahMemilih && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Reset status memilih"
+                              onClick={() => handleResetStatus(s.id)}
+                            >
+                              <RefreshCw />
+                              <span className="sr-only">Reset Status</span>
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            title="Hapus siswa"
+                            onClick={() => openDeleteDialog(s.id)}
+                          >
+                            <Trash2 />
+                            <span className="sr-only">Hapus</span>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -1171,19 +1134,6 @@ export default function SiswaManagementPage() {
                           <p className="text-sm font-semibold">{s.namaLengkap}</p>
                           <p className="text-xs text-muted-foreground">NIS: {s.nis}</p>
                           <p className="text-xs text-muted-foreground">Kelas: {s.kelas}</p>
-                          <div className="mt-1 flex items-center gap-2">
-                            <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                              {s.plainToken}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-6"
-                              onClick={() => handleCopyToken(s.plainToken, s.namaLengkap)}
-                            >
-                              <Copy className="size-3" />
-                            </Button>
-                          </div>
                         </div>
                         <Badge variant={s.sudahMemilih ? 'default' : 'secondary'} className="shrink-0 text-xs">
                           {s.sudahMemilih ? 'Sudah' : 'Belum'}
@@ -1191,14 +1141,22 @@ export default function SiswaManagementPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="ml-8 flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(s)}>
+                  <div className="ml-8 flex flex-wrap justify-end gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-8"
+                      title="Edit siswa"
+                      onClick={() => openEditDialog(s)}
+                    >
                       <Pencil />
-                      Edit
+                      <span className="sr-only">Edit</span>
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
+                      className="size-8"
+                      title="Generate token baru"
                       onClick={() => handleRegenerateToken([s.id])}
                       disabled={regeneratingIds.includes(s.id)}
                     >
@@ -1207,22 +1165,29 @@ export default function SiswaManagementPage() {
                       ) : (
                         <Key />
                       )}
-                      Token
+                      <span className="sr-only">Token</span>
                     </Button>
                     {s.sudahMemilih && (
-                      <Button variant="outline" size="sm" onClick={() => handleResetStatus(s.id)}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-8"
+                        title="Reset status memilih"
+                        onClick={() => handleResetStatus(s.id)}
+                      >
                         <RefreshCw />
-                        Reset
+                        <span className="sr-only">Reset</span>
                       </Button>
                     )}
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      size="icon"
+                      className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      title="Hapus siswa"
                       onClick={() => openDeleteDialog(s.id)}
                     >
                       <Trash2 />
-                      Hapus
+                      <span className="sr-only">Hapus</span>
                     </Button>
                   </div>
                 </div>
