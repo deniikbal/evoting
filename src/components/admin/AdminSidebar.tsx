@@ -215,13 +215,13 @@ export default function AdminSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === '/kiosk'}
-                tooltip="Bilik Voting (Kiosk)"
+                isActive={pathname === '/vote'}
+                tooltip="Bilik Voting"
                 className={menuHover}
               >
-                <a href="/kiosk" target="_blank" rel="noopener noreferrer">
+                <a href="/vote" target="_blank" rel="noopener noreferrer">
                   <ScanLine />
-                  <span>Bilik Voting (Kiosk)</span>
+                  <span>Bilik Voting</span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
