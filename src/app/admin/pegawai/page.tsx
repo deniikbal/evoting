@@ -22,9 +22,10 @@ import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
 import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import { PegawaiPdfCards } from '@/components/admin/pegawai-pdf-cards'
 import {
   Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2,
-  Key, Search, Printer, Users, Briefcase, CheckCircle, MoreHorizontal, FileSpreadsheet, Info
+  Key, Search, Printer, Users, Briefcase, CheckCircle, MoreHorizontal, FileSpreadsheet, Info, FileDown
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -41,6 +42,7 @@ interface Pegawai {
   status: 'aktif' | 'non-aktif'
   sudahMemilih: boolean
   tokenPlain: string
+  qrId: string
 }
 
 interface Credentials {
@@ -92,6 +94,7 @@ export default function PegawaiPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [kartuRequest, setKartuRequest] = useState<Pegawai[] | null>(null)
   const [classroomSearch, setClassroomSearch] = useState('')
 
   // Pagination
@@ -339,90 +342,11 @@ export default function PegawaiPage() {
     }
   }
 
+  // Kartu dicetak lewat PegawaiPdfCards (canvas QR -> html2canvas -> PDF A4).
+  // Set state ini untuk memicu generate + download otomatis sekali.
   const handlePrintCards = () => {
-    const printWindow = window.open('', '', 'width=800,height=600')
-    if (!printWindow) return
-
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Cetak Kartu Pegawai</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 10px; }
-            .print-header { text-align: center; margin-bottom: 20px; font-size: 18px; font-weight: bold; }
-            .print-cards-grid { 
-              display: grid; 
-              grid-template-columns: repeat(4, 1fr); 
-              gap: 8px;
-              margin-bottom: 20px;
-            }
-            .voter-card {
-              border: 1px solid #1f2937;
-              border-radius: 4px;
-              padding: 6px;
-              background: white;
-              break-inside: avoid;
-              width: 100%;
-              box-sizing: border-box;
-            }
-            .print-header { text-align: center; margin-bottom: 4px; padding-bottom: 2px; border-bottom: 1px solid #1f2937; }
-            .print-header h2 { font-size: 8px; font-weight: bold; color: #111827; margin: 0; line-height: 1; }
-            .voter-card .space-y-0-5 { display: flex; flex-direction: column; gap: 2px; }
-            .voter-card .flex { display: flex; font-size: 6px; line-height: 1; }
-            .voter-card .w-16 { width: 64px; font-weight: 600; color: #374151; }
-            .voter-card .flex-1 { flex: 1; }
-            .voter-card .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .voter-card .flex-items-center { display: flex; align-items: center; margin-top: 4px; padding-top: 2px; border-top: 1px solid #d1d5db; }
-            .token-span { font-size: 7px; font-weight: bold; letter-spacing: 0.05em; }
-            .card-footer { margin-top: 2px; padding-top: 2px; border-top: 1px solid #d1d5db; font-size: 4px; color: #6b7280; text-align: center; line-height: 1; }
-            @media print { body { margin: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="print-header">
-            <h2>KARTU PEMILIHAN KETUA OSIS - PEGAWAI</h2>
-          </div>
-          <div class="print-cards-grid">
-            ${pegawaiList
-              .filter(p => p.status === 'aktif')
-              .map(p => `
-              <div class="voter-card">
-                <div class="print-header">
-                  <h2>PEMILIHAN KETUA OSIS</h2>
-                </div>
-                <div class="space-y-0-5">
-                  <div class="flex">
-                    <span class="w-16">JABATAN</span>
-                    <span class="flex-1">: ${p.role === 'guru' ? 'GURU' : 'TENAGA KEPENDIDIKAN'}</span>
-                  </div>
-                  <div class="flex">
-                    <span class="w-16">NAMA</span>
-                    <span class="flex-1 truncate">: ${p.nama}</span>
-                  </div>
-                  <div class="flex">
-                    <span class="w-16">EMAIL</span>
-                    <span class="flex-1 truncate" style="font-size: 5px;">: ${p.email}</span>
-                  </div>
-                  <div class="flex-items-center">
-                    <span class="w-16">TOKEN</span>
-                    <span class="flex-1">: <span class="token-span">${p.tokenPlain}</span></span>
-                  </div>
-                </div>
-                <div class="card-footer">Simpan kartu ini dengan baik</div>
-              </div>
-            `).join('')}
-          </div>
-        </body>
-      </html>
-    `
-
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    printWindow.onload = () => {
-      printWindow.print()
-    }
+    setShowPrintDialog(false)
+    setKartuRequest(pegawaiList.filter((p) => p.status === 'aktif'))
   }
 
   const handleDelete = async (id: number) => {
@@ -1156,7 +1080,8 @@ export default function PegawaiPage() {
             <Alert>
               <Info className="size-4" />
               <AlertDescription className="text-xs">
-                <strong>Info:</strong> Kartu akan ditampilkan dalam 4 kolom dan siap untuk dicetak.
+                <strong>Info:</strong> Kartu berisi QR (identitas pemilih) dalam 3 kolom per halaman A4,
+                langsung diunduh sebagai PDF.
               </AlertDescription>
             </Alert>
           </div>
@@ -1165,8 +1090,8 @@ export default function PegawaiPage() {
               Batal
             </Button>
             <Button type="button" onClick={handlePrintCards}>
-              <Printer />
-              Cetak
+              <FileDown />
+              Buat PDF
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1371,6 +1296,19 @@ export default function PegawaiPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Kartu pegawai: mount container hidden berisi pegawai aktif, generate
+          sekali (autoDownload), lalu unmount lewat onDone. */}
+      {kartuRequest && (
+        <PegawaiPdfCards
+          pegawai={kartuRequest}
+          containerId="kartu-pegawai-render"
+          hideControls
+          autoDownload
+          fileName={`kartu-pegawai-${new Date().toISOString().slice(0, 10)}.pdf`}
+          onDone={() => setKartuRequest(null)}
+        />
+      )}
     </div>
   )
 }

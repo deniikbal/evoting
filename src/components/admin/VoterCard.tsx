@@ -11,10 +11,14 @@ interface VoterCardProps {
 export default function VoterCard({ siswa }: VoterCardProps) {
   const qrRef = useRef<HTMLCanvasElement>(null)
 
+  // QR berisi qr_id (UUID acak), bukan NIS — supaya identitas pemilih
+  // tidak bisa ditebak/dibuat ulang orang lain. Kartu lama (berisi NIS)
+  // tetap dikenali kiosk lewat fallback di /api/auth/qr.
+  const qrValue = siswa.qrId || siswa.nis
+
   useEffect(() => {
-    // QR hanya berisi NIS (sederhana, mudah dicetak & dipindai)
     if (qrRef.current) {
-      QRCode.toCanvas(qrRef.current, siswa.nis, {
+      QRCode.toCanvas(qrRef.current, qrValue, {
         width: 96,
         margin: 0,
         errorCorrectionLevel: 'M',
@@ -23,7 +27,7 @@ export default function VoterCard({ siswa }: VoterCardProps) {
         console.error('Gagal membuat QR:', err)
       })
     }
-  }, [siswa.nis])
+  }, [qrValue])
 
   return (
     <div className="voter-card bg-white border border-gray-800 rounded p-1.5">
@@ -32,7 +36,7 @@ export default function VoterCard({ siswa }: VoterCardProps) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        {/* QR Code (isi: NIS) */}
+        {/* QR Code (isi: qr_id) */}
         <div className="flex-shrink-0">
           <canvas ref={qrRef} className="w-[14mm] h-[14mm]" />
         </div>

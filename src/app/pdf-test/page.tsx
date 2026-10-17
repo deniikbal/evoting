@@ -17,6 +17,7 @@ const makeStudents = (n: number): Siswa[] =>
     kelas: `XII-${(i % 5) + 1}`,
     classroomId: null,
     plainToken: 'x',
+    qrId: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
     sudahMemilih: false,
     createdAt: new Date().toISOString(),
   }))

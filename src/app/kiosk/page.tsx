@@ -23,12 +23,13 @@ interface Kandidat {
   role: string
 }
 
-interface SiswaInfo {
+interface VoterInfo {
   id: number
-  nis: string
+  nis?: string
   namaLengkap: string
   kelas: string
   sudahMemilih: boolean
+  type: 'siswa' | 'guru' | 'tu'
 }
 
 type Step = 'scan' | 'confirm' | 'voting' | 'done'
@@ -45,8 +46,8 @@ export default function KioskPage() {
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [scanError, setScanError] = useState('')
 
-  // Siswa hasil scan
-  const [siswa, setSiswa] = useState<SiswaInfo | null>(null)
+  // Pemilih hasil scan (siswa / guru / tu)
+  const [siswa, setSiswa] = useState<VoterInfo | null>(null)
 
   // Kandidat & pilihan
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
@@ -80,17 +81,17 @@ export default function KioskPage() {
     setTimeout(() => manualInputRef.current?.focus(), 100)
   }, [])
 
-  /* ============ AUTH QR / NIS ============ */
+  /* ============ AUTH QR (qr_id / NIS lama) ============ */
   const authenticateNis = useCallback(async (rawNis: string) => {
-    const nis = rawNis.trim()
-    if (!nis) return
+    const code = rawNis.trim()
+    if (!code) return
 
     // Debounce: abaikan scan duplikat dalam 2 detik
     const now = Date.now()
-    if (lastScanRef.current.nis === nis && now - lastScanRef.current.at < 2000) {
+    if (lastScanRef.current.nis === code && now - lastScanRef.current.at < 2000) {
       return
     }
-    lastScanRef.current = { nis, at: now }
+    lastScanRef.current = { nis: code, at: now }
 
     setIsAuthenticating(true)
     setScanError('')
@@ -99,21 +100,21 @@ export default function KioskPage() {
       const res = await fetch('/api/auth/qr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nis }),
+        body: JSON.stringify({ code }),
       })
       const data = await res.json()
 
       if (!res.ok) {
-        setScanError(data.message || 'NIS tidak valid')
+        setScanError(data.message || 'Kode QR tidak valid')
         return
       }
 
       if (data.alreadyVoted) {
-        setScanError(`Siswa ini (${data.siswa?.namaLengkap || nis}) sudah melakukan voting`)
+        setScanError(`Pemilih ini (${data.voter?.namaLengkap || code}) sudah melakukan voting`)
         return
       }
 
-      setSiswa(data.siswa)
+      setSiswa(data.voter)
       setManualNis('')
       setStep('confirm')
     } catch (err) {
@@ -153,14 +154,20 @@ export default function KioskPage() {
     setVoteError('')
 
     try {
+      // Isi payload menyesuaikan jenis pemilih: siswa pakai siswaId,
+      // guru/TU pakai pegawaiId (voterType = 'guru' | 'tu').
+      const voterPayload =
+        siswa.type === 'siswa'
+          ? { siswaId: siswa.id, voterType: 'siswa' as const }
+          : { pegawaiId: siswa.id, voterType: siswa.type }
+
       const responses = await Promise.all([
         fetch('/api/voting', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             kandidatId: selectedMitraTama.id,
-            siswaId: siswa.id,
-            voterType: 'siswa',
+            ...voterPayload,
           }),
         }),
         fetch('/api/voting', {
@@ -168,8 +175,7 @@ export default function KioskPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             kandidatId: selectedMitraMuda.id,
-            siswaId: siswa.id,
-            voterType: 'siswa',
+            ...voterPayload,
           }),
         }),
       ])
@@ -221,10 +227,10 @@ export default function KioskPage() {
             },
           },
           (decodedText: string) => {
-            // QR berisi NIS (murni angka/teks)
-            const nis = decodedText.trim()
+            // QR berisi qr_id (UUID) untuk kartu baru, atau NIS untuk kartu lama
+            const code = decodedText.trim()
             if (stepRef.current === 'scan') {
-              authenticateNis(nis)
+              authenticateNis(code)
             }
           },
           () => {
@@ -250,10 +256,17 @@ export default function KioskPage() {
       const scanner = scannerRef.current
       scannerRef.current = null
       if (scanner) {
-        scanner
-          .stop()
-          .then(() => scanner.clear())
-          .catch(() => {})
+        // scanner.stop() bisa MELEMPAR sinkron ("Cannot stop, scanner is not
+        // running or paused") ketika kamera gagal start — .catch() tidak
+        // menangkapnya, halaman jadi client-side exception saat pindah mode.
+        try {
+          scanner
+            .stop()
+            .then(() => scanner.clear())
+            .catch(() => {})
+        } catch {
+          // scanner memang belum jalan — tidak ada yang perlu dihentikan
+        }
       }
     }
   }, [step, scanMode, authenticateNis])
@@ -368,9 +381,8 @@ export default function KioskPage() {
                       ref={manualInputRef}
                       value={manualNis}
                       onChange={(e) => setManualNis(e.target.value)}
-                      placeholder="Ketik / tempel NIS lalu Enter"
+                      placeholder="Scan QR, atau ketik kode / NIS lalu Enter"
                       className="h-12 text-center text-lg font-bold tracking-widest"
-                      inputMode="numeric"
                       autoFocus
                     />
                     <Button type="submit" className="h-12" disabled={isAuthenticating}>
@@ -383,7 +395,7 @@ export default function KioskPage() {
                 {isAuthenticating && (
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Spinner className="size-4" />
-                    Memeriksa NIS...
+                    Memeriksa kode QR...
                   </div>
                 )}
 
@@ -411,15 +423,23 @@ export default function KioskPage() {
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold sm:text-3xl">{siswa.namaLengkap}</h2>
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Badge variant="secondary">NIS: {siswa.nis}</Badge>
-                  <Badge variant="outline">Kelas {siswa.kelas}</Badge>
+                  {siswa.type === 'siswa' ? (
+                    <Badge variant="secondary">NIS: {siswa.nis}</Badge>
+                  ) : (
+                    <Badge variant="secondary">
+                      {siswa.type === 'guru' ? 'GURU' : 'TENAGA KEPENDIDIKAN'}
+                    </Badge>
+                  )}
+                  <Badge variant="outline">
+                    {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
+                  </Badge>
                 </div>
               </div>
 
               <Alert>
                 <TriangleAlert className="size-4" />
                 <AlertDescription className="text-left text-xs">
-                  <strong>Perhatian panitia:</strong> cek nama di layar sudah sesuai dengan siswa yang berdiri di depan.
+                  <strong>Perhatian panitia:</strong> cek nama di layar sudah sesuai dengan pemilih yang berdiri di depan.
                   Jika bukan, tekan Batal.
                 </AlertDescription>
               </Alert>

@@ -42,6 +42,7 @@ export interface Siswa {
   kelas: string
   classroomId: number | null
   plainToken: string
+  qrId: string
   sudahMemilih: boolean
   createdAt: string
 }

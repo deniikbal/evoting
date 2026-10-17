@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, boolean, integer, timestamp, text } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, boolean, integer, timestamp, text, uuid } from 'drizzle-orm/pg-core'
 
 export const classroom = pgTable('classroom', {
   id: serial('id').primaryKey(),
@@ -15,6 +15,8 @@ export const siswa = pgTable('siswa', {
   classroomId: integer('classroom_id'),
   token: varchar('token').notNull(),
   plainToken: varchar('plain_token').notNull(),
+  // Identitas acak untuk QR kartu (UUID v4). Default diisi DB lewat gen_random_uuid().
+  qrId: uuid('qr_id').notNull().defaultRandom(),
   sudahMemilih: boolean('sudah_memilih').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 })
@@ -58,6 +60,8 @@ export const pegawai = pgTable('pegawai', {
   nip: varchar('nip'),
   nomorInduk: varchar('nomor_induk'),
   classroomId: integer('classroom_id'), // link ke classroom table (optional)
+  // Identitas acak untuk QR kartu (UUID v4). Default diisi DB lewat gen_random_uuid().
+  qrId: uuid('qr_id').notNull().defaultRandom(),
   status: varchar('status', { length: 50 }).notNull().default('aktif'), // 'aktif' atau 'non-aktif'
   sudahMemilih: boolean('sudah_memilih').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
