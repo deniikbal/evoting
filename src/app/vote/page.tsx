@@ -293,13 +293,16 @@ export default function KioskPage() {
     }
   }, [step, scanMode, facing, authenticateNis])
 
-  /* ============ LAYAR PENUH UNTUK AREA KAMERA ============ */
+  /* ============ LAYAR PENUH (SELURUH HALAMAN) ============ */
+  // Dulu yang di-fullscreen hanya kotak kamera. Akibatnya: begitu panitia
+  // pindah ke mode Manual, <input> berada di luar area fullscreen -> fokus ke
+  // input membuat Chrome membatalkan fullscreen otomatis (bukan karena kode
+  // kita). Sekarang seluruh halaman yang di-fullscreen agar semua langkah
+  // (scan, konfirmasi, voting, selesai) tetap layar penuh.
   const toggleFullscreen = useCallback(async () => {
-    const el = camWrapRef.current
-    if (!el) return
     try {
       if (!document.fullscreenElement) {
-        await el.requestFullscreen()
+        await document.documentElement.requestFullscreen()
         setIsFullscreen(true)
       } else {
         await document.exitFullscreen()
@@ -317,13 +320,10 @@ export default function KioskPage() {
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
-  // Keluar fullscreen otomatis kalau langkah berpindah dari 'scan' (mis. kartu
-  // terbaca) supaya layar konfirmasi tidak terkurung di area kamera.
-  useEffect(() => {
-    if (step !== 'scan' && document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {})
-    }
-  }, [step])
+  // Layar penuh SENGAJA dibiarkan tetap aktif saat kartu terbaca. Dulu keluar
+  // otomatis saat pindah dari 'scan', tapi itu merepotkan panitia: layar
+  // konfirmasi lalu voting harus dibuka ulang ke layar penuh. Keluar hanya
+  // kalau panitia menekan tombol (Esc / "Keluar Layar Penuh").
 
   /* ============ AUTO-CLOSE SETELAH SELESAI ============ */
   useEffect(() => {
@@ -380,10 +380,26 @@ export default function KioskPage() {
             <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
             Siap
           </Badge>
+          {isFullscreen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={toggleFullscreen}
+              title="Keluar layar penuh (Esc)"
+            >
+              <Minimize />
+              <span className="hidden sm:inline">Keluar</span>
+            </Button>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6">
+      <main
+        className={`mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 ${
+          isFullscreen ? 'flex min-h-[calc(100vh-3.5rem)] flex-col justify-center' : ''
+        }`}
+      >
 
         {/* ================= STEP: SCAN ================= */}
         {step === 'scan' && (
@@ -423,28 +439,11 @@ export default function KioskPage() {
               </CardHeader>
               <CardContent className="space-y-4 px-3 sm:px-6">
                 {scanMode === 'camera' ? (
-                  <div
-                    ref={camWrapRef}
-                    className={
-                      isFullscreen
-                        ? 'flex h-screen w-screen flex-col justify-center bg-black p-3'
-                        : 'space-y-3'
-                    }
-                  >
-                    <div
-                      className={
-                        isFullscreen
-                          ? 'relative overflow-hidden rounded-xl border-2 border-sky-400/40 bg-black'
-                          : 'relative overflow-hidden rounded-xl border-2 border-dashed border-sky-300 bg-black/5'
-                      }
-                    >
+                  <div ref={camWrapRef} className="space-y-3">
+                    <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-sky-300 bg-black/5">
                       <div
                         id="kiosk-qr-reader"
-                        className={
-                          isFullscreen
-                            ? 'mx-auto w-full [&_video]:!w-full [&_video]:!object-cover'
-                            : 'mx-auto w-full max-w-md'
-                        }
+                        className="mx-auto w-full max-w-md"
                         style={
                           // Kamera depan di-mirror supaya gerak panitia terasa
                           // natural. Tidak memengaruhi pembacaan QR.
@@ -453,13 +452,7 @@ export default function KioskPage() {
                       />
                     </div>
 
-                    <div
-                      className={
-                        isFullscreen
-                          ? 'mt-3 flex justify-center gap-2'
-                          : 'flex flex-wrap justify-center gap-2'
-                      }
-                    >
+                    <div className="flex flex-wrap justify-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -476,12 +469,10 @@ export default function KioskPage() {
                       </Button>
                     </div>
 
-                    {!isFullscreen && (
-                      <p className="text-center text-xs text-muted-foreground">
-                        Kamera aktif: <strong>{facing === 'user' ? 'Depan' : 'Belakang'}</strong>. Pakai
-                        Layar Penuh agar QR lebih mudah dibidik.
-                      </p>
-                    )}
+                    <p className="text-center text-xs text-muted-foreground">
+                      Kamera aktif: <strong>{facing === 'user' ? 'Depan' : 'Belakang'}</strong>. Pakai
+                      Layar Penuh agar semua langkah tampil penuh.
+                    </p>
                   </div>
                 ) : (
                   <form
