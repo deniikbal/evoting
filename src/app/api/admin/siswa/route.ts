@@ -10,11 +10,27 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
 }
 
-export async function GET() {
+/**
+ * GET /api/admin/siswa
+ *
+ * Tanpa parameter: semua siswa.
+ * Dengan ?kelas=NAMA: hanya siswa di kelas itu. Dipakai tombol kartu PDF per
+ * kelas, yang sebelumnya mengunduh seluruh 1306 siswa (390 KB, sekitar 22 detik
+ * pada koneksi lambat) hanya untuk memakai 30 sampai 40 baris.
+ */
+export async function GET(request: NextRequest) {
   try {
-    const allSiswa = await db.select().from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
+    const kelas = request.nextUrl.searchParams.get('kelas')
 
-    return NextResponse.json(allSiswa)
+    const daftarSiswa = kelas
+      ? await db
+          .select()
+          .from(siswa)
+          .where(eq(siswa.kelas, kelas))
+          .orderBy(asc(siswa.namaLengkap))
+      : await db.select().from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
+
+    return NextResponse.json(daftarSiswa)
   } catch (error) {
     console.error('Error fetching siswa:', error)
     return NextResponse.json(

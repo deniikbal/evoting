@@ -104,11 +104,11 @@ export default function KelasManagementPage() {
     setKelasKartu(kelas.name)
     try {
       toast.info(`Menyiapkan kartu kelas ${kelas.name}...`)
-      const response = await fetch('/api/admin/siswa')
-      const all: Siswa[] = response.ok ? await response.json() : []
-      const siswaKelas = all.filter((s) => s.kelas === kelas.name).sort((a, b) =>
-        a.namaLengkap.localeCompare(b.namaLengkap)
+      // Ambil hanya siswa kelas ini, bukan seluruh sekolah.
+      const response = await fetch(
+        `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
       )
+      const siswaKelas: Siswa[] = response.ok ? await response.json() : []
       if (siswaKelas.length === 0) {
         toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
         return

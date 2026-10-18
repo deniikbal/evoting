@@ -47,5 +47,6 @@ test
 prompt
 
 server.log
+tmp-*.log
 # uploads
 /public/uploads/
