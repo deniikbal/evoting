@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { ChartData } from './dashboard-types'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 interface GrafikKehadiranProps {
   chartData: ChartData | null
@@ -21,29 +22,6 @@ interface KelompokKehadiran {
 }
 
 type Sumbu = 'angkatan' | 'kelas'
-
-/**
- * Pengurutan natural untuk nama kelas: angka dibandingkan sebagai angka, dan
- * tingkatan X, XI, XII mengikuti urutan naik. Dipakai sebagai pemecah seri
- * karena urutan utama grafik ini adalah capaian terendah.
- */
-const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' })
-const TINGKATAN: Record<string, number> = { X: 10, XI: 11, XII: 12 }
-
-function bandingNatural(a: string, b: string): number {
-  const cocokA = a.trim().match(/^(XII|XI|X)\b\s*(.*)$/i)
-  const cocokB = b.trim().match(/^(XII|XI|X)\b\s*(.*)$/i)
-  const tingkatA = cocokA ? TINGKATAN[cocokA[1].toUpperCase()] : null
-  const tingkatB = cocokB ? TINGKATAN[cocokB[1].toUpperCase()] : null
-
-  if (tingkatA !== null && tingkatB !== null && tingkatA !== tingkatB) {
-    return tingkatA - tingkatB
-  }
-  if (tingkatA === null && tingkatB !== null) return 1
-  if (tingkatA !== null && tingkatB === null) return -1
-
-  return collator.compare(a, b)
-}
 
 /**
  * Dua pertanyaan, dua grafik:
@@ -83,7 +61,7 @@ export default function GrafikKehadiran({
         ...s,
         persen: s.total > 0 ? Math.round((s.voted / s.total) * 100) : null,
       }))
-      .sort((a, b) => (a.persen ?? -1) - (b.persen ?? -1) || bandingNatural(a.nama, b.nama))
+      .sort((a, b) => (a.persen ?? -1) - (b.persen ?? -1) || bandingNamaKelas(a.nama, b.nama))
   }, [chartData, sumbu])
 
   const maksimal = Math.max(...data.map((d) => d.total), 1)

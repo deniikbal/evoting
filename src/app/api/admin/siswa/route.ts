@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { eq, asc } from 'drizzle-orm'
 import crypto from 'crypto'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,9 @@ function hashToken(token: string): string {
 /**
  * GET /api/admin/siswa
  *
- * Tanpa parameter: semua siswa.
+ * Tanpa parameter: semua siswa, diurutkan per kelas secara natural (X 1, X 2,
+ * X 10 lalu XI, XII) dengan nama sebagai urutan kedua. Pengurutan kelas
+ * dilakukan di JS karena ORDER BY teks menaruh "X 10" sebelum "X 2".
  * Dengan ?kelas=NAMA: hanya siswa di kelas itu. Dipakai tombol kartu PDF per
  * kelas, yang sebelumnya mengunduh seluruh 1306 siswa (390 KB, sekitar 22 detik
  * pada koneksi lambat) hanya untuk memakai 30 sampai 40 baris.
@@ -28,7 +31,11 @@ export async function GET(request: NextRequest) {
           .from(siswa)
           .where(eq(siswa.kelas, kelas))
           .orderBy(asc(siswa.namaLengkap))
-      : await db.select().from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
+      : (await db.select().from(siswa).orderBy(asc(siswa.namaLengkap))).sort(
+          (a, b) =>
+            bandingNamaKelas(a.kelas, b.kelas) ||
+            a.namaLengkap.localeCompare(b.namaLengkap, 'id')
+        )
 
     return NextResponse.json(daftarSiswa)
   } catch (error) {

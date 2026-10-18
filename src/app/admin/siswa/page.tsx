@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import VoterCard from '@/components/admin/VoterCard'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 import { toast } from 'sonner'
 
 interface Admin {
@@ -491,7 +492,8 @@ export default function SiswaManagementPage() {
     )
   }
 
-  const uniqueClasses = Array.from(new Set(siswa.map(s => s.kelas))).sort()
+  // Urutkan natural (X 1, X 2, X 10) — .sort() polos menaruh "X 10" sebelum "X 2".
+  const uniqueClasses = Array.from(new Set(siswa.map(s => s.kelas))).sort(bandingNamaKelas)
 
   if (isLoading) {
     return (
@@ -1389,7 +1391,8 @@ export default function SiswaManagementPage() {
             })
 
             // Create one page per kelas
-            Object.keys(groupedByKelas).sort().forEach(kelas => {
+            // Create one page per kelas — urutan natural (X 1, X 2, X 10).
+            Object.keys(groupedByKelas).sort(bandingNamaKelas).forEach(kelas => {
               const kelasStudents = groupedByKelas[kelas]
               pages.push(
                 <div key={kelas} className="print-page">

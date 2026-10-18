@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { ChartData } from './dashboard-types'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 interface KecukupanDataKelasProps {
   chartData: ChartData | null
@@ -29,29 +30,6 @@ const NAMA_STATUS: Record<BarisKelas['status'], string> = {
   belum: 'Belum ada',
   sebagian: 'Berjalan',
   lengkap: 'Lengkap',
-}
-
-/**
- * Pengurutan natural: angka di dalam nama dibandingkan sebagai angka, jadi
- * "X 2" berada sebelum "X 10" dan bukan sesudahnya. Urutan tingkatan X, XI,
- * XII ditetapkan lebih dulu karena urutan abjad akan menaruh XI sebelum X.
- */
-const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' })
-const TINGKATAN: Record<string, number> = { X: 10, XI: 11, XII: 12 }
-
-function bandingNatural(a: string, b: string): number {
-  const cocokA = a.trim().match(/^(XII|XI|X)\b\s*(.*)$/i)
-  const cocokB = b.trim().match(/^(XII|XI|X)\b\s*(.*)$/i)
-  const tingkatA = cocokA ? TINGKATAN[cocokA[1].toUpperCase()] : null
-  const tingkatB = cocokB ? TINGKATAN[cocokB[1].toUpperCase()] : null
-
-  if (tingkatA !== null && tingkatB !== null && tingkatA !== tingkatB) {
-    return tingkatA - tingkatB
-  }
-  if (tingkatA === null && tingkatB !== null) return 1
-  if (tingkatA !== null && tingkatB === null) return -1
-
-  return collator.compare(a, b)
 }
 
 function statusDari(total: number, voted: number): BarisKelas['status'] {
@@ -117,7 +95,7 @@ export default function KecukupanDataKelas({
         if (bobot[a.status] !== bobot[b.status]) {
           return bobot[a.status] - bobot[b.status]
         }
-        return bandingNatural(a.nama, b.nama)
+        return bandingNamaKelas(a.nama, b.nama)
       })
   }, [chartData, angkatanDariKelas])
 

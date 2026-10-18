@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, classroom } from '@/lib/schema'
 import { eq, count, and } from 'drizzle-orm'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,12 +65,15 @@ export async function GET() {
       return acc
     }, [])
 
-    // Group by kelas (classroom)
-    const byKelas = classroomData.map(item => ({
-      name: item.name,
-      totalSiswa: item.totalSiswa,
-      totalVoted: item.totalVoted,
-    }))
+    // Group by kelas (classroom) — urutan natural supaya tampilan dasbor tidak
+    // bergantung pada urutan balik dari database.
+    const byKelas = classroomData
+      .map(item => ({
+        name: item.name,
+        totalSiswa: item.totalSiswa,
+        totalVoted: item.totalVoted,
+      }))
+      .sort((a, b) => bandingNamaKelas(a.name, b.name))
 
     return NextResponse.json({
       byAngkatan,

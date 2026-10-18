@@ -3,17 +3,25 @@ import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { asc } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const allSiswa = await db.select({
-      nis: siswa.nis,
-      namaLengkap: siswa.namaLengkap,
-      kelas: siswa.kelas,
-      plainToken: siswa.plainToken
-    }).from(siswa).orderBy(asc(siswa.kelas), asc(siswa.namaLengkap))
+    // Urutan kelas natural di JS: ORDER BY teks menaruh "X 10" sebelum "X 2".
+    const allSiswa = (
+      await db.select({
+        nis: siswa.nis,
+        namaLengkap: siswa.namaLengkap,
+        kelas: siswa.kelas,
+        plainToken: siswa.plainToken
+      }).from(siswa).orderBy(asc(siswa.namaLengkap))
+    ).sort(
+      (a, b) =>
+        bandingNamaKelas(a.kelas, b.kelas) ||
+        a.namaLengkap.localeCompare(b.namaLengkap, 'id')
+    )
 
     // If no students, return empty Excel file
     if (allSiswa.length === 0) {

@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { classroom, siswa } from '@/lib/schema'
-import { desc, count, eq } from 'drizzle-orm'
+import { count } from 'drizzle-orm'
+import { bandingNamaKelas } from '@/lib/urutan-kelas'
 
 export const dynamic = 'force-dynamic'
 
 // GET - List all classrooms beserta jumlah siswanya.
 // jumlahSiswa dipakai halaman /admin/kelas: kelas yang masih berisi siswa tidak
 // dapat dihapus, jadi angkanya perlu terlihat sebelum tombol hapus ditekan.
+//
+// Urutan memakai bandingNamaKelas (bukan ORDER BY nama) karena SQL mengurutkan
+// teks: "X 10" akan mendahului "X 2". Pengurutan dilakukan di sini supaya
+// halaman Kelas, dropdown Siswa, dan dropdown Pegawai menerima urutan yang sama.
 export async function GET() {
   try {
-    const classrooms = await db
-      .select()
-      .from(classroom)
-      .orderBy(desc(classroom.angkatan), classroom.name)
+    const classrooms = await db.select().from(classroom)
 
     // Satu query agregat, bukan satu query per kelas.
     const perKelas = await db
@@ -27,10 +29,12 @@ export async function GET() {
         .map((row) => [row.classroomId as number, Number(row.total)])
     )
 
-    const data = classrooms.map((k) => ({
-      ...k,
-      jumlahSiswa: petaJumlah.get(k.id) ?? 0,
-    }))
+    const data = classrooms
+      .map((k) => ({
+        ...k,
+        jumlahSiswa: petaJumlah.get(k.id) ?? 0,
+      }))
+      .sort((a, b) => bandingNamaKelas(a.name, b.name))
 
     return NextResponse.json(data)
   } catch (error) {
