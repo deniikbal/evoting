@@ -20,13 +20,13 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
   Layers, Users, Search, FileSpreadsheet, FileDown,
-  ArrowUpDown, ArrowUp, ArrowDown, Loader2,
+  ArrowUpDown, ArrowUp, ArrowDown, Loader2, CheckCircle, XCircle,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
 import type { Siswa } from '@/app/admin/siswa/page'
-import { bandingAngkatan, bandingNamaKelas, cocokCari } from '@/lib/urutan-kelas'
+import { bandingAngkatan, bandingNamaKelas, cocokCari, denganNomorUrut } from '@/lib/urutan-kelas'
 
 interface Admin {
   id: number
@@ -62,6 +62,12 @@ export default function KelasManagementPage() {
 
   // Generate kartu PDF per kelas: container snapshot render hanya saat request aktif
   const [kartuRequest, setKartuRequest] = useState<{ kelas: string; siswa: Siswa[] } | null>(null)
+
+  // Detail siswa satu kelas: dibuka dengan mengklik angka jumlah siswa.
+  const [detailKelas, setDetailKelas] = useState<Classroom | null>(null)
+  const [detailSiswa, setDetailSiswa] = useState<Array<Siswa & { nomorUrut: number }>>([])
+  const [detailMemuat, setDetailMemuat] = useState(false)
+  const [detailGalat, setDetailGalat] = useState<string | null>(null)
 
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -120,6 +126,41 @@ export default function KelasManagementPage() {
       setKelasKartu(null)
     }
   }
+
+  // Detail siswa satu kelas. Hanya dipanggil untuk kelas yang berisi siswa.
+  const bukaDetailSiswa = async (kelas: Classroom) => {
+    if (kelas.jumlahSiswa === 0) return
+    setDetailKelas(kelas)
+    setDetailSiswa([])
+    setDetailGalat(null)
+    setDetailMemuat(true)
+    try {
+      const response = await fetch(
+        `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`,
+        { cache: 'no-store' }
+      )
+      if (!response.ok) {
+        setDetailGalat(`Server menjawab ${response.status} saat memuat siswa.`)
+        return
+      }
+      const data: Siswa[] = await response.json()
+      if (data.length === 0) {
+        setDetailGalat(`Tidak ada siswa terdaftar di kelas ${kelas.name}.`)
+        return
+      }
+      setDetailSiswa(denganNomorUrut(data))
+    } catch {
+      setDetailGalat('Data siswa tidak dapat diambil. Periksa koneksi lalu coba lagi.')
+    } finally {
+      setDetailMemuat(false)
+    }
+  }
+
+  // Angka ringkasan di dialog detail: berapa yang sudah memilih.
+  const ringkasDetail = useMemo(() => {
+    const sudah = detailSiswa.filter((s) => s.sudahMemilih).length
+    return { sudah, belum: detailSiswa.length - sudah, total: detailSiswa.length }
+  }, [detailSiswa])
 
   const fetchClassrooms = async () => {
     setGalatMuat(null)
@@ -769,7 +810,19 @@ export default function KelasManagementPage() {
                           {kosong ? (
                             <span className="text-muted-foreground">0</span>
                           ) : (
-                            classroom.jumlahSiswa
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 tabular-nums"
+                              title={`Lihat siswa kelas ${classroom.name}`}
+                              onClick={() => bukaDetailSiswa(classroom)}
+                            >
+                              {classroom.jumlahSiswa}
+                              <span className="sr-only">
+                                siswa di kelas {classroom.name}, klik untuk
+                                melihat daftar dan status memilih
+                              </span>
+                            </Button>
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
@@ -879,9 +932,21 @@ export default function KelasManagementPage() {
                         <div>
                           <p className="text-sm font-semibold">{classroom.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {classroom.jumlahSiswa > 0
-                              ? `${classroom.jumlahSiswa} siswa`
-                              : 'Belum ada siswa'}
+                            {classroom.jumlahSiswa > 0 ? (
+                              <button
+                                type="button"
+                                className="font-medium underline underline-offset-2 hover:text-foreground"
+                                onClick={() => bukaDetailSiswa(classroom)}
+                              >
+                                {classroom.jumlahSiswa} siswa
+                                <span className="sr-only">
+                                  , klik untuk melihat daftar dan status
+                                  memilih kelas {classroom.name}
+                                </span>
+                              </button>
+                            ) : (
+                              'Belum ada siswa'
+                            )}
                             <span className="mx-1">·</span>
                             {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
                           </p>
@@ -1026,6 +1091,111 @@ export default function KelasManagementPage() {
         isLoading={isBulkDeleting}
         onConfirm={handleBulkDelete}
       />
+
+      {/* Detail siswa per kelas */}
+      <Dialog
+        open={detailKelas !== null}
+        onOpenChange={(buka) => {
+          if (!buka) {
+            setDetailKelas(null)
+            setDetailSiswa([])
+            setDetailGalat(null)
+          }
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Siswa kelas {detailKelas?.name}</DialogTitle>
+            <DialogDescription>
+              Angkatan {detailKelas?.angkatan}. Nomor urut mengikuti urutan di
+              kartu pemilih kelas ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailMemuat && (
+            <div className="space-y-2 py-4" aria-busy="true">
+              <p className="text-sm text-muted-foreground">Memuat data siswa...</p>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-11 w-full" />
+              ))}
+            </div>
+          )}
+
+          {!detailMemuat && detailGalat && (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <XCircle />
+                </EmptyMedia>
+                <EmptyTitle>Data siswa tidak tampil</EmptyTitle>
+                <EmptyDescription>{detailGalat}</EmptyDescription>
+              </EmptyHeader>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => detailKelas && bukaDetailSiswa(detailKelas)}
+              >
+                <RefreshCw />
+                Coba lagi
+              </Button>
+            </Empty>
+          )}
+
+          {!detailMemuat && !detailGalat && (
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="default">
+                  <CheckCircle className="size-3" />
+                  {ringkasDetail.sudah} sudah memilih
+                </Badge>
+                <Badge variant="secondary">
+                  <XCircle className="size-3" />
+                  {ringkasDetail.belum} belum memilih
+                </Badge>
+                <span className="ml-auto text-muted-foreground tabular-nums">
+                  {ringkasDetail.total} siswa
+                </span>
+              </div>
+
+              <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+                <ul className="divide-y rounded-lg border">
+                  {detailSiswa.map((s) => (
+                    <li
+                      key={s.id}
+                      className="flex items-center gap-3 px-3 py-2.5"
+                    >
+                      <span className="w-8 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                        {s.nomorUrut}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {s.namaLengkap}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          NIS {s.nis}
+                        </p>
+                      </div>
+                      <Badge variant={s.sudahMemilih ? 'default' : 'secondary'}>
+                        {s.sudahMemilih ? (
+                          <>
+                            <CheckCircle className="size-3" />
+                            Sudah
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="size-3" />
+                            Belum
+                          </>
+                        )}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Kartu PDF per kelas */}
       {kartuRequest && (

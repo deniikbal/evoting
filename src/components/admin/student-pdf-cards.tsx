@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import VoterCard from '@/components/admin/VoterCard'
 import { Siswa } from '@/app/admin/siswa/page'
 import { generateCardsPdf } from '@/lib/generate-cards-pdf'
+import { bandingNamaKelas, denganNomorUrut } from '@/lib/urutan-kelas'
 
 interface Props {
   siswa: Siswa[]
@@ -122,9 +123,21 @@ export function StudentPdfCards({
           zIndex: -1,
         }}
       >
-        {siswa.map((s) => (
-          <VoterCard key={s.id} siswa={s} />
-        ))}
+        {(() => {
+          // Nomor urut alfabet namaLengkap, restart per kelas, kelas disusun
+          // berurutan (X, XI, XII, dst.). Bila input lintas kelas (mis. dari
+          // halaman Siswa -> "Download PDF (Semua)"), tiap kelas dipecah dan
+          // dinomori ulang dari 1.
+          const semuaKelas = Array.from(new Set(siswa.map((s) => s.kelas))).sort(
+            bandingNamaKelas
+          )
+          const flat: Array<Siswa & { nomorUrut: number }> = []
+          for (const kelas of semuaKelas) {
+            const anggotaKelas = siswa.filter((s) => s.kelas === kelas)
+            flat.push(...denganNomorUrut(anggotaKelas))
+          }
+          return flat.map((s) => <VoterCard key={s.id} siswa={s} />)
+        })()}
       </div>
     </div>
   )

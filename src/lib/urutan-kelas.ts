@@ -56,3 +56,20 @@ export function cocokCari(nama: string, kueri: string): boolean {
   if (!q) return true
   return nama.toLowerCase().includes(q)
 }
+
+const collatorNamaSiswa = new Intl.Collator('id', {
+  numeric: true,
+  sensitivity: 'base',
+})
+
+/**
+ * Salinan `siswa` terurut alfabet namaLengkap dengan nomor urut restart dari 1.
+ * Pure: tidak mengubah array input. Group-by-kelas adalah kebijakan pemanggil.
+ */
+export function denganNomorUrut<T extends { namaLengkap: string }>(
+  siswa: T[]
+): Array<T & { nomorUrut: number }> {
+  return [...siswa]
+    .sort((a, b) => collatorNamaSiswa.compare(a.namaLengkap, b.namaLengkap))
+    .map((s, i) => ({ ...s, nomorUrut: i + 1 }))
+}

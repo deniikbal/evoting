@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import { Siswa } from '@/app/admin/siswa/page'
 
 interface VoterCardProps {
-  siswa: Siswa
+  siswa: Siswa & { nomorUrut?: number }
 }
 
 export default function VoterCard({ siswa }: VoterCardProps) {
@@ -31,8 +31,18 @@ export default function VoterCard({ siswa }: VoterCardProps) {
 
   return (
     <div className="voter-card bg-white border border-gray-800 rounded p-1.5">
-      <div className="text-center mb-1 pb-0.5 border-b border-gray-800">
-        <h2 className="text-[9px] font-bold text-gray-900 leading-tight">PEMILIHAN KETUA OSIS</h2>
+      <div className="relative mb-1 pb-0.5 border-b border-gray-800">
+        <h2 className="text-center text-[9px] font-bold text-gray-900 leading-tight">
+          PEMILIHAN KETUA OSIS
+        </h2>
+        {siswa.nomorUrut !== undefined && (
+          <span
+            className="absolute right-0 top-0 text-[8px] font-bold text-gray-900 leading-tight"
+            aria-label={`Nomor urut ${siswa.nomorUrut}`}
+          >
+            {siswa.nomorUrut}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5">
