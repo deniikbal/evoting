@@ -1,8 +1,0 @@
-npm notice run nextjs_tailwind_shadcn_ts@0.1.0 npx
-npm notice run next start -p 3600
-   ▲ Next.js 15.5.28
-   - Local:        http://localhost:3600
-   - Network:      http://192.168.1.11:3600
-
- ✓ Starting...
- ✓ Ready in 2.2s
