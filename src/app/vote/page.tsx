@@ -480,34 +480,36 @@ export default function KioskPage() {
 
         {/* ================= STEP: CONFIRM ================= */}
         {step === 'confirm' && siswa && (
-          <Panel className="mx-auto w-full max-w-lg">
-            <div className="px-4 py-5 text-center sm:px-6">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-border bg-secondary text-secondary-foreground">
-                <User className="size-6" aria-hidden="true" />
+          <Panel className="mx-auto w-full max-w-lg border-2">
+            <div className="border-b-2 border-primary bg-primary/5 px-4 py-4 text-center sm:px-6">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-sm">
+                <CheckCircle className="size-7" aria-hidden="true" />
               </div>
-              <p className="mt-3 text-[11px] font-medium text-muted-foreground">
-                Langkah 2 dari 3
+              <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                Pemilih Terverifikasi
               </p>
-              <h2 className="mt-1.5 text-xl font-semibold leading-tight text-foreground sm:text-2xl">
+              <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl">
                 {siswa.namaLengkap}
               </h2>
 
               <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
                 {siswa.type === 'siswa' ? (
-                  <span className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-xs font-medium text-foreground">
+                  <span className="rounded-md border-2 border-border bg-background px-3 py-1 font-mono text-sm font-bold text-foreground">
                     NIS {siswa.nis}
                   </span>
                 ) : (
-                  <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
+                  <span className="rounded-md border-2 border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
                     {siswa.type === 'guru' ? 'Guru' : 'Tenaga Kependidikan'}
                   </span>
                 )}
-                <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
+                <span className="rounded-md border-2 border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
                   {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
                 </span>
               </div>
+            </div>
 
-              <div className="mt-5 flex items-start gap-2 rounded-md border border-border bg-secondary px-3 py-2.5 text-left">
+            <div className="px-4 py-5 sm:px-6">
+              <div className="flex items-start gap-2 rounded-md border border-border bg-secondary px-3 py-2.5 text-left">
                 <TriangleAlert
                   className="mt-0.5 size-4 shrink-0 text-foreground"
                   aria-hidden="true"
@@ -544,18 +546,24 @@ export default function KioskPage() {
         {step === 'voting' && siswa && (
           <div className="space-y-4">
             {/* Identitas pemilih */}
-            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <User className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <p className="truncate text-sm font-medium text-foreground">{siswa.namaLengkap}</p>
-                <span className="hidden shrink-0 rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">
-                  {siswa.type === 'siswa' ? siswa.kelas : siswa.kelas}
-                </span>
+            <div className="flex items-center justify-between gap-3 rounded-md border-2 border-primary bg-primary/5 px-3 py-2.5 shadow-sm">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground">
+                  <User className="size-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">{siswa.namaLengkap}</p>
+                  <p className="truncate text-[11px] font-medium text-muted-foreground">
+                    {siswa.type === 'siswa'
+                      ? `NIS ${siswa.nis} • Kelas ${siswa.kelas}`
+                      : `${siswa.type === 'guru' ? 'Guru' : 'Tenaga Kependidikan'} • ${siswa.kelas}`}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={resetToScan}
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border-2 border-border bg-background px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" />
                 Batal
@@ -615,9 +623,9 @@ export default function KioskPage() {
                               type="button"
                               onClick={() => selectKandidat(k)}
                               aria-pressed={isSelected}
-                              className={`group relative overflow-hidden rounded-md border bg-card text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                              className={`group relative overflow-hidden rounded-md border-2 bg-card text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                                 isSelected
-                                  ? 'border-foreground ring-1 ring-foreground'
+                                  ? 'border-primary ring-4 ring-primary/30 bg-primary/5'
                                   : 'border-border hover:border-foreground/40'
                               }`}
                             >
@@ -635,21 +643,29 @@ export default function KioskPage() {
                                   </div>
                                 )}
 
-                                <span className="absolute left-2 top-2 rounded bg-foreground/85 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-background">
+                                <span
+                                  className="absolute left-2 top-2 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
+                                  style={{ backgroundColor: '#f59e0b' }}
+                                >
                                   {String(k.nomorUrut).padStart(2, '0')}
                                 </span>
 
                                 {isSelected && (
-                                  <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                    <CheckCircle className="size-3.5" aria-hidden="true" />
+                                  <span className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                                    <CheckCircle className="size-4" aria-hidden="true" />
                                   </span>
                                 )}
                               </div>
 
-                              <div className="px-2 py-2">
-                                <p className="line-clamp-2 text-xs font-medium leading-snug text-foreground sm:text-[13px]">
+                              <div className="border-t border-border bg-card px-2 py-2">
+                                <p className={`line-clamp-2 text-xs font-semibold leading-snug sm:text-[13px] ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                                   {k.namaCalon}
                                 </p>
+                                {isSelected && (
+                                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                    Terpilih
+                                  </p>
+                                )}
                               </div>
                             </button>
                           )
@@ -666,18 +682,34 @@ export default function KioskPage() {
                   </div>
                 )}
 
-                <div className="sticky bottom-0 z-10 -mx-3 border-t border-border bg-background px-3 py-3 sm:mx-0 sm:rounded-md sm:border">
+                <div className="sticky bottom-0 z-10 -mx-3 border-t-2 border-border bg-background px-3 py-3 sm:mx-0 sm:rounded-md sm:border-2">
                   <div className="mb-2 grid grid-cols-2 gap-2">
-                    <div className="rounded-md border border-border px-2.5 py-1.5">
-                      <p className="text-[11px] font-medium text-muted-foreground">Mitra Tama</p>
-                      <p className="truncate text-xs font-semibold text-foreground">
-                        {selectedMitraTama?.namaCalon || 'Belum dipilih'}
+                    <div
+                      className={`rounded-md border-2 px-2.5 py-1.5 ${
+                        selectedMitraTama ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                      }`}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mitra Tama</p>
+                      <p
+                        className={`truncate text-xs font-semibold sm:text-sm ${
+                          selectedMitraTama ? 'text-primary' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {selectedMitraTama ? selectedMitraTama.namaCalon : 'Belum dipilih'}
                       </p>
                     </div>
-                    <div className="rounded-md border border-border px-2.5 py-1.5">
-                      <p className="text-[11px] font-medium text-muted-foreground">Mitra Muda</p>
-                      <p className="truncate text-xs font-semibold text-foreground">
-                        {selectedMitraMuda?.namaCalon || 'Belum dipilih'}
+                    <div
+                      className={`rounded-md border-2 px-2.5 py-1.5 ${
+                        selectedMitraMuda ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                      }`}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mitra Muda</p>
+                      <p
+                        className={`truncate text-xs font-semibold sm:text-sm ${
+                          selectedMitraMuda ? 'text-primary' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {selectedMitraMuda ? selectedMitraMuda.namaCalon : 'Belum dipilih'}
                       </p>
                     </div>
                   </div>
