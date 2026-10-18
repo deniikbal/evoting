@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { classroom } from '@/lib/schema'
-import { eq, desc } from 'drizzle-orm'
+import { classroom, siswa } from '@/lib/schema'
+import { desc, count, eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
-// GET - List all classrooms
+// GET - List all classrooms beserta jumlah siswanya.
+// jumlahSiswa dipakai halaman /admin/kelas: kelas yang masih berisi siswa tidak
+// dapat dihapus, jadi angkanya perlu terlihat sebelum tombol hapus ditekan.
 export async function GET() {
   try {
     const classrooms = await db
@@ -13,7 +15,24 @@ export async function GET() {
       .from(classroom)
       .orderBy(desc(classroom.angkatan), classroom.name)
 
-    return NextResponse.json(classrooms)
+    // Satu query agregat, bukan satu query per kelas.
+    const perKelas = await db
+      .select({ classroomId: siswa.classroomId, total: count() })
+      .from(siswa)
+      .groupBy(siswa.classroomId)
+
+    const petaJumlah = new Map(
+      perKelas
+        .filter((row) => row.classroomId !== null)
+        .map((row) => [row.classroomId as number, Number(row.total)])
+    )
+
+    const data = classrooms.map((k) => ({
+      ...k,
+      jumlahSiswa: petaJumlah.get(k.id) ?? 0,
+    }))
+
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error fetching classrooms:', error)
     return NextResponse.json(

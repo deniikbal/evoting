@@ -11,20 +11,22 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { StatCard } from '@/components/admin/stat-card'
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
 import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { BulkActionBar } from '@/components/admin/bulk-action-bar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
-  Calendar, Layers, ListChecks, FileSpreadsheet, FileDown,
-  ArrowUpDown, ArrowUp, ArrowDown
+  Layers, Users, Search, FileSpreadsheet, FileDown,
+  ArrowUpDown, ArrowUp, ArrowDown, Loader2,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
 import type { Siswa } from '@/app/admin/siswa/page'
+import { bandingAngkatan, bandingNamaKelas, cocokCari } from '@/lib/urutan-kelas'
 
 interface Admin {
   id: number
@@ -36,11 +38,16 @@ interface Classroom {
   name: string
   angkatan: string
   createdAt: string
+  /** Jumlah siswa terdaftar di kelas ini. Kelas berisi siswa tidak dapat dihapus. */
+  jumlahSiswa: number
 }
+
+type KunciSort = 'name' | 'angkatan' | 'createdAt' | 'jumlahSiswa'
 
 export default function KelasManagementPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [galatMuat, setGalatMuat] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -50,6 +57,9 @@ export default function KelasManagementPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Kelas yang kartu PDF-nya sedang disiapkan.
+  const [kelasKartu, setKelasKartu] = useState<string | null>(null)
+
   // Generate kartu PDF per kelas: container snapshot render hanya saat request aktif
   const [kartuRequest, setKartuRequest] = useState<{ kelas: string; siswa: Siswa[] } | null>(null)
 
@@ -57,7 +67,10 @@ export default function KelasManagementPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
-  const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'angkatan' | 'createdAt'; dir: 'asc' | 'desc' } | null>(null)
+  const [sortConfig, setSortConfig] = useState<{ key: KunciSort; dir: 'asc' | 'desc' } | null>(null)
+
+  // Pencarian nama kelas
+  const [cari, setCari] = useState('')
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -84,6 +97,11 @@ export default function KelasManagementPage() {
 
   // Siapkan siswa satu kelas, lalu mount StudentPdfCards (autoDownload)
   const handleKartuKelas = async (kelas: Classroom) => {
+    if (kelas.jumlahSiswa === 0) {
+      toast.error(`Kelas ${kelas.name} belum memiliki siswa`)
+      return
+    }
+    setKelasKartu(kelas.name)
     try {
       toast.info(`Menyiapkan kartu kelas ${kelas.name}...`)
       const response = await fetch('/api/admin/siswa')
@@ -98,19 +116,26 @@ export default function KelasManagementPage() {
       setKartuRequest({ kelas: kelas.name, siswa: siswaKelas })
     } catch {
       toast.error('Gagal memuat data siswa')
+    } finally {
+      setKelasKartu(null)
     }
   }
 
   const fetchClassrooms = async () => {
+    setGalatMuat(null)
     try {
-      const response = await fetch('/api/admin/classroom')
+      const response = await fetch('/api/admin/classroom', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setClassrooms(data)
       } else {
+        setGalatMuat(`Server menjawab ${response.status} saat memuat data kelas.`)
         toast.error('Gagal memuat data kelas')
       }
     } catch (err) {
+      setGalatMuat(
+        'Data kelas tidak dapat diambil. Periksa koneksi lalu coba lagi.'
+      )
       toast.error('Terjadi kesalahan saat memuat data')
     } finally {
       setIsLoading(false)
@@ -302,21 +327,13 @@ export default function KelasManagementPage() {
     }
   }
 
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(selectableItems.map((c) => c.id))
-    } else {
-      setSelectedIds([])
-    }
-  }
-
   const toggleSelectOne = (id: number, checked: boolean) => {
     setSelectedIds((prev) =>
       checked ? [...prev, id] : prev.filter((x) => x !== id)
     )
   }
 
-  const toggleSort = (key: 'name' | 'angkatan' | 'createdAt') => {
+  const toggleSort = (key: KunciSort) => {
     setSortConfig((prev) => {
       if (prev?.key === key) {
         return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
@@ -325,21 +342,25 @@ export default function KelasManagementPage() {
     })
   }
 
-  // Sorted data (derived)
+  // Hasil pencarian, lalu pengurutan.
+  const tersaring = useMemo(
+    () => classrooms.filter((c) => cocokCari(c.name, cari)),
+    [classrooms, cari]
+  )
+
   const sortedClassrooms = useMemo(() => {
-    if (!sortConfig) return classrooms
+    if (!sortConfig) return tersaring
     const { key, dir } = sortConfig
     const factor = dir === 'asc' ? 1 : -1
-    return [...classrooms].sort((a, b) => {
-      if (key === 'angkatan') {
-        return (Number(a.angkatan) - Number(b.angkatan)) * factor
-      }
+    return [...tersaring].sort((a, b) => {
+      if (key === 'angkatan') return bandingAngkatan(a.angkatan, b.angkatan) * factor
       if (key === 'createdAt') {
         return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * factor
       }
-      return a.name.localeCompare(b.name) * factor
+      if (key === 'jumlahSiswa') return (a.jumlahSiswa - b.jumlahSiswa) * factor
+      return bandingNamaKelas(a.name, b.name) * factor
     })
-  }, [classrooms, sortConfig])
+  }, [tersaring, sortConfig])
 
   // Pagination calculations
   const totalPages = Math.ceil(sortedClassrooms.length / itemsPerPage)
@@ -347,32 +368,49 @@ export default function KelasManagementPage() {
   const endIndex = startIndex + itemsPerPage
   const currentItems = sortedClassrooms.slice(startIndex, endIndex)
   const selectableItems = currentItems
+  // Hanya kelas kosong yang dapat dihapus, jadi hanya itu yang bisa dipilih.
+  const bisaDihapus = selectableItems.filter((c) => c.jumlahSiswa === 0)
   const allCurrentSelected =
-    selectableItems.length > 0 &&
-    selectableItems.every((c) => selectedIds.includes(c.id))
+    bisaDihapus.length > 0 && bisaDihapus.every((c) => selectedIds.includes(c.id))
   const someCurrentSelected =
-    selectableItems.some((c) => selectedIds.includes(c.id)) && !allCurrentSelected
+    bisaDihapus.some((c) => selectedIds.includes(c.id)) && !allCurrentSelected
 
-  // Statistik turunan (derived) - tidak mengubah data/logic
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...bisaDihapus.map((c) => c.id)])))
+    } else {
+      setSelectedIds((prev) => prev.filter((id) => !bisaDihapus.some((c) => c.id === id)))
+    }
+  }
+
+  // Statistik turunan (derived)
   const statistik = useMemo(() => {
     const angkatanList = Array.from(new Set(classrooms.map((c) => c.angkatan)))
-    const sortedAngkatan = [...angkatanList].sort((a, b) => Number(b) - Number(a))
+    const urutAngkatan = [...angkatanList].sort(bandingAngkatan)
+    const totalSiswa = classrooms.reduce((s, c) => s + c.jumlahSiswa, 0)
+    const kelasKosong = classrooms.filter((c) => c.jumlahSiswa === 0).length
     return {
       totalKelas: classrooms.length,
       totalAngkatan: angkatanList.length,
-      angkatanTerbaru: sortedAngkatan[0] ?? '-',
+      angkatanTerbaru: urutAngkatan[urutAngkatan.length - 1] ?? '-',
+      totalSiswa,
+      kelasKosong,
     }
   }, [classrooms])
 
-  // Pagination functions
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
 
   const handleItemsPerPageChange = (value: number) => {
     setItemsPerPage(value)
-    setCurrentPage(1) // Reset to first page
+    setCurrentPage(1)
   }
+
+  // Kembali ke halaman 1 saat pencarian berubah.
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [cari])
 
   // Drop selections that no longer exist (e.g. after delete/refetch)
   useEffect(() => {
@@ -391,7 +429,7 @@ export default function KelasManagementPage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-28 w-full" />
           ))}
@@ -403,48 +441,48 @@ export default function KelasManagementPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* Statistik Cards */}
-      <StatCardGrid>
+      {/* Angka ringkas: apa yang ada, dan satu keadaan yang butuh tindakan. */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          title="Total Kelas"
+          title="Kelas terdaftar"
           value={statistik.totalKelas}
-          description="Kelas terdaftar"
+          description={`${statistik.totalAngkatan} angkatan, terbaru ${statistik.angkatanTerbaru}`}
           icon={School}
         />
         <StatCard
-          title="Total Angkatan"
-          value={statistik.totalAngkatan}
-          description="Angkatan berbeda"
+          title="Siswa terdaftar"
+          value={statistik.totalSiswa}
+          description="Terhubung ke kelas"
+          icon={Users}
+        />
+        <StatCard
+          title="Kelas kosong"
+          value={statistik.kelasKosong}
+          description="Tanpa siswa, dapat dihapus"
           icon={Layers}
         />
         <StatCard
-          title="Angkatan Terbaru"
-          value={statistik.angkatanTerbaru}
-          description="Tahun terakhir"
-          icon={Calendar}
+          title="Rata-rata per kelas"
+          value={
+            statistik.totalKelas > 0
+              ? Math.round(statistik.totalSiswa / statistik.totalKelas)
+              : 0
+          }
+          description="Siswa per kelas"
+          icon={Users}
         />
-        <StatCard
-          title="Data / Halaman"
-          value={itemsPerPage}
-          description={`Halaman ${currentPage} dari ${totalPages || 1}`}
-          icon={ListChecks}
-        />
-      </StatCardGrid>
+      </div>
 
-      {/* Data Kelas */}
       <Card>
         <DataTableToolbar
           title="Data Kelas"
           icon={School}
           description={
-            <>
-              Total {classrooms.length} kelas terdaftar
-              {classrooms.length > 0 && (
-                <span className="ml-2">
-                  • Menampilkan {startIndex + 1}-{Math.min(endIndex, classrooms.length)} dari {classrooms.length}
-                </span>
-              )}
-            </>
+            cari
+              ? `${tersaring.length} dari ${classrooms.length} kelas cocok dengan pencarian`
+              : classrooms.length > 0
+                ? `Menampilkan ${startIndex + 1}-${Math.min(endIndex, sortedClassrooms.length)} dari ${classrooms.length} kelas`
+                : 'Belum ada kelas terdaftar'
           }
           actions={
             <>
@@ -459,14 +497,14 @@ export default function KelasManagementPage() {
                   <DialogHeader>
                     <DialogTitle>Import Data Kelas</DialogTitle>
                     <DialogDescription>
-                      Upload file Excel dengan kolom: name, angkatan
+                      Unggah file Excel dengan kolom: name, angkatan
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="rounded-lg border bg-muted/50 p-3">
                     <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
                       <FileSpreadsheet className="size-4" />
-                      Belum punya template? Download terlebih dahulu.
+                      Belum punya template? Unduh dulu.
                     </p>
                     <Button
                       type="button"
@@ -476,7 +514,7 @@ export default function KelasManagementPage() {
                       className="w-full"
                     >
                       <Download />
-                      Download Template Excel
+                      Unduh Template Excel
                     </Button>
                   </div>
 
@@ -541,7 +579,7 @@ export default function KelasManagementPage() {
                         id="angkatan"
                         value={formData.angkatan}
                         onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
-                        placeholder="Contoh: 2024"
+                        placeholder="Contoh: XII"
                         required
                       />
                     </div>
@@ -565,7 +603,46 @@ export default function KelasManagementPage() {
           }
         />
         <CardContent>
-          {/* Bulk Action Toolbar */}
+          {/* Pencarian: 37 kelas tidak bisa dipindai halaman demi halaman. */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <InputGroup className="sm:max-w-xs">
+              <InputGroupAddon>
+                <Search className="size-4" aria-hidden="true" />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="search"
+                placeholder="Cari nama kelas"
+                value={cari}
+                onChange={(e) => setCari(e.target.value)}
+                aria-label="Cari nama kelas"
+              />
+            </InputGroup>
+            {statistik.kelasKosong > 0 && !cari ? (
+              <p className="text-sm text-muted-foreground">
+                {statistik.kelasKosong} kelas belum memiliki siswa
+              </p>
+            ) : null}
+          </div>
+
+          {galatMuat ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-lg border border-destructive/40 px-4 py-3"
+            >
+              <p className="text-sm font-medium">Data kelas gagal dimuat</p>
+              <p className="mt-1 text-sm text-muted-foreground">{galatMuat}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={fetchClassrooms}
+              >
+                Coba lagi
+              </Button>
+            </div>
+          ) : null}
+
           <BulkActionBar
             selectedCount={selectedIds.length}
             itemLabel="kelas"
@@ -588,17 +665,12 @@ export default function KelasManagementPage() {
                           : false
                       }
                       onCheckedChange={(v) => toggleSelectAll(v === true)}
-                      aria-label="Pilih semua"
-                      disabled={selectableItems.length === 0}
+                      aria-label="Pilih semua kelas yang dapat dihapus"
+                      disabled={bisaDihapus.length === 0}
                     />
                   </TableHead>
                   <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-8"
-                      onClick={() => toggleSort('name')}
-                    >
+                    <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => toggleSort('name')}>
                       Nama Kelas
                       {sortConfig?.key === 'name' ? (
                         sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
@@ -608,12 +680,7 @@ export default function KelasManagementPage() {
                     </Button>
                   </TableHead>
                   <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-8"
-                      onClick={() => toggleSort('angkatan')}
-                    >
+                    <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => toggleSort('angkatan')}>
                       Angkatan
                       {sortConfig?.key === 'angkatan' ? (
                         sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
@@ -622,14 +689,19 @@ export default function KelasManagementPage() {
                       )}
                     </Button>
                   </TableHead>
+                  <TableHead className="text-right">
+                    <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => toggleSort('jumlahSiswa')}>
+                      Siswa
+                      {sortConfig?.key === 'jumlahSiswa' ? (
+                        sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
+                      ) : (
+                        <ArrowUpDown className="opacity-50" />
+                      )}
+                    </Button>
+                  </TableHead>
                   <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-8"
-                      onClick={() => toggleSort('createdAt')}
-                    >
-                      Tanggal Dibuat
+                    <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => toggleSort('createdAt')}>
+                      Dibuat
                       {sortConfig?.key === 'createdAt' ? (
                         sortConfig.dir === 'asc' ? <ArrowUp /> : <ArrowDown />
                       ) : (
@@ -643,81 +715,119 @@ export default function KelasManagementPage() {
               <TableBody>
                 {currentItems.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={5} className="py-10">
+                    <TableCell colSpan={6} className="py-10">
                       <Empty>
                         <EmptyHeader>
                           <EmptyMedia variant="icon">
                             <School />
                           </EmptyMedia>
                           <EmptyTitle>
-                            {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
+                            {classrooms.length === 0
+                              ? 'Belum ada kelas terdaftar'
+                              : cari
+                                ? 'Tidak ada kelas yang cocok'
+                                : 'Tidak ada data pada halaman ini'}
                           </EmptyTitle>
                           <EmptyDescription>
                             {classrooms.length === 0
-                              ? 'Tambahkan kelas baru atau import dari Excel untuk memulai.'
-                              : 'Coba pindah ke halaman lain.'}
+                              ? 'Tambahkan kelas baru atau impor dari Excel untuk memulai.'
+                              : cari
+                                ? `Tidak ada nama kelas yang memuat "${cari}". Hapus kata kunci untuk melihat semua kelas.`
+                                : 'Coba pindah ke halaman lain.'}
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentItems.map((classroom) => (
-                    <TableRow
-                      key={classroom.id}
-                      data-state={selectedIds.includes(classroom.id) ? 'selected' : undefined}
-                      className="data-[state=selected]:bg-muted"
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.includes(classroom.id)}
-                          onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
-                          aria-label={`Pilih ${classroom.name}`}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{classroom.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{classroom.angkatan}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            title="Kartu PDF kelas ini"
-                            onClick={() => handleKartuKelas(classroom)}
-                          >
-                            <FileDown />
-                            <span className="sr-only">Kartu PDF</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            title="Edit kelas"
-                            onClick={() => openEditDialog(classroom)}
-                          >
-                            <Pencil />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            title="Hapus kelas"
-                            onClick={() => openDeleteDialog(classroom)}
-                          >
-                            <Trash2 />
-                            <span className="sr-only">Hapus</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  currentItems.map((classroom) => {
+                    const kosong = classroom.jumlahSiswa === 0
+                    return (
+                      <TableRow
+                        key={classroom.id}
+                        data-state={selectedIds.includes(classroom.id) ? 'selected' : undefined}
+                        className="data-[state=selected]:bg-muted"
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(classroom.id)}
+                            onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
+                            aria-label={`Pilih ${classroom.name}`}
+                            disabled={!kosong}
+                            title={
+                              kosong
+                                ? undefined
+                                : 'Kelas masih memiliki siswa, hapus siswanya dahulu'
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{classroom.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{classroom.angkatan}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {kosong ? (
+                            <span className="text-muted-foreground">0</span>
+                          ) : (
+                            classroom.jumlahSiswa
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title={
+                                kosong
+                                  ? 'Belum ada siswa di kelas ini'
+                                  : 'Unduh kartu pemilih kelas ini'
+                              }
+                              onClick={() => handleKartuKelas(classroom)}
+                              disabled={kosong || kelasKartu !== null}
+                            >
+                              {kelasKartu === classroom.name ? (
+                                <Loader2 className="animate-spin" />
+                              ) : (
+                                <FileDown />
+                              )}
+                              <span className="sr-only">
+                                Kartu pemilih {classroom.name}
+                              </span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Edit kelas"
+                              onClick={() => openEditDialog(classroom)}
+                            >
+                              <Pencil />
+                              <span className="sr-only">Edit {classroom.name}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              title={
+                                kosong
+                                  ? 'Hapus kelas'
+                                  : 'Kelas masih memiliki siswa dan tidak dapat dihapus'
+                              }
+                              onClick={() => openDeleteDialog(classroom)}
+                              disabled={!kosong}
+                            >
+                              <Trash2 />
+                              <span className="sr-only">Hapus {classroom.name}</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
@@ -732,64 +842,98 @@ export default function KelasManagementPage() {
                     <School />
                   </EmptyMedia>
                   <EmptyTitle>
-                    {classrooms.length === 0 ? 'Belum ada data kelas' : 'Tidak ada data pada halaman ini'}
+                    {classrooms.length === 0
+                      ? 'Belum ada kelas terdaftar'
+                      : cari
+                        ? 'Tidak ada kelas yang cocok'
+                        : 'Tidak ada data pada halaman ini'}
                   </EmptyTitle>
+                  <EmptyDescription>
+                    {classrooms.length === 0
+                      ? 'Tambahkan kelas atau impor dari Excel.'
+                      : cari
+                        ? `Tidak ada nama kelas yang memuat "${cari}".`
+                        : 'Coba pindah ke halaman lain.'}
+                  </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
-              currentItems.map((classroom) => (
-                <div
-                  key={classroom.id}
-                  className={`space-y-3 rounded-lg border p-4 transition-colors ${
-                    selectedIds.includes(classroom.id) ? 'bg-muted' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        className="mt-0.5"
-                        checked={selectedIds.includes(classroom.id)}
-                        onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
-                        aria-label={`Pilih ${classroom.name}`}
-                      />
-                      <div>
-                        <p className="text-sm font-semibold">{classroom.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
-                        </p>
+              currentItems.map((classroom) => {
+                const kosong = classroom.jumlahSiswa === 0
+                return (
+                  <div
+                    key={classroom.id}
+                    className={`space-y-3 rounded-lg border p-4 transition-colors ${
+                      selectedIds.includes(classroom.id) ? 'bg-muted' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={selectedIds.includes(classroom.id)}
+                          onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
+                          aria-label={`Pilih ${classroom.name}`}
+                          disabled={!kosong}
+                        />
+                        <div>
+                          <p className="text-sm font-semibold">{classroom.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {classroom.jumlahSiswa > 0
+                              ? `${classroom.jumlahSiswa} siswa`
+                              : 'Belum ada siswa'}
+                            <span className="mx-1">·</span>
+                            {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
+                          </p>
+                        </div>
                       </div>
+                      <Badge variant="secondary">{classroom.angkatan}</Badge>
                     </div>
-                    <Badge variant="secondary">{classroom.angkatan}</Badge>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9"
+                        title="Kartu pemilih"
+                        onClick={() => handleKartuKelas(classroom)}
+                        disabled={kosong || kelasKartu !== null}
+                      >
+                        {kelasKartu === classroom.name ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <FileDown />
+                        )}
+                        <span className="sr-only">Kartu pemilih {classroom.name}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9"
+                        title="Edit kelas"
+                        onClick={() => openEditDialog(classroom)}
+                      >
+                        <Pencil />
+                        <span className="sr-only">Edit {classroom.name}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title={kosong ? 'Hapus kelas' : 'Kelas masih memiliki siswa'}
+                        onClick={() => openDeleteDialog(classroom)}
+                        disabled={!kosong}
+                      >
+                        <Trash2 />
+                        <span className="sr-only">Hapus {classroom.name}</span>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-8"
-                      title="Edit kelas"
-                      onClick={() => openEditDialog(classroom)}
-                    >
-                      <Pencil />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      title="Hapus kelas"
-                      onClick={() => openDeleteDialog(classroom)}
-                    >
-                      <Trash2 />
-                      <span className="sr-only">Hapus</span>
-                    </Button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 
-          {/* Pagination Controls */}
-          {classrooms.length > 0 && (
+          {sortedClassrooms.length > 0 && (
             <DataTablePagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -807,7 +951,7 @@ export default function KelasManagementPage() {
           <DialogHeader>
             <DialogTitle>Edit Kelas</DialogTitle>
             <DialogDescription>
-              Update data kelas
+              Perbarui nama atau angkatan kelas
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
@@ -827,7 +971,7 @@ export default function KelasManagementPage() {
                 id="edit-angkatan"
                 value={formData.angkatan}
                 onChange={(e) => setFormData({...formData, angkatan: e.target.value})}
-                placeholder="Contoh: 2024"
+                placeholder="Contoh: XII"
                 required
               />
             </div>
@@ -849,20 +993,18 @@ export default function KelasManagementPage() {
               </Button>
             </DialogFooter>
           </form>
-
         </DialogContent>
       </Dialog>
-
 
       {/* Delete ConfirmDialog */}
       <ConfirmDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        title="Konfirmasi Hapus"
+        title="Hapus kelas ini"
         description={
           <>
-            Apakah Anda yakin ingin menghapus kelas{' '}
-            <strong>{selectedClassroom?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+            Kelas <strong>{selectedClassroom?.name}</strong> akan dihapus permanen.
+            Kelas ini tidak memiliki siswa, jadi aman dihapus.
           </>
         }
         isLoading={isDeleting}
@@ -873,21 +1015,19 @@ export default function KelasManagementPage() {
       <ConfirmDialog
         open={showBulkDeleteDialog}
         onOpenChange={setShowBulkDeleteDialog}
-        title={`Hapus ${selectedIds.length} Kelas`}
+        title={`Hapus ${selectedIds.length} kelas`}
         description={
           <>
-            Apakah Anda yakin ingin menghapus <strong>{selectedIds.length}</strong> kelas yang dipilih?
-            Kelas yang masih memiliki siswa terdaftar akan otomatis dilewati.
-            Tindakan ini tidak dapat dibatalkan.
+            <strong>{selectedIds.length}</strong> kelas kosong yang dipilih akan
+            dihapus permanen. Tindakan ini tidak dapat dibatalkan.
           </>
         }
-        confirmLabel="Ya, Hapus Semua"
+        confirmLabel="Hapus kelas terpilih"
         isLoading={isBulkDeleting}
         onConfirm={handleBulkDelete}
       />
 
-      {/* Kartu PDF per kelas: mount container hidden berisi siswa satu kelas,
-          generate sekali (autoDownload), lalu unmount lewat onDone. */}
+      {/* Kartu PDF per kelas */}
       {kartuRequest && (
         <StudentPdfCards
           siswa={kartuRequest.siswa}

@@ -16,6 +16,27 @@ Dibangun dari komponen shadcn + helper reusable di `src/components/admin/`.
 | `DataTablePagination` | `data-table-pagination.tsx` | Pagination + pilih jumlah baris per halaman |
 | `ConfirmDialog` | `confirm-dialog.tsx` | Dialog konfirmasi hapus (single & bulk) |
 
+### Khusus halaman pemantauan (`/admin/dashboard`)
+
+| Komponen | File | Kegunaan |
+|---|---|---|
+| `StatusVoting` | `StatusVoting.tsx` | Baris status: berjalan/dihentikan, hak lihat hasil, jam data terakhir |
+| `RingkasanPartisipasi` | `RingkasanPartisipasi.tsx` | Angka utama partisipasi + rincian siswa dan pegawai |
+| `KecukupanDataKelas` | `KecukupanDataKelas.tsx` | Tabel kelas, kelas tanpa pemilih di atas, dengan saringan |
+| `HasilSuara` | `HasilSuara.tsx` | Perolehan suara per kategori, persentase dari suara kategori |
+| `GrafikKehadiran` | `GrafikKehadiran.tsx` | Bar kehadiran per angkatan atau per kelas |
+| tipe + `hitungPartisipasi` | `dashboard-types.ts` | Tipe bersama dan perhitungan partisipasi |
+
+Catatan dashboard:
+
+- Entri `GURU` dan `TU` dari `/api/admin/statistik-chart` **bukan kelas**; keduanya disaring di
+tabel dan grafik. Pemilih pegawai tetap terhitung di blok partisipasi.
+- Persentase kandidat dihitung dari **suara per kategori**, bukan dari jumlah pemilih, karena
+setiap pemilih memilih satu kandidat di setiap kategori.
+- Grafik memakai satu warna (`--foreground` di atas `--secondary`); panjang batang yang
+membawa data, bukan warna berbeda per kandidat.
+- `Progress` menerima `value` dan meneruskannya ke Radix supaya `aria-valuenow` terisi.
+
 Semua memakai token tema shadcn (`bg-card`, `text-muted-foreground`, `text-destructive`, dst.)
 sehingga otomatis mendukung dark mode.
 
