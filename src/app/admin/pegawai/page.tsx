@@ -10,22 +10,19 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
 import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { PegawaiPdfCards } from '@/components/admin/pegawai-pdf-cards'
 import {
   Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2,
-  Key, Search, Printer, Users, Briefcase, CheckCircle, MoreHorizontal, FileSpreadsheet, Info, FileDown
+  Search, Printer, Users, CheckCircle, FileSpreadsheet, FileDown
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -91,6 +88,7 @@ export default function PegawaiPage() {
     status: 'aktif',
   })
   const [formError, setFormError] = useState('')
+  const [galatMuat, setGalatMuat] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
@@ -101,9 +99,6 @@ export default function PegawaiPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // Selection
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
@@ -164,6 +159,7 @@ export default function PegawaiPage() {
   const fetchPegawai = async () => {
     try {
       setIsLoading(true)
+      setGalatMuat('')
       const params = new URLSearchParams()
       if (roleFilter !== 'all') params.append('role', roleFilter)
       if (searchQuery) params.append('search', searchQuery)
@@ -172,9 +168,16 @@ export default function PegawaiPage() {
       if (response.ok) {
         const data = await response.json()
         setPegawaiList(data)
+      } else {
+        setGalatMuat(
+          response.status === 401 || response.status === 403
+            ? 'Sesi admin tidak berlaku lagi. Masuk ulang untuk melihat data pegawai.'
+            : `Server membalas error ${response.status} saat memuat data pegawai.`
+        )
       }
     } catch (err) {
       console.error('Error fetching pegawai:', err)
+      setGalatMuat('Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.')
     } finally {
       setIsLoading(false)
     }
@@ -368,37 +371,11 @@ export default function PegawaiPage() {
     }
   }
 
-  const handleCopyToken = (token: string, nama: string) => {
-    navigator.clipboard.writeText(token)
-    setCopiedField(`token-${token}`)
-    toast.success(`Token ${nama} disalin`)
-    setTimeout(() => setCopiedField(null), 2000)
-  }
-
   const handleCopyCredential = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
     setCopiedField(field)
     toast.success(`${field.charAt(0).toUpperCase() + field.slice(1)} disalin`)
     setTimeout(() => setCopiedField(null), 2000)
-  }
-
-  const handleRegenerateToken = async (id: number) => {
-    setRegeneratingIds([...regeneratingIds, id])
-    try {
-      const response = await fetch(`/api/admin/pegawai/${id}/regenerate-token`, {
-        method: 'POST',
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setCredentials(data.credentials)
-        await fetchPegawai()
-        toast.success('Token berhasil di-regenerate')
-      }
-    } catch (err) {
-      toast.error('Gagal regenerate token')
-    } finally {
-      setRegeneratingIds(regeneratingIds.filter(rid => rid !== id))
-    }
   }
 
   const handleResetStatus = async (id: number) => {
@@ -412,22 +389,6 @@ export default function PegawaiPage() {
       }
     } catch (err) {
       toast.error('Gagal reset status')
-    }
-  }
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(currentItems.map(p => p.id))
-    } else {
-      setSelectedIds([])
-    }
-  }
-
-  const handleSelectOne = (id: number, checked: boolean) => {
-    if (checked) {
-      setSelectedIds([...selectedIds, id])
-    } else {
-      setSelectedIds(selectedIds.filter(sid => sid !== id))
     }
   }
 
@@ -445,14 +406,12 @@ export default function PegawaiPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const currentItems = filteredPegawai.slice(startIndex, startIndex + itemsPerPage)
 
-  const isAllSelected = currentItems.length > 0 && currentItems.every(item => selectedIds.includes(item.id))
-  const isSomeSelected = selectedIds.length > 0 && !isAllSelected
-
-  // Stats
+  // Statistik ringkas: satu baris teks, bukan deretan kartu angka (R-17: angka nyata saja).
   const totalPegawai = pegawaiList.length
   const totalGuru = pegawaiList.filter(p => p.role === 'guru').length
   const totalTu = pegawaiList.filter(p => p.role === 'tu').length
   const sudahVote = pegawaiList.filter(p => p.sudahMemilih).length
+  const persenPemilih = totalPegawai > 0 ? Math.round((sudahVote / totalPegawai) * 100) : 0
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -463,61 +422,48 @@ export default function PegawaiPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* Statistik Cards */}
-      <StatCardGrid>
-        <StatCard
-          title="Total Pegawai"
-          value={totalPegawai}
-          description="Terdaftar"
-          icon={Users}
-        />
-        <StatCard
-          title="Guru"
-          value={totalGuru}
-          description={`${totalPegawai > 0 ? Math.round((totalGuru / totalPegawai) * 100) : 0}% dari total`}
-          icon={Users}
-        />
-        <StatCard
-          title="TU"
-          value={totalTu}
-          description={`${totalPegawai > 0 ? Math.round((totalTu / totalPegawai) * 100) : 0}% dari total`}
-          icon={Briefcase}
-        />
-        <StatCard
-          title="Sudah Vote"
-          value={sudahVote}
-          description={`${totalPegawai > 0 ? Math.round((sudahVote / totalPegawai) * 100) : 0}% partisipasi`}
-          icon={CheckCircle}
-        />
-      </StatCardGrid>
+      {/* Ringkasan: satu baris teks, satu angka yang menentukan tindakan (belum memilih). */}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">Pegawai</h1>
+          <p className="text-sm text-muted-foreground">
+            {totalPegawai} akun: {totalGuru} guru, {totalTu} TU. {sudahVote} sudah memilih,{' '}
+            {totalPegawai - sudahVote} belum ({persenPemilih}%).
+          </p>
+        </div>
+      </div>
 
       {/* Table */}
       <Card>
         <DataTableToolbar
-          title="Daftar Pegawai"
-          icon={Users}
-          description={`Total ${totalPegawai} pegawai terdaftar`}
+          title="Daftar pegawai"
+          description="Guru dan tenaga kependidikan yang bisa memilih di bilik QR."
           actions={
             <>
-              <Button onClick={handleExport} variant="outline" size="sm">
+              <Button onClick={handleExport} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
                 <Download />
                 Template
               </Button>
-              <Button onClick={handleImport} variant="outline" size="sm">
+              <Button onClick={handleImport} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
                 <Upload />
                 Import
               </Button>
-              <Button onClick={() => setShowPrintDialog(true)} variant="outline" size="sm">
+              <Button
+                onClick={() => setShowPrintDialog(true)}
+                variant="outline"
+                size="sm"
+                className="min-h-11 sm:min-h-0"
+              >
                 <Printer />
-                Cetak Kartu
+                Cetak kartu
               </Button>
-              <Button onClick={handleAddNew} size="sm">
-                <Plus />
-                Tambah
-              </Button>
-              <Button onClick={fetchPegawai} variant="outline" size="sm">
+              <Button onClick={fetchPegawai} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
                 <RefreshCw />
-                Refresh
+                Muat ulang
+              </Button>
+              <Button onClick={handleAddNew} size="sm" className="min-h-11 sm:min-h-0">
+                <Plus />
+                Tambah pegawai
               </Button>
             </>
           }
@@ -530,7 +476,7 @@ export default function PegawaiPage() {
                 <Search className="size-4" />
               </InputGroupAddon>
               <InputGroupInput
-                placeholder="Cari nama atau email..."
+                placeholder="Cari nama atau email"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -540,11 +486,11 @@ export default function PegawaiPage() {
                 value={roleFilter}
                 onValueChange={(value: 'all' | 'guru' | 'tu') => setRoleFilter(value)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter Role" />
+                <SelectTrigger className="w-full min-h-11 sm:min-h-0">
+                  <SelectValue placeholder="Filter role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="all">Semua role</SelectItem>
                   <SelectItem value="guru">Guru</SelectItem>
                   <SelectItem value="tu">TU</SelectItem>
                 </SelectContent>
@@ -555,20 +501,30 @@ export default function PegawaiPage() {
                 value={statusFilter}
                 onValueChange={(value: 'all' | 'sudah' | 'belum') => setStatusFilter(value)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter Status" />
+                <SelectTrigger className="w-full min-h-11 sm:min-h-0">
+                  <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="sudah">Sudah Memilih</SelectItem>
-                  <SelectItem value="belum">Belum Memilih</SelectItem>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="sudah">Sudah memilih</SelectItem>
+                  <SelectItem value="belum">Belum memilih</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
+          {galatMuat ? (
+            <div role="alert" className="mb-4 rounded-lg border border-destructive/40 px-4 py-3">
+              <p className="text-sm font-medium">Data pegawai gagal dimuat</p>
+              <p className="mt-1 text-sm text-muted-foreground">{galatMuat}</p>
+              <Button type="button" variant="outline" size="sm" className="mt-3" onClick={fetchPegawai}>
+                Coba lagi
+              </Button>
+            </div>
+          ) : null}
+
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-2" aria-busy="true" aria-label="Memuat data pegawai">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
@@ -578,36 +534,31 @@ export default function PegawaiPage() {
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
-                          onCheckedChange={(v) => handleSelectAll(v === true)}
-                          aria-label="Pilih semua"
-                        />
-                      </TableHead>
                       <TableHead>Nama</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Token</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Vote</TableHead>
-                      <TableHead className="w-24 text-right">Aksi</TableHead>
+                      <TableHead>Status akun</TableHead>
+                      <TableHead>Memilih</TableHead>
+                      <TableHead className="w-28 text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentItems.length === 0 ? (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={8} className="py-10">
+                        <TableCell colSpan={5} className="py-10">
                           <Empty>
                             <EmptyHeader>
                               <EmptyMedia variant="icon">
                                 <Users />
                               </EmptyMedia>
                               <EmptyTitle>
-                                {searchQuery ? 'Tidak ada pegawai yang cocok' : 'Belum ada data pegawai'}
+                                {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
+                                  ? 'Tidak ada pegawai yang cocok'
+                                  : 'Belum ada data pegawai'}
                               </EmptyTitle>
                               <EmptyDescription>
-                                {searchQuery ? 'Coba ubah kata kunci pencarian.' : 'Tambahkan pegawai atau import dari Excel.'}
+                                {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
+                                  ? 'Longgarkan filter role atau status, atau ubah kata kunci pencarian.'
+                                  : 'Tambah pegawai satu per satu, atau import dari Excel.'}
                               </EmptyDescription>
                             </EmptyHeader>
                           </Empty>
@@ -615,48 +566,17 @@ export default function PegawaiPage() {
                       </TableRow>
                     ) : (
                       currentItems.map((p) => (
-                        <TableRow
-                          key={p.id}
-                          data-state={selectedIds.includes(p.id) ? 'selected' : undefined}
-                          className="data-[state=selected]:bg-muted"
-                        >
+                        <TableRow key={p.id}>
                           <TableCell>
-                            <Checkbox
-                              checked={selectedIds.includes(p.id)}
-                              onCheckedChange={(checked) => handleSelectOne(p.id, checked as boolean)}
-                              aria-label={`Pilih ${p.nama}`}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{p.nama}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{p.email}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <code className="rounded bg-muted px-2 py-1 font-mono text-xs font-bold">
-                                {p.tokenPlain}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-7"
-                                onClick={() => handleCopyToken(p.tokenPlain, p.nama)}
-                                title="Copy token"
-                              >
-                                {copiedField === `token-${p.tokenPlain}` ? (
-                                  <Check className="size-3 text-primary" />
-                                ) : (
-                                  <Copy className="size-3" />
-                                )}
-                              </Button>
-                            </div>
+                            <p className="font-medium">{p.nama}</p>
+                            <p className="break-all text-xs text-muted-foreground">{p.email}</p>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">
-                              {p.role === 'guru' ? 'Guru' : 'TU'}
-                            </Badge>
+                            <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
-                              {p.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}
+                              {p.status === 'aktif' ? 'Aktif' : 'Non-aktif'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -665,38 +585,32 @@ export default function PegawaiPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="size-8">
-                                  <MoreHorizontal />
-                                  <span className="sr-only">Menu</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handleRegenerateToken(p.id)}
-                                  disabled={regeneratingIds.includes(p.id)}
+                            <div className="flex items-center justify-end gap-1">
+                              {p.sudahMemilih ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8"
+                                  title={`Reset status memilih ${p.nama}`}
+                                  onClick={() => handleResetStatus(p.id)}
                                 >
-                                  {regeneratingIds.includes(p.id) ? (
-                                    <RefreshCw className="animate-spin" />
-                                  ) : (
-                                    <Key />
-                                  )}
-                                  Generate Token
-                                </DropdownMenuItem>
-                                {p.sudahMemilih && (
-                                  <DropdownMenuItem onClick={() => handleResetStatus(p.id)}>
-                                    <RotateCcw />
-                                    Reset Status
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem variant="destructive" onClick={() => setDeleteConfirm(p.id)}>
-                                  <Trash2 />
-                                  Hapus
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  <RotateCcw />
+                                  <span className="sr-only">Reset status memilih</span>
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                title={`Hapus ${p.nama}`}
+                                onClick={() => setDeleteConfirm(p.id)}
+                              >
+                                <Trash2 />
+                                <span className="sr-only">Hapus pegawai</span>
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -714,80 +628,39 @@ export default function PegawaiPage() {
                         <Users />
                       </EmptyMedia>
                       <EmptyTitle>
-                        {searchQuery ? 'Tidak ada pegawai yang cocok' : 'Belum ada data pegawai'}
+                        {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
+                          ? 'Tidak ada pegawai yang cocok'
+                          : 'Belum ada data pegawai'}
                       </EmptyTitle>
                     </EmptyHeader>
                   </Empty>
                 ) : (
                   currentItems.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`space-y-3 rounded-lg border p-4 transition-colors ${
-                        selectedIds.includes(p.id) ? 'bg-muted' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedIds.includes(p.id)}
-                          onCheckedChange={(checked) => handleSelectOne(p.id, checked as boolean)}
-                          aria-label={`Pilih ${p.nama}`}
-                          className="mt-1"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">{p.nama}</p>
-                          <p className="truncate text-xs text-muted-foreground">{p.email}</p>
-                          <div className="mt-1 flex items-center gap-2">
-                            <code className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                              {p.tokenPlain}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-6"
-                              onClick={() => handleCopyToken(p.tokenPlain, p.nama)}
-                            >
-                              {copiedField === `token-${p.tokenPlain}` ? (
-                                <Check className="size-3 text-primary" />
-                              ) : (
-                                <Copy className="size-3" />
-                              )}
-                            </Button>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
-                            <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
-                              {p.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}
-                            </Badge>
-                            <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
-                              {p.sudahMemilih ? 'Sudah' : 'Belum'}
-                            </Badge>
-                          </div>
-                        </div>
+                    <div key={p.id} className="space-y-3 rounded-lg border p-4">
+                      <div>
+                        <p className="font-semibold">{p.nama}</p>
+                        <p className="break-all text-xs text-muted-foreground">{p.email}</p>
                       </div>
-                      <div className="ml-8 flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRegenerateToken(p.id)}
-                          disabled={regeneratingIds.includes(p.id)}
-                        >
-                          {regeneratingIds.includes(p.id) ? (
-                            <RefreshCw className="animate-spin" />
-                          ) : (
-                            <Key />
-                          )}
-                          Token
-                        </Button>
-                        {p.sudahMemilih && (
-                          <Button variant="outline" size="sm" onClick={() => handleResetStatus(p.id)}>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
+                        <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
+                          {p.status === 'aktif' ? 'Aktif' : 'Non-aktif'}
+                        </Badge>
+                        <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                          {p.sudahMemilih ? 'Sudah memilih' : 'Belum memilih'}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {p.sudahMemilih ? (
+                          <Button variant="outline" size="sm" className="min-h-11" onClick={() => handleResetStatus(p.id)}>
                             <RotateCcw />
-                            Reset
+                            Reset status
                           </Button>
-                        )}
+                        ) : null}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className="min-h-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => setDeleteConfirm(p.id)}
                         >
                           <Trash2 />
@@ -837,7 +710,7 @@ export default function PegawaiPage() {
           <DialogHeader>
             <DialogTitle>Tambah Pegawai Baru</DialogTitle>
             <DialogDescription>
-              Isi data pegawai. Email & token dibuat otomatis.
+              Isi nama, email, dan role pegawai.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitForm} className="space-y-3">
@@ -878,7 +751,7 @@ export default function PegawaiPage() {
                     setFormData({ ...formData, role: value as 'guru' | 'tu' })
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full min-h-11 sm:min-h-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -896,7 +769,7 @@ export default function PegawaiPage() {
                     setClassroomSearch('')
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full min-h-11 sm:min-h-0">
                     <SelectValue placeholder="Pilih kelas..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -967,7 +840,7 @@ export default function PegawaiPage() {
                   setFormData({ ...formData, status: value as 'aktif' | 'non-aktif' })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full min-h-11 sm:min-h-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1003,45 +876,38 @@ export default function PegawaiPage() {
       </Dialog>
 
 
-      {/* Credentials Modal */}
+      {/* Dialog akun baru: hanya email yang ditampilkan. Token login sengaja
+          tidak ditampilkan di UI (DESIGN.md batasan 4); login pegawai kini lewat QR. */}
       <Dialog open={credentials !== null} onOpenChange={(open) => !open && setCredentials(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Akun Pegawai Dibuat</DialogTitle>
+            <DialogTitle>Akun pegawai dibuat</DialogTitle>
             <DialogDescription>
-              Bagikan email & token untuk login di halaman voting (tab: Guru & TU)
+              Pegawai masuk ke bilik dengan memindai kartu QR. Email akun ini untuk
+              keperluan administrasi.
             </DialogDescription>
           </DialogHeader>
           {credentials && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Email</p>
-                <div className="flex gap-2">
-                  <Input value={credentials.email} readOnly className="text-xs" />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCopyCredential(credentials.email, 'email')}
-                  >
-                    {copiedField === 'email' ? <Check className="size-4" /> : <Copy className="size-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Token (6 karakter)</p>
+                <Label htmlFor="akun-email">Email akun</Label>
                 <div className="flex gap-2">
                   <Input
-                    value={credentials.token}
+                    id="akun-email"
+                    value={credentials.email}
                     readOnly
-                    className="font-mono text-xs font-bold"
+                    className="text-sm"
                   />
                   <Button
+                    type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => handleCopyCredential(credentials.token, 'token')}
+                    className="shrink-0"
+                    title="Salin email akun"
+                    onClick={() => handleCopyCredential(credentials.email, 'Email')}
                   >
-                    {copiedField === 'token' ? <Check className="size-4" /> : <Copy className="size-4" />}
+                    {copiedField === 'Email' ? <Check className="size-4" /> : <Copy className="size-4" />}
+                    <span className="sr-only">Salin email akun</span>
                   </Button>
                 </div>
               </div>
@@ -1058,8 +924,8 @@ export default function PegawaiPage() {
       <ConfirmDialog
         open={deleteConfirm !== null}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title="Hapus Pegawai"
-        description="Apakah Anda yakin ingin menghapus pegawai ini? Aksi ini tidak dapat dibatalkan."
+        title="Hapus pegawai"
+        description="Akun pegawai ini dihapus dari daftar pemilih dan tidak dapat dikembalikan."
         confirmLabel="Hapus"
         isLoading={isDeleting}
         onConfirm={() => {
@@ -1071,19 +937,16 @@ export default function PegawaiPage() {
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cetak Kartu Pegawai</DialogTitle>
+            <DialogTitle>Cetak kartu pegawai</DialogTitle>
+            <DialogDescription>
+              Kartu berisi QR identitas pemilih, tiga kolom per halaman A4, dan
+              langsung diunduh sebagai PDF.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="py-2">
             <p className="text-sm text-muted-foreground">
-              Hanya pegawai dengan status "Aktif" yang akan ditampilkan pada kartu.
+              Hanya pegawai berstatus aktif yang masuk ke kartu.
             </p>
-            <Alert>
-              <Info className="size-4" />
-              <AlertDescription className="text-xs">
-                <strong>Info:</strong> Kartu berisi QR (identitas pemilih) dalam 3 kolom per halaman A4,
-                langsung diunduh sebagai PDF.
-              </AlertDescription>
-            </Alert>
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => setShowPrintDialog(false)}>
@@ -1240,26 +1103,18 @@ export default function PegawaiPage() {
               {importResult.credentials.length > 0 && (
                 <div className="rounded-lg border bg-muted/50 p-4">
                   <h4 className="mb-3 text-sm font-semibold">
-                    Kredensial Pegawai Baru ({importResult.credentials.length}):
+                    Akun pegawai baru ({importResult.credentials.length})
                   </h4>
                   <ScrollArea className="max-h-40">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {importResult.credentials.map((cred, idx) => (
                         <div key={idx} className="rounded border bg-background p-2 text-xs">
                           <p className="font-semibold">{cred.nama}</p>
-                          <div className="mt-1 grid grid-cols-2 gap-2 text-muted-foreground">
-                            <div>
-                              <span>Email:</span>
-                              <p className="break-all font-mono text-xs">{cred.email}</p>
-                            </div>
-                            <div>
-                              <span>Role:</span>
-                              <p className="font-semibold">{cred.role === 'guru' ? 'Guru' : 'TU'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <span>Token:</span>
-                              <p className="font-mono font-bold text-primary">{cred.token}</p>
-                            </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                            <span className="break-all">{cred.email}</span>
+                            <Badge variant="outline">
+                              {cred.role === 'guru' ? 'Guru' : 'TU'}
+                            </Badge>
                           </div>
                         </div>
                       ))}
@@ -1271,9 +1126,10 @@ export default function PegawaiPage() {
               {importResult.success > 0 && (
                 <Alert>
                   <CheckCircle className="size-4" />
-                  <AlertTitle>Import Berhasil!</AlertTitle>
+                  <AlertTitle>Import selesai</AlertTitle>
                   <AlertDescription className="text-xs">
-                    {importResult.success} pegawai telah berhasil ditambahkan. Token dan kredensial telah dibuat otomatis.
+                    {importResult.success} pegawai ditambahkan dan langsung bisa memilih
+                    lewat kartu QR mereka.
                   </AlertDescription>
                 </Alert>
               )}
