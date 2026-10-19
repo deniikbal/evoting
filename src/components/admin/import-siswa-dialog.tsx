@@ -25,6 +25,10 @@ import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lu
  * server memeriksa dulu (tanpa menulis apa pun), operator melihat ringkasan dan
  * daftar baris bermasalah, baru menekan Simpan. Hanya baris berstatus siap yang
  * ikut tersimpan.
+ *
+ * Tata letak: tinggi dialog dibatasi dan hanya bagian isi yang digulung, sehingga
+ * tombol Batal / Periksa Berkas / Simpan menetap di kaki dialog dan tidak ikut
+ * tergulung keluar layar saat daftar baris panjang.
  */
 
 interface BarisDiperiksa {
@@ -185,8 +189,8 @@ export function ImportSiswaDialog({ onSelesai, jumlahTerdaftar }: Props) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>Import Data Siswa</DialogTitle>
           <DialogDescription>
             Unggah berkas Excel berisi kolom nis, nama_lengkap, dan kelas. Data baru
@@ -195,63 +199,65 @@ export function ImportSiswaDialog({ onSelesai, jumlahTerdaftar }: Props) {
         </DialogHeader>
 
         {jumlahTersimpan !== null ? (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-lg border p-3">
-              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" />
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">{jumlahTersimpan} siswa tersimpan</p>
-                <p className="text-muted-foreground">
-                  Setiap siswa mendapat token login dan identitas QR sendiri. Kartu
-                  pemilih dapat dicetak dari tombol Download PDF.
-                </p>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+              <div className="flex items-start gap-3 rounded-lg border p-3">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" />
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">{jumlahTersimpan} siswa tersimpan</p>
+                  <p className="text-muted-foreground">
+                    Setiap siswa mendapat token login dan identitas QR sendiri. Kartu
+                    pemilih dapat dicetak dari tombol Download PDF.
+                  </p>
+                </div>
               </div>
+
+              {dilewati.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle>{dilewati.length} baris dilewati</AlertTitle>
+                  <AlertDescription>
+                    <ScrollArea className="mt-2 max-h-40">
+                      <div className="space-y-2">
+                        {dilewati.map((d) => (
+                          <p key={d.nis} className="text-xs">
+                            <span className="font-medium">{d.nis}:</span> {d.catatan}
+                          </p>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
-            {dilewati.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertTitle>{dilewati.length} baris dilewati</AlertTitle>
-                <AlertDescription>
-                  <ScrollArea className="mt-2 max-h-40">
-                    <div className="space-y-2">
-                      {dilewati.map((d) => (
-                        <p key={d.nis} className="text-xs">
-                          <span className="font-medium">{d.nis}:</span> {d.catatan}
-                        </p>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <DialogFooter>
+            <DialogFooter className="shrink-0 border-t px-6 py-4">
               <Button onClick={() => setTerbuka(false)} className="min-h-11 sm:min-h-0">
                 Selesai
               </Button>
             </DialogFooter>
           </div>
         ) : !hasil ? (
-          <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/50 p-3">
-              <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                <FileSpreadsheet className="mt-0.5 size-4 shrink-0" />
-                Template berisi susunan kolom yang benar dan daftar nama kelas yang
-                terdaftar, supaya penulisan kelas tidak berbeda.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="default"
-                onClick={handleUnduhTemplate}
-                className="mt-3 w-full min-h-11 sm:min-h-0"
-              >
-                <Download />
-                Unduh Template Excel
-              </Button>
-            </div>
+          <form onSubmit={handlePeriksa} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <FileSpreadsheet className="mt-0.5 size-4 shrink-0" />
+                  Template berisi susunan kolom yang benar dan daftar nama kelas yang
+                  terdaftar, supaya penulisan kelas tidak berbeda.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="default"
+                  onClick={handleUnduhTemplate}
+                  className="mt-3 w-full min-h-11 sm:min-h-0"
+                >
+                  <Download />
+                  Unduh Template Excel
+                </Button>
+              </div>
 
-            <form onSubmit={handlePeriksa} className="space-y-4">
               <div className="space-y-2">
                 <label
                   htmlFor="berkas-siswa"
@@ -282,110 +288,112 @@ export function ImportSiswaDialog({ onSelesai, jumlahTerdaftar }: Props) {
                   <AlertDescription>{galat}</AlertDescription>
                 </Alert>
               )}
-
-              <DialogFooter className="gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setTerbuka(false)}
-                  disabled={sibuk}
-                  className="min-h-11 sm:min-h-0"
-                >
-                  Batal
-                </Button>
-                <Button type="submit" disabled={!berkas || sibuk} className="min-h-11 sm:min-h-0">
-                  {sedangPeriksa ? (
-                    <>
-                      <Spinner />
-                      Memeriksa...
-                    </>
-                  ) : (
-                    <>
-                      <FileSpreadsheet />
-                      Periksa Berkas
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-lg border p-3" role="status">
-              <p className="text-sm">
-                <span className="font-medium">{hasil.ringkasan.siap}</span> baris siap
-                disimpan
-                {hasil.ringkasan.bermasalah > 0 && (
-                  <>
-                    , <span className="font-medium">{hasil.ringkasan.bermasalah}</span>{' '}
-                    baris bermasalah tidak ikut disimpan
-                  </>
-                )}
-                .
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Dari {hasil.ringkasan.total} baris di berkas. Saat ini {jumlahTerdaftar}{' '}
-                siswa terdaftar.
-              </p>
             </div>
 
-            {hasil.kelasTidakDikenal.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertTitle>Nama kelas tidak dikenal</AlertTitle>
-                <AlertDescription>
-                  <p className="mt-1 text-xs">
-                    {hasil.kelasTidakDikenal.join(', ')}. Perbaiki penulisan di berkas
-                    atau tambahkan kelasnya lebih dulu di menu Kelas.
-                  </p>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {bermasalah.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Baris bermasalah ({bermasalah.length})</p>
-                <ScrollArea className="max-h-48 rounded-md border">
-                  <div className="divide-y">
-                    {bermasalah.map((b) => (
-                      <div key={b.baris} className="p-3 text-xs">
-                        <p className="font-medium">Baris {b.baris}</p>
-                        <p className="text-muted-foreground">
-                          {b.catatan}
-                          {b.nis ? ` (NIS: ${b.nis})` : ''}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+            <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTerbuka(false)}
+                disabled={sibuk}
+                className="min-h-11 sm:min-h-0"
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={!berkas || sibuk} className="min-h-11 sm:min-h-0">
+                {sedangPeriksa ? (
+                  <>
+                    <Spinner />
+                    Memeriksa...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet />
+                    Periksa Berkas
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+              <div className="rounded-lg border p-3" role="status">
+                <p className="text-sm">
+                  <span className="font-medium">{hasil.ringkasan.siap}</span> baris siap
+                  disimpan
+                  {hasil.ringkasan.bermasalah > 0 && (
+                    <>
+                      , <span className="font-medium">{hasil.ringkasan.bermasalah}</span>{' '}
+                      baris bermasalah tidak ikut disimpan
+                    </>
+                  )}
+                  .
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Dari {hasil.ringkasan.total} baris di berkas. Saat ini {jumlahTerdaftar}{' '}
+                  siswa terdaftar.
+                </p>
               </div>
-            )}
 
-            {siap.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Baris siap disimpan ({siap.length})</p>
-                <ScrollArea className="max-h-48 rounded-md border">
-                  <div className="divide-y">
-                    {siap.map((b) => (
-                      <div key={b.baris} className="flex flex-wrap gap-x-3 p-3 text-xs">
-                        <span className="font-medium">{b.nis}</span>
-                        <span className="min-w-0 flex-1 break-words">{b.nama}</span>
-                        <span className="text-muted-foreground">{b.kelas}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
+              {hasil.kelasTidakDikenal.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle>Nama kelas tidak dikenal</AlertTitle>
+                  <AlertDescription>
+                    <p className="mt-1 text-xs">
+                      {hasil.kelasTidakDikenal.join(', ')}. Perbaiki penulisan di berkas
+                      atau tambahkan kelasnya lebih dulu di menu Kelas.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            {galat && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{galat}</AlertDescription>
-              </Alert>
-            )}
+              {bermasalah.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Baris bermasalah ({bermasalah.length})</p>
+                  <ScrollArea className="max-h-48 rounded-md border">
+                    <div className="divide-y">
+                      {bermasalah.map((b) => (
+                        <div key={b.baris} className="p-3 text-xs">
+                          <p className="font-medium">Baris {b.baris}</p>
+                          <p className="text-muted-foreground">
+                            {b.catatan}
+                            {b.nis ? ` (NIS: ${b.nis})` : ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
 
-            <DialogFooter className="gap-2">
+              {siap.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Baris siap disimpan ({siap.length})</p>
+                  <ScrollArea className="max-h-48 rounded-md border">
+                    <div className="divide-y">
+                      {siap.map((b) => (
+                        <div key={b.baris} className="flex flex-wrap gap-x-3 p-3 text-xs">
+                          <span className="font-medium">{b.nis}</span>
+                          <span className="min-w-0 flex-1 break-words">{b.nama}</span>
+                          <span className="text-muted-foreground">{b.kelas}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {galat && (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{galat}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
               <Button
                 type="button"
                 variant="outline"
