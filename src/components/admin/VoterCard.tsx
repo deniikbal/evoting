@@ -34,6 +34,13 @@ interface VoterCardProps {
  */
 const LEBAR_KARTU = '60mm'
 const TINGGI_KARTU = '35mm'
+/** Jarak garis potong (putus-putus) dari tepi kartu. Dipakai 2,5mm — bukan
+ *  5mm — karena kotak 70mm x 45mm hanya muat 2 kolom di A4 (12 kartu/halaman,
+ *  1.425 kartu jadi ~119 halaman). Dengan 2,5mm kotak jadi 65mm x 40mm:
+ *  3 kolom = 195mm, masih muat di area cetak 200mm sehingga tetap 21
+ *  kartu/halaman. Konsekuensinya jarak antar kartu 0 supaya garis potong dua
+ *  kartu bersebelahan bertemu di satu garis yang sama. */
+const GARIS_POTONG = '2.5mm'
 /** Ukuran tampil QR. 20mm dipilih dari sapuan uji (14-22mm) yang menguji
  *  keterbacaan hasil cetak pada 300/200/150/120/96 dpi + blur + noda:
  *  20mm lulus 5/5 di semua kondisi, 18mm mulai gagal di 120 dpi.
@@ -86,9 +93,25 @@ export default function VoterCard({ siswa }: VoterCardProps) {
 
   return (
     <div
-      className="voter-card flex flex-col overflow-hidden rounded border border-gray-800 bg-white p-1.5"
-      style={{ width: LEBAR_KARTU, height: TINGGI_KARTU }}
+      className="voter-card-wrap flex items-center justify-center"
+      style={{
+        width: `calc(${LEBAR_KARTU} + 2 * ${GARIS_POTONG})`,
+        height: `calc(${TINGGI_KARTU} + 2 * ${GARIS_POTONG})`,
+        // Garis potong putus-putus. Memakai `border` pada PEMBUNGKUS, bukan
+        // `outline` pada kartu: html2canvas TIDAK merender `outline`, sehingga
+        // garisnya hilang dari PDF. Border didukung penuh. Karena Tailwind
+        // memakai `box-sizing: border-box`, ketebalan 1px ikut ke dalam 65mm
+        // sehingga ukuran kotak tidak berubah.
+        border: '1px dashed #9ca3af',
+      }}
     >
+      <div
+        className="voter-card flex flex-col overflow-hidden rounded border border-gray-800 bg-white p-1.5"
+        style={{
+          width: LEBAR_KARTU,
+          height: TINGGI_KARTU,
+        }}
+      >
       <div className="relative mb-1 shrink-0 border-b border-gray-800 pb-0.5">
         <h2 className="text-center text-[9px] font-bold leading-tight text-gray-900">
           PEMILIHAN KETUA OSIS
@@ -135,6 +158,7 @@ export default function VoterCard({ siswa }: VoterCardProps) {
 
       <div className="mt-0.5 shrink-0 border-t border-gray-300 pt-0.5 text-center text-[5px] leading-tight text-gray-500">
         Scan QR ini di bilik voting
+      </div>
       </div>
     </div>
   )

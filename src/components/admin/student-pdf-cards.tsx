@@ -105,9 +105,14 @@ export function StudentPdfCards({
       {/* Hidden render target untuk html2canvas.
           Elemen ini off-screen tapi tetap di DOM (bukan display:none) supaya
           QR <canvas> di VoterCard ter-render dan bisa di-snapshot.
-          Kolomnya lebar TETAP (60mm), bukan `1fr`: dengan `1fr` minimum kolom
-          adalah min-content, sehingga kartu berisi nama panjang melebarkan
-          kolomnya sendiri dan grid meluber melewati lebar A4. */}
+          Kolomnya lebar TETAP (65mm = kartu 60mm + 2 x 2,5mm garis potong),
+          bukan `1fr`: dengan `1fr` minimum kolom adalah min-content, sehingga
+          kartu berisi nama panjang melebarkan kolomnya sendiri dan grid
+          meluber melewati lebar A4.
+          `gap: 0` disengaja: garis putus-putus tiap kartu sudah menyisakan
+          2,5mm di luar tepi kartu, jadi garis dua kartu bersebelahan berimpit
+          menjadi satu garis potong. Dengan begitu 3 x 65mm = 195mm tetap muat
+          di area cetak A4 dan jumlah kartu per halaman tidak berkurang. */}
       <div
         id={containerId}
         aria-hidden="true"
@@ -120,10 +125,10 @@ export function StudentPdfCards({
           background: '#ffffff',
           color: '#000000',
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 60mm)',
+          gridTemplateColumns: 'repeat(3, 65mm)',
           justifyContent: 'center',
-          gap: '5mm',
-          padding: '5mm',
+          gap: '0',
+          padding: '7.5mm',
           zIndex: -1,
         }}
       >

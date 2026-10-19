@@ -1193,12 +1193,19 @@ export default function SiswaManagementPage() {
 
             .print-cards-grid {
               display: grid;
-              /* 3 kolom, bukan 4: kartu kini berukuran tetap 60mm, dan
-                 (190mm area cetak - 2 x 5mm gap) / 3 = 60mm pas. */
-              grid-template-columns: repeat(3, 1fr);
+              /* 3 kolom @65mm = 195mm: 60mm kartu + 2 x 2,5mm garis potong.
+                 Gap 0 disengaja supaya garis potong kartu bersebelahan
+                 berimpit jadi satu garis, dan 195mm tetap muat di area cetak
+                 A4 (210mm - 2 x 5mm margin halaman). */
+              grid-template-columns: repeat(3, 65mm);
               justify-content: center;
-              gap: 4mm;
+              gap: 0;
               width: 100%;
+            }
+
+            .voter-card-wrap {
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
 
             .voter-card {

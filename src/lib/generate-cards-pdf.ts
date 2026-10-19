@@ -41,7 +41,16 @@ export async function generateCardsPdf({
   const rootSelector = typeof source === 'string' ? source : '#student-pdf-cards-render'
   if (!root) throw new Error('Container kartu tidak ditemukan')
 
-  const cards = Array.from(root.querySelectorAll<HTMLElement>('.voter-card'))
+  // Unit yang dipindah/di-snapshot adalah PEMBUNGKUS (.voter-card-wrap) yang
+  // membawa garis potong, bukan .voter-card di dalamnya. Kalau yang dipindah
+  // hanya kartunya, ia keluar dari pembungkus dan garis potong hilang dari PDF.
+  const kotak = Array.from(
+    root.querySelectorAll<HTMLElement>('.voter-card-wrap')
+  )
+  const cards =
+    kotak.length > 0
+      ? kotak
+      : Array.from(root.querySelectorAll<HTMLElement>('.voter-card'))
   if (cards.length === 0) throw new Error('Tidak ada kartu (.voter-card) untuk di-export')
 
   // Tunggu 1 frame agar QR <canvas> yang di-render via `qrcode` library
@@ -137,5 +146,15 @@ function warnaHitamPutih(clonedDoc: Document, rootSelector: string) {
     .forEach((el) => {
       el.style.color = '#000000'
       el.style.borderColor = '#000000'
+    })
+  // Garis potong pada pembungkus SENGAJA tetap abu-abu putus-putus dan tipis.
+  // Fungsi ini memaksa semua border jadi hitam; tanpa pengecualian di sini
+  // garis potong ikut jadi tebal/hitam sehingga terlihat seperti bagian kartu.
+  clonedDoc
+    .querySelectorAll<HTMLElement>('.voter-card-wrap')
+    .forEach((el) => {
+      el.style.borderColor = '#9ca3af'
+      el.style.borderStyle = 'dashed'
+      el.style.borderWidth = '1px'
     })
 }
