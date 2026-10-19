@@ -8,6 +8,34 @@ interface VoterCardProps {
   siswa: Siswa & { nomorUrut?: number }
 }
 
+/**
+ * Ukuran kartu dipatok mati (mm) supaya SEMUA kartu sama lebar dan tinggi.
+ *
+ * Sebelumnya kartu tidak punya ukuran tetap: grid memakai `repeat(3, 1fr)` dan
+ * `1fr` minimumnya adalah min-content, sedangkan nama memakai `truncate`
+ * (`white-space: nowrap`) tanpa `min-w-0`. Akibatnya kartu yang namanya panjang
+ * melebarkan kolomnya sendiri — terukur 74,94 / 79,51 / 86,61 mm dalam satu
+ * baris, dan total grid meluber jadi 945px pada wadah 794px (paling kanan
+ * 250mm, melewati lebar A4 210mm). Nama panjang juga terpotong ellipsis,
+ * bukan turun ke baris baru.
+ *
+ * Sekarang lebar & tinggi tetap (60mm x 35mm), dan nama membungkus ke baris
+ * baru di dalam batas lebar kartu (`break-words`, tanpa `truncate`).
+ *
+ * 60mm dipilih supaya 3 kolom pas di area cetak A4: (190 - 2 x 5mm gap) / 3.
+ *
+ * Ukuran QR ditulis sebagai inline style, BUKAN kelas `w-[14mm]`/`h-[14mm]`.
+ * Library `qrcode` menulis `style="width:96px;height:96px"` langsung ke elemen
+ * canvas (dari opsi `width`), dan inline style selalu menang atas kelas utility.
+ * Akibatnya QR selalu 25,4mm (96px) apa pun kelasnya, melebihi ruang isi kartu
+ * (23,48mm) dan menabrak footer "Scan QR ini di bilik voting" sejauh 5,2px.
+ * Untuk QR, `width` hanya menentukan resolusi internal kanvas; ukuran tampil
+ * diatur lewat CSS, jadi 14mm tetap tajam karena kanvas 96px diskalakan turun.
+ */
+const LEBAR_KARTU = '60mm'
+const TINGGI_KARTU = '35mm'
+const UKURAN_QR = '13mm'
+
 export default function VoterCard({ siswa }: VoterCardProps) {
   const qrRef = useRef<HTMLCanvasElement>(null)
 
@@ -17,27 +45,40 @@ export default function VoterCard({ siswa }: VoterCardProps) {
   const qrValue = siswa.qrId || siswa.nis
 
   useEffect(() => {
-    if (qrRef.current) {
-      QRCode.toCanvas(qrRef.current, qrValue, {
-        width: 96,
-        margin: 0,
-        errorCorrectionLevel: 'M',
-        color: { dark: '#000000', light: '#FFFFFF' },
-      }).catch((err) => {
+    const kanvas = qrRef.current
+    if (!kanvas) return
+
+    QRCode.toCanvas(kanvas, qrValue, {
+      width: 96,
+      margin: 0,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#FFFFFF' },
+    })
+      .then(() => {
+        // `qrcode` menimpa style.width/height kanvas dengan ukuran piksel
+        // internalnya (96px) SETELAH render. Tanpa penyetelan ulang di sini,
+        // QR tampil 25,4mm dan menabrak footer kartu.
+        kanvas.style.width = UKURAN_QR
+        kanvas.style.height = UKURAN_QR
+        kanvas.style.display = 'block'
+      })
+      .catch((err) => {
         console.error('Gagal membuat QR:', err)
       })
-    }
   }, [qrValue])
 
   return (
-    <div className="voter-card bg-white border border-gray-800 rounded p-1.5">
-      <div className="relative mb-1 pb-0.5 border-b border-gray-800">
-        <h2 className="text-center text-[9px] font-bold text-gray-900 leading-tight">
+    <div
+      className="voter-card flex flex-col overflow-hidden rounded border border-gray-800 bg-white p-1.5"
+      style={{ width: LEBAR_KARTU, height: TINGGI_KARTU }}
+    >
+      <div className="relative mb-1 shrink-0 border-b border-gray-800 pb-0.5">
+        <h2 className="text-center text-[9px] font-bold leading-tight text-gray-900">
           PEMILIHAN KETUA OSIS
         </h2>
         {siswa.nomorUrut !== undefined && (
           <span
-            className="absolute right-0 top-0 text-[8px] font-bold text-gray-900 leading-tight"
+            className="absolute right-0 top-0 text-[8px] font-bold leading-tight text-gray-900"
             aria-label={`Nomor urut ${siswa.nomorUrut}`}
           >
             {siswa.nomorUrut}
@@ -45,31 +86,37 @@ export default function VoterCard({ siswa }: VoterCardProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        {/* QR Code (isi: qr_id) */}
-        <div className="flex-shrink-0">
-          <canvas ref={qrRef} className="w-[14mm] h-[14mm]" />
+      <div className="flex min-h-0 flex-1 items-start gap-1.5">
+        {/* QR Code (isi: qr_id). Ukuran lewat inline style: library `qrcode`
+            memasang style="width:96px;height:96px" pada canvas ini sehingga
+            kelas utility selalu kalah. */}
+        <div className="shrink-0">
+          <canvas
+            ref={qrRef}
+            style={{ width: UKURAN_QR, height: UKURAN_QR, display: 'block' }}
+          />
         </div>
 
-        <div className="flex-1 min-w-0 space-y-0.5">
-          <div className="flex text-[7px] leading-tight">
-            <span className="w-9 font-semibold text-gray-700">NIS</span>
-            <span className="flex-1 font-bold">: {siswa.nis}</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-[7px] leading-tight">
+          <div className="flex">
+            <span className="w-9 shrink-0 font-semibold text-gray-700">NIS</span>
+            <span className="min-w-0 flex-1 font-bold">: {siswa.nis}</span>
           </div>
 
-          <div className="flex text-[7px] leading-tight">
-            <span className="w-9 font-semibold text-gray-700">NAMA</span>
-            <span className="flex-1 truncate">: {siswa.namaLengkap}</span>
+          {/* Nama membungkus ke baris baru, tidak dipotong ellipsis. */}
+          <div className="flex">
+            <span className="w-9 shrink-0 font-semibold text-gray-700">NAMA</span>
+            <span className="min-w-0 flex-1 break-words">: {siswa.namaLengkap}</span>
           </div>
 
-          <div className="flex text-[7px] leading-tight">
-            <span className="w-9 font-semibold text-gray-700">KELAS</span>
-            <span className="flex-1">: {siswa.kelas}</span>
+          <div className="flex">
+            <span className="w-9 shrink-0 font-semibold text-gray-700">KELAS</span>
+            <span className="min-w-0 flex-1 break-words">: {siswa.kelas}</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-0.5 pt-0.5 border-t border-gray-300 text-[5px] text-gray-500 text-center leading-tight">
+      <div className="mt-0.5 shrink-0 border-t border-gray-300 pt-0.5 text-center text-[5px] leading-tight text-gray-500">
         Scan QR ini di bilik voting
       </div>
     </div>

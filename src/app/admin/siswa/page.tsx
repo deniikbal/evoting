@@ -1193,14 +1193,16 @@ export default function SiswaManagementPage() {
 
             .print-cards-grid {
               display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 6px;
+              /* 3 kolom, bukan 4: kartu kini berukuran tetap 60mm, dan
+                 (190mm area cetak - 2 x 5mm gap) / 3 = 60mm pas. */
+              grid-template-columns: repeat(3, 1fr);
+              justify-content: center;
+              gap: 4mm;
               width: 100%;
             }
 
             .voter-card {
               page-break-inside: avoid;
-              width: 100%;
             }
           }
 
