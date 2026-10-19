@@ -20,11 +20,12 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   School, Plus, Pencil, Trash2, RefreshCw, Upload, Download,
   Layers, Users, Search, FileSpreadsheet, FileDown,
-  ArrowUpDown, ArrowUp, ArrowDown, Loader2, CheckCircle, XCircle,
+  ArrowUpDown, ArrowUp, ArrowDown, Loader2, CheckCircle, XCircle, ClipboardList,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
+import { generateDaftarHadirPdf } from '@/lib/generate-daftar-hadir-pdf'
 import type { Siswa } from '@/app/admin/siswa/page'
 import { bandingAngkatan, bandingNamaKelas, cocokCari, denganNomorUrut } from '@/lib/urutan-kelas'
 import { ambilSesiAdmin } from '@/lib/sesi-klien'
@@ -60,6 +61,8 @@ export default function KelasManagementPage() {
 
   // Kelas yang kartu PDF-nya sedang disiapkan.
   const [kelasKartu, setKelasKartu] = useState<string | null>(null)
+  // Kelas yang sedang dibuatkan daftar hadir PDF (satu kelas satu proses).
+  const [kelasDaftarHadir, setKelasDaftarHadir] = useState<string | null>(null)
 
   // Generate kartu PDF per kelas: container snapshot render hanya saat request aktif
   const [kartuRequest, setKartuRequest] = useState<{ kelas: string; siswa: Siswa[] } | null>(null)
@@ -129,6 +132,40 @@ export default function KelasManagementPage() {
       toast.error('Gagal memuat data siswa')
     } finally {
       setKelasKartu(null)
+    }
+  }
+
+  // Unduh daftar hadir pemilihan ketua OSIS untuk satu kelas (satu lembar F4).
+  // Tidak memakai container off-screen seperti kartu: PDF-nya vektor, jadi
+  // cukup data NIS dan nama.
+  const handleDaftarHadir = async (kelas: Classroom) => {
+    if (kelas.jumlahSiswa === 0) {
+      toast.error(`Kelas ${kelas.name} belum memiliki siswa`)
+      return
+    }
+    setKelasDaftarHadir(kelas.name)
+    try {
+      toast.info(`Menyiapkan daftar hadir kelas ${kelas.name}...`)
+      const response = await fetch(
+        `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
+      )
+      const siswaKelas: Siswa[] = response.ok ? await response.json() : []
+      if (siswaKelas.length === 0) {
+        toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
+        return
+      }
+      await generateDaftarHadirPdf({
+        kelas: kelas.name,
+        siswa: siswaKelas.map((s) => ({ nis: s.nis, namaLengkap: s.namaLengkap })),
+      })
+      toast.success(`Daftar hadir kelas ${kelas.name} siap diunduh`)
+    } catch (err) {
+      console.error('Gagal membuat daftar hadir:', err)
+      toast.error(
+        err instanceof Error ? err.message : 'Gagal membuat daftar hadir'
+      )
+    } finally {
+      setKelasDaftarHadir(null)
     }
   }
 
@@ -860,6 +897,27 @@ export default function KelasManagementPage() {
                               variant="ghost"
                               size="icon"
                               className="size-8"
+                              title={
+                                kosong
+                                  ? 'Belum ada siswa di kelas ini'
+                                  : 'Unduh daftar hadir pemilihan (F4)'
+                              }
+                              onClick={() => handleDaftarHadir(classroom)}
+                              disabled={kosong || kelasDaftarHadir !== null}
+                            >
+                              {kelasDaftarHadir === classroom.name ? (
+                                <Loader2 className="animate-spin" />
+                              ) : (
+                                <ClipboardList />
+                              )}
+                              <span className="sr-only">
+                                Daftar hadir {classroom.name}
+                              </span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
                               title="Edit kelas"
                               onClick={() => openEditDialog(classroom)}
                             >
@@ -974,6 +1032,27 @@ export default function KelasManagementPage() {
                           <FileDown />
                         )}
                         <span className="sr-only">Kartu pemilih {classroom.name}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9"
+                        title={
+                          kosong
+                            ? 'Belum ada siswa di kelas ini'
+                            : 'Daftar hadir pemilihan (F4)'
+                        }
+                        onClick={() => handleDaftarHadir(classroom)}
+                        disabled={kosong || kelasDaftarHadir !== null}
+                      >
+                        {kelasDaftarHadir === classroom.name ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <ClipboardList />
+                        )}
+                        <span className="sr-only">
+                          Daftar hadir {classroom.name}
+                        </span>
                       </Button>
                       <Button
                         variant="outline"
