@@ -99,7 +99,10 @@ export async function generateCardsPdf({
 
     const captured = await html2canvas(root, {
       backgroundColor: '#ffffff',
-      scale: 2,
+      // 3 = ~288 dpi pada A4 (standar cetak 300 dpi). Sebelumnya 2 (~192 dpi)
+      // membuat modul QR hanya ~4px sehingga gagal dipindai setelah dicetak
+      // atau saat kertas sedikit kotor.
+      scale: 3,
       useCORS: true,
       logging: false,
       onclone: (clonedDoc) => {

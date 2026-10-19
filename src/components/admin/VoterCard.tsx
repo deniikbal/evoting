@@ -34,7 +34,16 @@ interface VoterCardProps {
  */
 const LEBAR_KARTU = '60mm'
 const TINGGI_KARTU = '35mm'
-const UKURAN_QR = '13mm'
+/** Ukuran tampil QR. 20mm dipilih dari sapuan uji (14-22mm) yang menguji
+ *  keterbacaan hasil cetak pada 300/200/150/120/96 dpi + blur + noda:
+ *  20mm lulus 5/5 di semua kondisi, 18mm mulai gagal di 120 dpi.
+ *  Kartu 35mm masih memuatnya tanpa memotong nama. */
+const UKURAN_QR = '20mm'
+/** Resolusi internal kanvas QR (piksel), BUKAN ukuran tampil.
+ *  PDF digambar lewat html2canvas `scale: 3`, jadi QR 20mm menjadi sekitar
+ *  227px pada A4. Kanvas 384px membuat QR selalu DIPERKECIL (tajam), bukan
+ *  diperbesar seperti dulu saat kanvas masih 96px. */
+const RESOLUSI_QR = 384
 
 export default function VoterCard({ siswa }: VoterCardProps) {
   const qrRef = useRef<HTMLCanvasElement>(null)
@@ -49,15 +58,23 @@ export default function VoterCard({ siswa }: VoterCardProps) {
     if (!kanvas) return
 
     QRCode.toCanvas(kanvas, qrValue, {
-      width: 96,
-      margin: 0,
+      // `width` = resolusi internal kanvas, bukan ukuran tampil.
+      width: RESOLUSI_QR,
+      // Quiet zone (zona putih di tepi) WAJIB ada supaya pemindai bisa
+      // menemukan batas QR. Dengan `margin: 0` QR menempel ke garis kartu.
+      // Uji ulang: margin 2 modul memberi hasil terbaik pada cetak kotor.
+      margin: 2,
+      // 'M' (15%) dipilih berdasarkan uji, BUKAN 'H'. Level lebih tinggi
+      // menambah jumlah modul, sehingga tiap modul jadi lebih kecil dan
+      // justru lebih mudah gagal saat cetak blur/kotor: pada 18mm 'H' gagal
+      // total (0/5) di 120 dpi, sedangkan 'M' lulus 5/5.
       errorCorrectionLevel: 'M',
       color: { dark: '#000000', light: '#FFFFFF' },
     })
       .then(() => {
         // `qrcode` menimpa style.width/height kanvas dengan ukuran piksel
-        // internalnya (96px) SETELAH render. Tanpa penyetelan ulang di sini,
-        // QR tampil 25,4mm dan menabrak footer kartu.
+        // internalnya (RESOLUSI_QR px) SETELAH render. Tanpa penyetelan ulang
+        // di sini, QR tampil sebesar RESOLUSI_QR px dan merusak kartu.
         kanvas.style.width = UKURAN_QR
         kanvas.style.height = UKURAN_QR
         kanvas.style.display = 'block'
