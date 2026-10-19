@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -39,12 +40,9 @@ export default function DebugPage() {
     }
   }
 
-  const checkCurrentSession = () => {
-    const sessionData = localStorage.getItem('adminSession')
-    if (sessionData) {
-      const session = JSON.parse(sessionData)
-      setCurrentAdmin(session)
-    }
+  const checkCurrentSession = async () => {
+    const sesi = await ambilSesiAdmin()
+    if (sesi) setCurrentAdmin(sesi)
   }
 
   const updateRole = async (username: string, newRole: string) => {
@@ -61,15 +59,12 @@ export default function DebugPage() {
         toast.success(data.message)
         fetchAdmins()
         
-        // Update session if this is current user
+        // Bila peran akun sendiri yang berubah, ambil ulang dari server.
+        // Peran tidak lagi ditentukan oleh nilai di localStorage.
         if (currentAdmin?.username === username) {
-          const updated = {
-            ...currentAdmin,
-            role: newRole,
-          }
-          localStorage.setItem('adminSession', JSON.stringify(updated))
-          setCurrentAdmin(updated)
-          toast.info('Session updated. Please refresh page.')
+          const sesiBaru = await ambilSesiAdmin()
+          if (sesiBaru) setCurrentAdmin(sesiBaru)
+          toast.info('Peran diperbarui. Muat ulang halaman agar berlaku.')
         }
       } else {
         toast.error(data.message)

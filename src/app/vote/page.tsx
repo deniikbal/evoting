@@ -44,6 +44,10 @@ export default function KioskPage() {
   // Pemilih hasil scan (siswa / guru / tu)
   const [siswa, setSiswa] = useState<VoterInfo | null>(null)
 
+  // Tiket sesi pemilih: bukti bertanda tangan dari server bahwa kartu ini
+  // benar-benar dipindai di kiosk. Identitas pemilih tidak lagi dikirim mentah.
+  const [tiket, setTiket] = useState<string | null>(null)
+
   // Kandidat & pilihan
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [isLoadingKandidat, setIsLoadingKandidat] = useState(false)
@@ -74,6 +78,7 @@ export default function KioskPage() {
   const resetToScan = useCallback(() => {
     setStep('scan')
     setSiswa(null)
+    setTiket(null)
     setKandidat([])
     setSelectedMitraTama(null)
     setSelectedMitraMuda(null)
@@ -115,6 +120,15 @@ export default function KioskPage() {
         return
       }
 
+      // Tiket wajib ada: tanpa itu suara tidak akan diterima /api/voting.
+      if (!data.tiket) {
+        setScanError(
+          'Sesi pemilih tidak diterbitkan. Panggil panitia untuk memeriksa server.'
+        )
+        return
+      }
+
+      setTiket(data.tiket)
       setSiswa(data.voter)
       setStep('confirm')
     } catch (err) {
@@ -148,54 +162,67 @@ export default function KioskPage() {
 
   /* ============ SUBMIT VOTE ============ */
   const submitVote = useCallback(async () => {
-    if (!siswa || !selectedMitraTama || !selectedMitraMuda) return
+    if (!tiket || !selectedMitraTama || !selectedMitraMuda) return
 
     setIsVoting(true)
     setVoteError('')
 
+    const kirim = (kandidatId: number) =>
+      fetch('/api/voting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kandidatId, tiket }),
+      })
+
     try {
-      // Isi payload menyesuaikan jenis pemilih: siswa pakai siswaId,
-      // guru/TU pakai pegawaiId (voterType = 'guru' | 'tu').
-      const voterPayload =
-        siswa.type === 'siswa'
-          ? { siswaId: siswa.id, voterType: 'siswa' as const }
-          : { pegawaiId: siswa.id, voterType: siswa.type }
+      const kirimSatu = async (kandidatId: number) => {
+        try {
+          return await kirim(kandidatId)
+        } catch {
+          return null
+        }
+      }
 
-      const responses = await Promise.all([
-        fetch('/api/voting', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            kandidatId: selectedMitraTama.id,
-            ...voterPayload,
-          }),
-        }),
-        fetch('/api/voting', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            kandidatId: selectedMitraMuda.id,
-            ...voterPayload,
-          }),
-        }),
-      ])
+      // Dua suara dikirim berurutan, bukan bersamaan seperti sebelumnya yang
+      // secara teori bisa membuat kondisi balapan pada penutupan hak pilih.
+      let salahSatuSudahAda = false
 
-      const allSuccess = responses.every((r) => r.ok)
+      const responTama = await kirimSatu(selectedMitraTama.id)
+      if (responTama && responTama.status === 409) salahSatuSudahAda = true
 
-      if (allSuccess) {
+      const responMuda = await kirimSatu(selectedMitraMuda.id)
+      if (responMuda && responMuda.status === 409) salahSatuSudahAda = true
+
+      const berhasil = [responTama, responMuda].filter((r) => r && r.ok).length
+
+      // Suara lengkap hanya bila kedua kategori benar-benar tersimpan.
+      const lengkap = berhasil === 2 || (salahSatuSudahAda && berhasil >= 1)
+
+      if (lengkap) {
         setStep('done')
         setCountdown(AUTOCLOSE_SECONDS)
-      } else {
-        const errRes = responses.find((r) => !r.ok)
-        const errData = errRes ? await errRes.json().catch(() => ({})) : {}
-        setVoteError(errData.message || 'Gagal menyimpan pilihan. Panggil panitia.')
+        return
       }
+
+      // Sebagian gagal: katakan apa adanya supaya panitia bisa menindak, dan
+      // JANGAN menghapus tiket. Pemilih hanya perlu mengulang pilihan yang
+      // belum masuk, sementara kategori yang sudah tersimpan ditolak server.
+      if (berhasil === 1) {
+        setVoteError(
+          'Satu pilihan belum tersimpan. Tekan tombol simpan lagi, atau panggil panitia.'
+        )
+        return
+      }
+
+      const errRes = responTama || responMuda
+      const errData = errRes ? await errRes.json().catch(() => ({})) : {}
+      setVoteError(errData.message || 'Gagal menyimpan pilihan. Panggil panitia.')
     } catch (err) {
       setVoteError('Terjadi kesalahan. Panggil panitia.')
     } finally {
       setIsVoting(false)
     }
-  }, [siswa, selectedMitraTama, selectedMitraMuda])
+  }, [tiket, selectedMitraTama, selectedMitraMuda])
 
   /* ============ CAMERA SCANNER (html5-qrcode) ============ */
   useEffect(() => {

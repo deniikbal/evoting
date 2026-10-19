@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { pengaturan } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     // Get current voting status
     const [currentSetting] = await db.select().from(pengaturan).where(eq(pengaturan.namaPengaturan, 'voting_aktif')).limit(1)

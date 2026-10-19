@@ -1,12 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, classroom } from '@/lib/schema'
 import { eq, count, and } from 'drizzle-orm'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     // Get all classrooms with their students
     const allClassrooms = await db

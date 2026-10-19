@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { eq, inArray } from 'drizzle-orm'
 import crypto from 'crypto'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ function hashToken(token: string): string {
 
 // POST - Regenerate token for single or multiple students
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { studentIds } = await request.json()
 

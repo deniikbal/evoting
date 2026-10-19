@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
 import type { Siswa } from '@/app/admin/siswa/page'
 import { bandingAngkatan, bandingNamaKelas, cocokCari, denganNomorUrut } from '@/lib/urutan-kelas'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -90,15 +91,19 @@ export default function KelasManagementPage() {
   })
 
   useEffect(() => {
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin diverifikasi server lewat cookie httpOnly. Nilai di
+    // localStorage hanya untuk tampilan, bukan penentu hak akses.
+    const muatSesi = async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi) {
+        router.push('/login/admin')
+        return
+      }
+      setAdmin(sesi)
+      fetchClassrooms()
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    fetchClassrooms()
+    void muatSesi()
   }, [router])
 
   // Siapkan siswa satu kelas, lalu mount StudentPdfCards (autoDownload)

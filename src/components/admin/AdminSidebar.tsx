@@ -47,6 +47,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ambilSesiAdmin, keluarAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -72,18 +73,15 @@ export default function AdminSidebar() {
   const [admin, setAdmin] = React.useState<Admin | null>(null)
 
   React.useEffect(() => {
-    const sessionData = localStorage.getItem('adminSession')
-    if (sessionData) {
-      try {
-        setAdmin(JSON.parse(sessionData))
-      } catch {
-        setAdmin(null)
-      }
-    }
+    // Sesi dibaca dari server (cookie httpOnly). Nilai di localStorage hanya
+    // salinan tampilan, bukan penentu hak akses.
+    void (async () => setAdmin((await ambilSesiAdmin()) as Admin | null))()
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession')
+  const handleLogout = async () => {
+    // Cookie sesi harus dihapus di server; membersihkan localStorage saja
+    // tidak mengakhiri sesi.
+    await keluarAdmin()
     router.push('/login/admin')
   }
 

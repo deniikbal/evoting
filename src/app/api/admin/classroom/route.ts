@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { classroom, siswa } from '@/lib/schema'
 import { count } from 'drizzle-orm'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,8 @@ export const dynamic = 'force-dynamic'
 // Urutan memakai bandingNamaKelas (bukan ORDER BY nama) karena SQL mengurutkan
 // teks: "X 10" akan mendahului "X 2". Pengurutan dilakukan di sini supaya
 // halaman Kelas, dropdown Siswa, dan dropdown Pegawai menerima urutan yang sama.
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const classrooms = await db.select().from(classroom)
 
@@ -48,6 +50,7 @@ export async function GET() {
 
 // POST - Create new classroom
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const body = await request.json()
     const { name, angkatan } = body

@@ -51,7 +51,7 @@ export default function LandingPage() {
   const fetchStats = async () => {
     try {
       const [statistikResponse, kandidatResponse] = await Promise.all([
-        fetch('/api/admin/statistik'),
+        fetch('/api/statistik'),
         fetch('/api/kandidat')
       ])
 

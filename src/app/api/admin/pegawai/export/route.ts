@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     // Create template data
     const templateData = [

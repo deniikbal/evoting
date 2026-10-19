@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { kandidat } from '@/lib/schema'
 import { eq, asc, and } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const allKandidat = await db.select().from(kandidat).orderBy(asc(kandidat.nomorUrut))
 
@@ -20,6 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { nomorUrut, namaCalon, visi, misi, fotoUrl, role } = await request.json()
 

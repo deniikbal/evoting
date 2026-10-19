@@ -33,6 +33,7 @@ import {
   Search, MoreHorizontal, Info,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -77,15 +78,19 @@ export default function UserManagementPage() {
   })
 
   useEffect(() => {
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin diverifikasi server lewat cookie httpOnly. Nilai di
+    // localStorage hanya untuk tampilan, bukan penentu hak akses.
+    const muatSesi = async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi) {
+        router.push('/login/admin')
+        return
+      }
+      setAdmin(sesi as unknown as AdminSession)
+      fetchAdmins()
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    fetchAdmins()
+    void muatSesi()
   }, [router])
 
   useEffect(() => {

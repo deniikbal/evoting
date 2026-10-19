@@ -16,6 +16,7 @@ import {
   type Kandidat,
   type Statistik,
 } from '@/components/admin/dashboard-types'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 const STATISTIK_KOSONG: Statistik = {
   totalVoters: 0,
@@ -161,28 +162,25 @@ export default function DashboardPage() {
   useEffect(() => {
     hidup.current = true
 
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.replace('/login/admin')
-      return
-    }
+    let interval: ReturnType<typeof setInterval> | undefined
 
-    let sesi: AdminSession
-    try {
-      sesi = JSON.parse(sessionData) as AdminSession
-    } catch {
-      localStorage.removeItem('adminSession')
-      router.replace('/login/admin')
-      return
-    }
+    // Sesi diverifikasi server lewat cookie httpOnly; localStorage hanya
+    // salinan untuk tampilan.
+    void (async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi || !hidup.current) {
+        if (!sesi) router.replace('/login/admin')
+        return
+      }
 
-    setAdmin(sesi)
-    const role = sesi.role ?? 'admin'
-    setAdminRole(role)
-    roleRef.current = role
+      setAdmin(sesi as AdminSession)
+      const role = sesi.role ?? 'admin'
+      setAdminRole(role)
+      roleRef.current = role
 
-    segarkan()
-    const interval = setInterval(segarkan, JEDA_SEGAR_MS)
+      segarkan()
+      interval = setInterval(segarkan, JEDA_SEGAR_MS)
+    })()
 
     // Saat tab kembali aktif, segarkan sekali supaya angka tidak basi.
     const saatTerlihat = () => {

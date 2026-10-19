@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { kandidat } from '@/lib/schema'
 import { eq, ne, and } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { id: idParam } = await params
     const id = parseInt(idParam)
@@ -91,6 +93,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { id: idParam } = await params
     const id = parseInt(idParam)

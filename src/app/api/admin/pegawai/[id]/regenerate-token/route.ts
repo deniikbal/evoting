@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { pegawai } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
 import { generatePegawaiToken, generatePegawaiPassword, hashToken } from '@/lib/utils'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const pegawaiId = parseInt(params.id)
 

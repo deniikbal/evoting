@@ -4,6 +4,7 @@ import { siswa, classroom } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
 import * as XLSX from 'xlsx'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ function hashToken(token: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const formData = await request.formData()
     const file = formData.get('xlsFile') as File

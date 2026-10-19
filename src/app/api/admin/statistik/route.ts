@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, pegawai, pengaturan } from '@/lib/schema'
 import { eq, count, sql } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,8 @@ export const dynamic = 'force-dynamic'
  * memakai lima query berurutan (2.5 sampai 7 detik). Hitungan bersyarat dalam
  * satu query memangkas jumlah round-trip tanpa mengubah hasil.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const [siswaRingkas, pegawaiRingkas, votingSetting] = await Promise.all([
       db

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa, pegawai, kandidat, vote, classroom } from '@/lib/schema'
 import { eq, count, inArray, or } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const searchParams = request.nextUrl.searchParams
     const filterType = searchParams.get('type') // 'angkatan', 'kelas', or 'role'

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { pengaturan } from '@/lib/schema'
 import { inArray, eq } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const allPengaturan = await db.select().from(pengaturan).where(
       inArray(pengaturan.namaPengaturan, ['voting_aktif', 'waktu_mulai_voting', 'waktu_selesai_voting'])
@@ -34,6 +36,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { voting_aktif, waktu_mulai_voting, waktu_selesai_voting } = await request.json()
 

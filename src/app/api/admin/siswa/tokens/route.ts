@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { siswa } from '@/lib/schema'
 import { asc } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     // Urutan kelas natural di JS: ORDER BY teks menaruh "X 10" sebelum "X 2".
     const allSiswa = (

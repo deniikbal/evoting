@@ -3,10 +3,12 @@ import { db } from '@/lib/db'
 import { pegawai } from '@/lib/schema'
 import { eq, asc, or, ilike } from 'drizzle-orm'
 import { generatePegawaiToken, generatePegawaiPassword, hashToken } from '@/lib/utils'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const searchParams = request.nextUrl.searchParams
     const role = searchParams.get('role')
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { nama, email, role, nip, nomorInduk, classroomId, status } = await request.json()
 

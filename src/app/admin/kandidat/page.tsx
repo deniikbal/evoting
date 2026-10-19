@@ -22,6 +22,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -66,16 +67,19 @@ export default function KandidatManagementPage() {
   })
 
   useEffect(() => {
-    // Check admin session
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin diverifikasi server lewat cookie httpOnly. Nilai di
+    // localStorage hanya untuk tampilan, bukan penentu hak akses.
+    const muatSesi = async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi) {
+        router.push('/login/admin')
+        return
+      }
+      setAdmin(sesi)
+      fetchKandidat()
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    fetchKandidat()
+    void muatSesi()
   }, [router])
 
   const fetchKandidat = async () => {

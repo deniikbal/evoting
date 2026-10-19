@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { pegawai } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const pegawaiId = parseInt(params.id)
 
@@ -39,6 +41,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const pegawaiId = parseInt(params.id)
     const { nama, email, role, nip, nomorInduk, status } = await request.json()
@@ -104,6 +107,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const pegawaiId = parseInt(params.id)
 

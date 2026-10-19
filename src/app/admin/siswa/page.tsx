@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation'
 import VoterCard from '@/components/admin/VoterCard'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
 import { toast } from 'sonner'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -99,17 +100,20 @@ export default function SiswaManagementPage() {
   })
 
   useEffect(() => {
-    // Check admin session
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin diverifikasi server lewat cookie httpOnly. Nilai di
+    // localStorage hanya untuk tampilan, bukan penentu hak akses.
+    const muatSesi = async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi) {
+        router.push('/login/admin')
+        return
+      }
+      setAdmin(sesi)
+      fetchSiswa()
+    fetchClassrooms()
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    fetchSiswa()
-    fetchClassrooms()
+    void muatSesi()
   }, [router])
 
   useEffect(() => {

@@ -3,10 +3,12 @@ import { db } from '@/lib/db'
 import { admin } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const admins = await db
       .select({
@@ -29,6 +31,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { username, nama, password, role } = await request.json()
 

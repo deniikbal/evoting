@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -47,16 +48,19 @@ export default function PengaturanPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check admin session
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin diverifikasi server lewat cookie httpOnly. Nilai di
+    // localStorage hanya untuk tampilan, bukan penentu hak akses.
+    const muatSesi = async () => {
+      const sesi = await ambilSesiAdmin()
+      if (!sesi) {
+        router.push('/login/admin')
+        return
+      }
+      setAdmin(sesi)
+      fetchPengaturan()
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    fetchPengaturan()
+    void muatSesi()
   }, [router])
 
   const fetchPengaturan = async () => {
@@ -109,15 +113,25 @@ export default function PengaturanPage() {
   }
 
   const handleConfirmToggle = async () => {
-    if (confirmPassword !== 'SmansabaHiber2025') {
-      toast.error('Password salah!')
-      return
-    }
-
     const newStatus = votingAction === 'start' ? 'true' : 'false'
     setIsToggling(true)
 
     try {
+      // Kata sandi diverifikasi di server, bukan dicocokkan di peramban.
+      // Sebelumnya nilainya ditulis apa adanya di kode klien.
+      const konfirmasi = await fetch('/api/auth/admin/konfirmasi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kataSandi: confirmPassword }),
+      })
+
+      if (!konfirmasi.ok) {
+        const pesan = await konfirmasi.json().catch(() => ({}))
+        toast.error(pesan.message || 'Password salah!')
+        setIsToggling(false)
+        return
+      }
+
       const response = await fetch('/api/admin/pengaturan', {
         method: 'PUT',
         headers: {

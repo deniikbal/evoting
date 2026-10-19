@@ -25,6 +25,7 @@ import {
   Search, Printer, Users, CheckCircle, FileSpreadsheet, FileDown
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ambilSesiAdmin } from '@/lib/sesi-klien'
 
 interface Admin {
   id: number
@@ -146,14 +147,15 @@ export default function PegawaiPage() {
     setCurrentPage(1)
   }, [pegawaiList, searchQuery, roleFilter, statusFilter])
 
-  const checkAdminSession = () => {
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
+  const checkAdminSession = async () => {
+    // Sesi diverifikasi server lewat cookie httpOnly; localStorage hanya
+    // salinan untuk tampilan.
+    const sesi = await ambilSesiAdmin()
+    if (!sesi) {
       router.push('/login/admin')
       return
     }
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
+    setAdmin(sesi)
   }
 
   const fetchPegawai = async () => {

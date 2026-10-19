@@ -4,6 +4,7 @@ import { siswa } from '@/lib/schema'
 import { eq, asc } from 'drizzle-orm'
 import crypto from 'crypto'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
+import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ function hashToken(token: string): string {
  * pada koneksi lambat) hanya untuk memakai 30 sampai 40 baris.
  */
 export async function GET(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const kelas = request.nextUrl.searchParams.get('kelas')
 
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const { nis, namaLengkap, kelas, classroomId } = await request.json()
 

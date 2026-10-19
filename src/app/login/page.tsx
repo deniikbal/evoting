@@ -42,6 +42,9 @@ export default function LoginPage() {
       if (response.ok) {
         localStorage.removeItem('pegawaiSession')
         localStorage.setItem('siswaSession', JSON.stringify(data.user))
+        // Tiket pemilih: bukti bertanda tangan dari server. Tanpa ini suara
+        // tidak akan diterima /api/voting.
+        if (data.tiket) localStorage.setItem('tiketPemilih', data.tiket)
         window.location.href = '/voting'
       } else {
         setError(data.message || 'Login gagal. Silakan coba lagi.')
@@ -72,6 +75,7 @@ export default function LoginPage() {
       if (response.ok) {
         localStorage.removeItem('siswaSession')
         localStorage.setItem('pegawaiSession', JSON.stringify(data.user))
+        if (data.tiket) localStorage.setItem('tiketPemilih', data.tiket)
         window.location.href = '/voting'
       } else {
         setError(data.message || 'Login gagal. Silakan coba lagi.')

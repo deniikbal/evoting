@@ -3,11 +3,27 @@ import { db } from '@/lib/db'
 import { siswa, pegawai, pengaturan } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
 import { hashToken } from '@/lib/utils'
+import { batasiLaju } from '@/lib/batas-laju'
+import { buatTiket } from '@/lib/tiket-voting'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'tanpa-ip'
+
+    // Token hanya 6 karakter, jadi percobaan beruntun harus dibatasi.
+    const batas = batasiLaju(`login-token:${ip}`, 20, 300)
+    if (!batas.boleh) {
+      return NextResponse.json(
+        { message: 'Terlalu banyak percobaan login. Tunggu sebentar.' },
+        { status: 429, headers: { 'Retry-After': String(batas.sisaDetik) } }
+      )
+    }
+
     const { username, token } = await request.json()
 
     // Support 2 auth methods - BOTH use token:
@@ -52,6 +68,7 @@ export async function POST(request: NextRequest) {
           message: siswaData.sudahMemilih
             ? 'Login berhasil - Anda sudah voting'
             : 'Login berhasil',
+          tiket: siswaData.sudahMemilih ? null : buatTiket('siswa', siswaData.id),
           user: {
             ...siswaResponse,
             type: 'siswa',
@@ -86,6 +103,9 @@ export async function POST(request: NextRequest) {
           message: pegawaiData.sudahMemilih
             ? 'Login berhasil - Anda sudah voting'
             : 'Login berhasil',
+          tiket: pegawaiData.sudahMemilih
+            ? null
+            : buatTiket(pegawaiData.role as 'guru' | 'tu', pegawaiData.id),
           user: {
             ...pegawaiResponse,
             type: pegawaiData.role, // 'guru' atau 'tu'

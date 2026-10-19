@@ -106,54 +106,57 @@ export default function VotingPage() {
     setIsVoting(true)
     setError('')
 
+    // Identitas pemilih kini dibuktikan oleh tiket bertanda tangan dari
+    // server, bukan oleh id yang dikirim mentah dari peramban.
+    const tiket = localStorage.getItem('tiketPemilih')
+    if (!tiket) {
+      setError(
+        'Sesi pemilih tidak ditemukan atau kedaluwarsa. Silakan login ulang.'
+      )
+      setShowConfirmDialog(false)
+      setIsVoting(false)
+      return
+    }
+
     try {
-      // Prepare vote payload
-      const votePayload = user.type === 'siswa'
-        ? {
-            kandidatId: selectedMitraTama.id,
-            siswaId: (user.data as Siswa).id,
-            voterType: 'siswa'
-          }
-        : {
-            kandidatId: selectedMitraTama.id,
-            pegawaiId: (user.data as Pegawai).id,
-            voterType: user.type
-          }
+      const kirimSatu = async (kandidatId: number) => {
+        try {
+          return await fetch('/api/voting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kandidatId, tiket }),
+          })
+        } catch {
+          return null
+        }
+      }
 
-      // Submit both votes
-      const responses = await Promise.all([
-        fetch('/api/voting', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(votePayload),
-        }),
-        fetch('/api/voting', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...(user.type === 'siswa'
-              ? { siswaId: (user.data as Siswa).id, voterType: 'siswa' }
-              : { pegawaiId: (user.data as Pegawai).id, voterType: user.type }
-            ),
-            kandidatId: selectedMitraMuda.id,
-          }),
-        })
-      ])
+      // Berurutan, bukan bersamaan: mencegah kondisi balapan pada penutupan
+      // hak pilih ketika dua suara disimpan pada saat yang sama.
+      let adaYangSudahTersimpan = false
 
-      // Check if both votes succeeded
-      const allSuccess = responses.every(res => res.ok)
+      const responTama = await kirimSatu(selectedMitraTama.id)
+      if (responTama && responTama.status === 409) adaYangSudahTersimpan = true
+
+      const responMuda = await kirimSatu(selectedMitraMuda.id)
+      if (responMuda && responMuda.status === 409) adaYangSudahTersimpan = true
+
+      const responses = [responTama, responMuda]
+      const berhasil = responses.filter((r) => r?.ok).length
+
+      // Kedua kategori harus benar-benar tersimpan. Bila salah satu sudah
+      // tersimpan dari percobaan sebelumnya, satu keberhasilan sudah cukup.
+      const allSuccess =
+        berhasil === 2 || (adaYangSudahTersimpan && berhasil >= 1)
 
       if (allSuccess) {
         // Clear session and redirect to thank you page
         localStorage.removeItem('siswaSession')
         localStorage.removeItem('pegawaiSession')
+        localStorage.removeItem('tiketPemilih')
         router.push('/terima-kasih')
       } else {
-        const errorRes = responses.find(res => !res.ok)
+        const errorRes = responses.find((res) => res && !res.ok)
         if (errorRes) {
           const errorData = await errorRes.json()
           setError(errorData.message || 'Gagal melakukan voting. Silakan coba lagi.')

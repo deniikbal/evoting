@@ -78,20 +78,25 @@ export default function HasilVotingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check admin session
-    const sessionData = localStorage.getItem('adminSession')
-    if (!sessionData) {
-      router.push('/login/admin')
-      return
+    // Sesi admin dibaca dari cookie httpOnly lewat endpoint server; nilai di
+    // localStorage tidak lagi menjadi dasar hak akses.
+    const muatSesi = async () => {
+      try {
+        const res = await fetch('/api/auth/admin/sesi')
+        if (!res.ok) {
+          router.push('/login/admin')
+          return
+        }
+        const data = await res.json()
+        setAdmin(data.admin)
+        setAdminRole(data.admin?.role || 'admin')
+        fetchDataWithRole(data.admin?.role || 'admin')
+      } catch {
+        router.push('/login/admin')
+      }
     }
 
-    const session = JSON.parse(sessionData)
-    setAdmin(session)
-    setAdminRole(session.role || 'admin')
-
-    // Check if admin is regular admin (not superadmin)
-    // If voting is active, redirect regular admin to dashboard
-    fetchDataWithRole(session.role)
+    void muatSesi()
   }, [router])
 
   const fetchDataWithRole = async (userRole?: string) => {

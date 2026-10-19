@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sql } from 'drizzle-orm'
+import { punyaSesiSuperadmin, responsBukanSuperadmin } from '@/lib/admin-guard'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!punyaSesiSuperadmin(request)) return responsBukanSuperadmin()
   try {
     // 1. Reset jumlah suara semua kandidat menjadi 0
     await db.execute(sql`UPDATE "kandidat" SET "jumlah_suara" = 0`)

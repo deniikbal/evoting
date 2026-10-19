@@ -32,7 +32,8 @@ export default function AdminLoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Store admin session
+        // Sesi admin dibawa oleh cookie httpOnly yang dipasang server; nilai
+        // di localStorage hanya untuk menampilkan nama dan peran.
         localStorage.setItem('adminSession', JSON.stringify(data.admin))
         window.location.href = '/admin/dashboard'
       } else {
