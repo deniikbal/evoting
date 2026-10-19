@@ -236,11 +236,14 @@ function gambarJudulTabel(
   lebarTabel: number,
   tinggi: number
 ) {
-  pdf.setLineWidth(0.3)
   pdf.setTextColor(0, 0, 0)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(UKURAN_FONT_ISI)
 
+  // Pemisah antar kolom tipis, bingkai luar lebih tebal: samakan dengan
+  // gambarIsiTabel supaya sambungan judul dan badan tabel tidak terlihat
+  // patah pada garis tepi.
+  pdf.setLineWidth(0.2)
   let xKolom = x
   for (const kolom of KOLOM) {
     if (xKolom > x) pdf.line(xKolom, y, xKolom, y + tinggi)
@@ -251,6 +254,7 @@ function gambarJudulTabel(
     xKolom += kolom.lebar
   }
 
+  pdf.setLineWidth(0.4)
   pdf.rect(x, y, lebarTabel, tinggi)
 }
 
@@ -282,6 +286,16 @@ function gambarIsiTabel(pdf: jsPDF, { x, y, lebarTabel, tinggiBaris, data }: Ops
   for (let i = 0; i <= data.length; i++) {
     pdf.line(x, y + i * tinggiBaris, x + lebarTabel, y + i * tinggiBaris)
   }
+
+  // Bingkai KIRI dan KANAN badan tabel. Loop pemisah kolom di atas hanya
+  // menggambar garis di ANTAR kolom (x 27/55/155), sedangkan tepi x=15 dan
+  // x=200 tidak pernah disentuh. Akibatnya saat dicetak kotak tabel bagian
+  // luar tidak tertutup, meski garis mendatarnya sudah penuh.
+  // Ditulis lebih tebal (0,4mm) supaya tetap terlihat pada printer yang
+  // mencetak tipis atau saat tinta mulai habis.
+  pdf.setLineWidth(0.4)
+  pdf.line(x, y, x, y + tinggiTotal)
+  pdf.line(x + lebarTabel, y, x + lebarTabel, y + tinggiTotal)
 
   pdf.setFont('helvetica', 'normal')
 
