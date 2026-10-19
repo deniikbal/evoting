@@ -442,28 +442,28 @@ export default function PegawaiPage() {
           description="Guru dan tenaga kependidikan yang bisa memilih di bilik QR."
           actions={
             <>
-              <Button onClick={handleExport} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
+              <Button onClick={handleExport} variant="outline" size="default" className="min-h-11 sm:min-h-0">
                 <Download />
                 Template
               </Button>
-              <Button onClick={handleImport} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
+              <Button onClick={handleImport} variant="outline" size="default" className="min-h-11 sm:min-h-0">
                 <Upload />
                 Import
               </Button>
               <Button
                 onClick={() => setShowPrintDialog(true)}
                 variant="outline"
-                size="sm"
+                size="default"
                 className="min-h-11 sm:min-h-0"
               >
                 <Printer />
                 Cetak kartu
               </Button>
-              <Button onClick={fetchPegawai} variant="outline" size="sm" className="min-h-11 sm:min-h-0">
+              <Button onClick={fetchPegawai} variant="outline" size="default" className="min-h-11 sm:min-h-0">
                 <RefreshCw />
                 Muat ulang
               </Button>
-              <Button onClick={handleAddNew} size="sm" className="min-h-11 sm:min-h-0">
+              <Button onClick={handleAddNew} size="default" className="min-h-11 sm:min-h-0">
                 <Plus />
                 Tambah pegawai
               </Button>
@@ -473,7 +473,7 @@ export default function PegawaiPage() {
         <CardContent>
           {/* Search & Filters */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-            <InputGroup className="flex-1">
+            <InputGroup className="flex-1 max-sm:min-h-11!">
               <InputGroupAddon>
                 <Search className="size-4" />
               </InputGroupAddon>
@@ -519,7 +519,7 @@ export default function PegawaiPage() {
             <div role="alert" className="mb-4 rounded-lg border border-destructive/40 px-4 py-3">
               <p className="text-sm font-medium">Data pegawai gagal dimuat</p>
               <p className="mt-1 text-sm text-muted-foreground">{galatMuat}</p>
-              <Button type="button" variant="outline" size="sm" className="mt-3" onClick={fetchPegawai}>
+              <Button type="button" variant="outline" size="default" className="mt-3 min-h-11 sm:min-h-0" onClick={fetchPegawai}>
                 Coba lagi
               </Button>
             </div>
@@ -593,7 +593,7 @@ export default function PegawaiPage() {
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="size-8"
+                                  className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
                                   title={`Reset status memilih ${p.nama}`}
                                   onClick={() => handleResetStatus(p.id)}
                                 >
@@ -605,7 +605,7 @@ export default function PegawaiPage() {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 title={`Hapus ${p.nama}`}
                                 onClick={() => setDeleteConfirm(p.id)}
                               >
@@ -654,15 +654,15 @@ export default function PegawaiPage() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {p.sudahMemilih ? (
-                          <Button variant="outline" size="sm" className="min-h-11" onClick={() => handleResetStatus(p.id)}>
+                          <Button variant="outline" size="default" className="min-h-11 sm:min-h-0" onClick={() => handleResetStatus(p.id)}>
                             <RotateCcw />
                             Reset status
                           </Button>
                         ) : null}
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="min-h-11 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          size="default"
+                          className="min-h-11 sm:min-h-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => setDeleteConfirm(p.id)}
                         >
                           <Trash2 />
@@ -856,13 +856,14 @@ export default function PegawaiPage() {
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="default"
+                className="min-h-11 sm:min-h-0"
                 onClick={() => setShowAddModal(false)}
                 disabled={isSubmitting}
               >
                 Batal
               </Button>
-              <Button type="submit" size="sm" disabled={isSubmitting}>
+              <Button type="submit" size="default" className="min-h-11 sm:min-h-0" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="animate-spin" />
@@ -902,9 +903,9 @@ export default function PegawaiPage() {
                   />
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon"
                     variant="outline"
-                    className="shrink-0"
+                    className="shrink-0 min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
                     title="Salin email akun"
                     onClick={() => handleCopyCredential(credentials.email, 'Email')}
                   >
@@ -914,7 +915,7 @@ export default function PegawaiPage() {
                 </div>
               </div>
 
-              <Button onClick={() => setCredentials(null)} className="w-full">
+              <Button onClick={() => setCredentials(null)} className="w-full min-h-11 sm:min-h-0">
                 Tutup
               </Button>
             </div>
@@ -951,10 +952,10 @@ export default function PegawaiPage() {
             </p>
           </div>
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowPrintDialog(false)}>
+            <Button type="button" variant="outline" className="min-h-11 sm:min-h-0" onClick={() => setShowPrintDialog(false)}>
               Batal
             </Button>
-            <Button type="button" onClick={handlePrintCards}>
+            <Button type="button" className="min-h-11 sm:min-h-0" onClick={handlePrintCards}>
               <FileDown />
               Buat PDF
             </Button>
@@ -1046,11 +1047,12 @@ export default function PegawaiPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowImportModal(false)}
+                  className="min-h-11 sm:min-h-0"
                   disabled={isImporting}
                 >
                   Batal
                 </Button>
-                <Button type="submit" disabled={!importFile || isImporting}>
+                <Button type="submit" className="min-h-11 sm:min-h-0" disabled={!importFile || isImporting}>
                   {isImporting ? (
                     <>
                       <Loader2 className="animate-spin" />
@@ -1145,7 +1147,7 @@ export default function PegawaiPage() {
                     setImportError('')
                     setImportProgress(0)
                   }}
-                  className="w-full"
+                  className="w-full min-h-11 sm:min-h-0"
                 >
                   Selesai
                 </Button>

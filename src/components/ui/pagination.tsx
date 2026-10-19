@@ -58,6 +58,7 @@ function PaginationLink({
           variant: isActive ? "outline" : "ghost",
           size,
         }),
+        "border border-transparent max-sm:min-h-11! max-sm:min-w-11!",
         className
       )}
       {...props}
@@ -73,7 +74,7 @@ function PaginationPrevious({
     <PaginationLink
       aria-label="Go to previous page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      className={cn("min-h-11! sm:min-h-0! gap-1 px-2.5 sm:pl-2.5", className)}
       {...props}
     >
       <ChevronLeftIcon />
@@ -90,7 +91,7 @@ function PaginationNext({
     <PaginationLink
       aria-label="Go to next page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      className={cn("min-h-11! sm:min-h-0! gap-1 px-2.5 sm:pr-2.5", className)}
       {...props}
     >
       <span className="hidden sm:block">Next</span>
@@ -107,7 +108,7 @@ function PaginationEllipsis({
     <span
       aria-hidden
       data-slot="pagination-ellipsis"
-      className={cn("flex size-9 items-center justify-center", className)}
+      className={cn("flex size-9 max-sm:size-11 items-center justify-center", className)}
       {...props}
     >
       <MoreHorizontalIcon className="size-4" />

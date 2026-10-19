@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
@@ -21,10 +20,11 @@ import { DataTablePagination } from '@/components/admin/data-table-pagination'
 import { BulkActionBar } from '@/components/admin/bulk-action-bar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
+import { ImportSiswaDialog } from '@/components/admin/import-siswa-dialog'
 import {
-  Users, Plus, Download, Upload, Pencil, Trash2, RefreshCw,
+  Users, Plus, Download, Pencil, Trash2, RefreshCw,
   Search, CheckCircle, XCircle, Key, Printer,
-  UserCheck, UserX, Percent, FileSpreadsheet, Info,
+  UserCheck, UserX, Percent,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import VoterCard from '@/components/admin/VoterCard'
@@ -64,7 +64,6 @@ export default function SiswaManagementPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'sudah' | 'belum'>('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showImportDialog, setShowImportDialog] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null)
   const [selectedClassForPrint, setSelectedClassForPrint] = useState<string>('all')
@@ -74,8 +73,6 @@ export default function SiswaManagementPage() {
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, message: '' })
   const [regeneratingIds, setRegeneratingIds] = useState<number[]>([])
 
   // Selection and delete states
@@ -372,77 +369,6 @@ export default function SiswaManagementPage() {
     }
   }
 
-  const handleDownloadTemplate = async () => {
-    try {
-      const response = await fetch('/api/admin/siswa/template')
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'template-import-siswa.xlsx'
-        a.click()
-        window.URL.revokeObjectURL(url)
-        toast.success('Template berhasil diunduh')
-      } else {
-        toast.error('Gagal mengunduh template')
-      }
-    } catch (err) {
-      toast.error('Terjadi kesalahan saat mengunduh template')
-    }
-  }
-
-  const handleImportCSV = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
-    const formData = new FormData(e.currentTarget)
-    const file = formData.get('xlsFile') as File
-
-    if (!file) {
-      toast.error('Pilih file Excel terlebih dahulu')
-      return
-    }
-
-    setIsImporting(true)
-    setImportProgress({ current: 0, total: 0, message: 'Membaca file...' })
-
-    try {
-      setImportProgress({ current: 0, total: 0, message: 'Mengunggah dan memproses data...' })
-
-      const response = await fetch('/api/admin/siswa/import', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setImportProgress({
-          current: data.count,
-          total: data.count,
-          message: `Selesai! ${data.count} siswa berhasil diimpor`
-        })
-
-        toast.success(`Berhasil mengimpor ${data.count} siswa`)
-
-        setTimeout(() => {
-          setShowImportDialog(false)
-          setIsImporting(false)
-          setImportProgress({ current: 0, total: 0, message: '' })
-          fetchSiswa()
-        }, 1500)
-      } else {
-        toast.error(data.message || 'Gagal mengimpor data')
-        setIsImporting(false)
-        setImportProgress({ current: 0, total: 0, message: '' })
-      }
-    } catch (err) {
-      toast.error('Terjadi kesalahan. Silakan coba lagi.')
-      setIsImporting(false)
-      setImportProgress({ current: 0, total: 0, message: '' })
-    }
-  }
-
   const handleExportTokens = async () => {
     try {
       const response = await fetch('/api/admin/siswa/tokens')
@@ -570,106 +496,11 @@ export default function SiswaManagementPage() {
                 fileName={`kartu-pemilih-${new Date().toISOString().slice(0, 10)}.pdf`}
               />
 
-              <Dialog open={showImportDialog} onOpenChange={(open) => {
-                if (!isImporting) {
-                  setShowImportDialog(open)
-                  if (!open) {
-                    setImportProgress({ current: 0, total: 0, message: '' })
-                  }
-                }
-              }}>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Import Data Siswa</DialogTitle>
-                    <DialogDescription>
-                      Upload file Excel dengan kolom: nis, nama_lengkap, kelas
-                    </DialogDescription>
-                  </DialogHeader>
+              <ImportSiswaDialog onSelesai={fetchSiswa} jumlahTerdaftar={siswa.length} />
 
-                  {!isImporting ? (
-                    <>
-                      <div className="rounded-lg border bg-muted/50 p-3">
-                        <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                          <FileSpreadsheet className="size-4" />
-                          Belum punya template? Download terlebih dahulu.
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownloadTemplate}
-                          className="w-full"
-                        >
-                          <Download />
-                          Download Template Excel
-                        </Button>
-                      </div>
-
-                      <Alert>
-                        <Info className="size-4" />
-                        <AlertDescription className="text-xs">
-                          <strong>Tips:</strong> Nama kelas di Excel harus sama persis dengan nama kelas yang sudah terdaftar di menu Kelas untuk relasi otomatis.
-                        </AlertDescription>
-                      </Alert>
-
-                      <form onSubmit={handleImportCSV} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="xlsFile">File Excel</Label>
-                          <Input
-                            id="xlsFile"
-                            name="xlsFile"
-                            type="file"
-                            accept=".xls,.xlsx"
-                            required
-                          />
-                        </div>
-                        <DialogFooter className="gap-2">
-                          <Button type="submit" size="sm" disabled={isImporting}>
-                            <Upload />
-                            Import
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" onClick={() => setShowImportDialog(false)} disabled={isImporting}>
-                            Batal
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </>
-                  ) : (
-                    <div className="space-y-4 py-4">
-                      <div className="flex items-center justify-center">
-                        <RefreshCw className="size-8 animate-spin text-primary" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          {importProgress.total > 0 && (
-                            <span className="font-medium">
-                              {importProgress.current} / {importProgress.total}
-                            </span>
-                          )}
-                        </div>
-                        <Progress
-                          value={importProgress.total > 0
-                            ? (importProgress.current / importProgress.total) * 100
-                            : 100}
-                        />
-                        <p className="mt-2 text-center text-sm text-muted-foreground">
-                          {importProgress.message || 'Memproses data...'}
-                        </p>
-                      </div>
-                      <Alert>
-                        <AlertDescription className="text-center text-xs">
-                          Mohon tunggu, jangan tutup dialog ini...
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
-
-              <Button variant="outline" size="sm" onClick={handleExportTokens}>
+              <Button variant="outline" size="default" className="min-h-11 sm:min-h-0" onClick={handleExportTokens}>
                 <Download />
-                Export
+                Export token
               </Button>
 
               <Dialog open={showPrintDialog} onOpenChange={(open) => {

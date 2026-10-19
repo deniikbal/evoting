@@ -84,7 +84,7 @@ export function DataTablePagination({
           value={itemsPerPage.toString()}
           onValueChange={(value) => onItemsPerPageChange(Number(value))}
         >
-          <SelectTrigger className="h-8 w-auto min-w-[4.5rem] px-2.5">
+          <SelectTrigger className="h-9 max-sm:min-h-11! w-auto min-w-[4.5rem] px-2.5">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
