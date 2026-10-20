@@ -1,9 +1,31 @@
 'use client'
 
+/*
+ * Design Read: panel admin "hasil voting" untuk panitia OSIS, gaya bersih
+ * hangat identitas e-voting, dial ENERGY 2 / RHYTHM 2 / MOTION 1.
+ *
+ * Palet (semua berpangkat makna, konsisten dengan /vote dan /kehadiran):
+ * - hijau #15803d : Mitra Tama (kategori kelas XI)
+ * - merah #b91c1c : Mitra Muda (kategori kelas X)
+ * - amber         : penanda "Terbanyak" (kandidat teratas tiap kategori)
+ * - netral slate  : "belum memilih", teks pendukung
+ * - biru #1e3a8a  : hanya untuk aksi (identitas aplikasi)
+ *
+ * Alasan keputusan utama (R-31):
+ * - Strip statistik 3 ubin + bar proporsi, bukan 4 kartu gradien: dua kartu
+ *   lama menampilkan angka yang sama persis ("Total Suara" = "Sudah
+ *   Memilih") dan gradien warna tidak membawa makna. Bar proporsi yang sama
+ *   dengan halaman /kehadiran menjadi motif identitas aplikasi.
+ * - Kartu "Pemenang" dihapus: datanya duplikat persis baris pertama tiap
+ *   kategori; pemimpin per kategori ditandai lencana "Terbanyak".
+ * - Warna lencana kategori mengikuti kartu kandidat di /vote, bukan
+ *   fuchsia/cyan yang tidak punya arti.
+ * - MOTION 1: hanya hover/fokus, tidak ada animate-pulse (R-19).
+ */
+
 import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import {
@@ -16,11 +38,8 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { StatCard, StatCardGrid } from '@/components/admin/stat-card'
-import { DataTableToolbar } from '@/components/admin/data-table-toolbar'
 import {
-  BarChart3, RefreshCw, Trophy, Users, UserCheck, UserX, Percent,
-  Trash2, Sparkles, TriangleAlert,
+  BarChart3, RefreshCw, TriangleAlert, Eye, EyeOff,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -55,6 +74,21 @@ interface Statistik {
   votingAktif: boolean
 }
 
+const infoKategori = {
+  mitratama: {
+    label: 'Mitra Tama (Kelas XI)',
+    chip: 'bg-green-100 text-green-800 border-green-200',
+    bar: 'bg-green-600',
+    angka: 'text-green-800',
+  },
+  mitramuda: {
+    label: 'Mitra Muda (Kelas X)',
+    chip: 'bg-red-100 text-red-800 border-red-200',
+    bar: 'bg-red-600',
+    angka: 'text-red-800',
+  },
+} as const
+
 export default function HasilVotingPage() {
   const [kandidat, setKandidat] = useState<Kandidat[]>([])
   const [statistik, setStatistik] = useState<Statistik>({
@@ -75,6 +109,8 @@ export default function HasilVotingPage() {
   const [isResetting, setIsResetting] = useState(false)
   const [admin, setAdmin] = useState<Admin | null>(null)
   const [adminRole, setAdminRole] = useState<string>('')
+  // Tampil/simpan password di dialog reset
+  const [tampilPassword, setTampilPassword] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -114,21 +150,17 @@ export default function HasilVotingPage() {
       if (statistikResponse.ok) {
         const statistikData = await statistikResponse.json()
         setStatistik(statistikData)
-
-        // Access Control: Admin can only view results when voting is NOT active
-        // SuperAdmin can always view results
-        // But we don't redirect - just show notice instead
       }
     } catch (err) {
-      console.error('Error fetching data:', err)
+      toast.error('Gagal memuat data hasil')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleResetVoting = async () => {
-    if (resetPassword !== 'smansaba') {
-      toast.error('Password salah!')
+    if (!resetPassword) {
+      toast.error('Password harus diisi')
       return
     }
 
@@ -136,7 +168,11 @@ export default function HasilVotingPage() {
     try {
       const response = await fetch('/api/admin/hasil/reset', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: resetPassword }),
       })
+
+      const hasil = await response.json().catch(() => null)
 
       if (response.ok) {
         setShowResetDialog(false)
@@ -144,7 +180,8 @@ export default function HasilVotingPage() {
         fetchDataWithRole(adminRole)
         toast.success('Semua hasil voting berhasil dihapus!')
       } else {
-        toast.error('Gagal menghapus hasil voting')
+        setShowResetDialog(true)
+        toast.error(hasil?.message || 'Gagal menghapus hasil voting')
       }
     } catch (err) {
       toast.error('Terjadi kesalahan saat menghapus hasil voting')
@@ -166,13 +203,14 @@ export default function HasilVotingPage() {
   const persentasePartisipasi = statistik.totalVoters > 0
     ? Math.round((statistik.sudahMemilih / statistik.totalVoters) * 100)
     : 0
+  const votingDitutupUntukAdmin = statistik.votingAktif && adminRole !== 'superadmin'
 
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-6">
-        <StatCardGrid>
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full" />)}
-        </StatCardGrid>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
+        </div>
         <Skeleton className="h-96 w-full" />
       </div>
     )
@@ -180,301 +218,246 @@ export default function HasilVotingPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* Voting Active Notice - Show only if voting active AND user is NOT superadmin */}
-      {statistik.votingAktif && adminRole !== 'superadmin' ? (
-        <>
-          {/* Statistik tetap tampil */}
-          <StatCardGrid>
-            <StatCard title="Total Suara" value={statistik.sudahMemilih} description="Suara masuk" icon={BarChart3} className="border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/40 dark:border-sky-900" />
-            <StatCard title="Sudah Memilih" value={statistik.sudahMemilih} description={`dari ${statistik.totalVoters} pemilih`} icon={UserCheck} className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 dark:border-emerald-900" />
-            <StatCard title="Belum Memilih" value={statistik.belumMemilih} description="Pemilih tersisa" icon={UserX} className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 dark:border-amber-900" />
-            <StatCard title="Partisipasi" value={`${persentasePartisipasi}%`} description="Tingkat partisipasi" icon={Percent} className="border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-950/40 dark:to-fuchsia-950/40 dark:border-violet-900" />
-          </StatCardGrid>
+      {/* Kepala halaman + aksi */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
+            Hasil Voting
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Perolehan suara kandidat ketua OSIS, diperbarui langsung dari mesin pemilih.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+            onClick={() => fetchDataWithRole(adminRole)}
+          >
+            <RefreshCw className="size-3.5" /> Segarkan
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 border-red-200 bg-white text-red-700 hover:bg-red-50"
+            onClick={openResetDialog}
+          >
+            <TriangleAlert className="size-3.5" /> Reset
+          </Button>
+        </div>
+      </div>
 
-          <Card className="border-sky-200 bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-50 dark:from-sky-950/40 dark:via-cyan-950/40 dark:to-blue-950/40 dark:border-sky-900">
-            <CardContent className="py-12 text-center">
-              <div className="mx-auto mb-4 flex size-20 animate-pulse items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-cyan-500 shadow-lg">
-                <Sparkles className="size-10 text-white" />
-              </div>
-              <h2 className="mb-3 text-2xl font-bold text-sky-900 dark:text-sky-100">Voting Sedang Berlangsung</h2>
-              <p className="mx-auto mb-6 max-w-md text-sky-700 dark:text-sky-300">
-                Hasil voting akan ditampilkan setelah voting selesai
-              </p>
-              <div className="inline-flex items-center gap-3 rounded-full border border-sky-200 bg-white/70 px-6 py-3 backdrop-blur dark:border-sky-800 dark:bg-sky-950/40">
-                <Users className="size-5 text-sky-600 dark:text-sky-400" />
-                <span className="font-semibold text-sky-900 dark:text-sky-100">
-                  {statistik.sudahMemilih} dari {statistik.totalVoters} pemilih sudah memilih
-                </span>
-              </div>
-              <p className="mt-4 text-sm text-sky-600 dark:text-sky-400">
-                Nonaktifkan voting untuk melihat hasil lengkap
-              </p>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <>
-          {/* Statistik Cards */}
-          <StatCardGrid>
-            <StatCard title="Total Suara" value={totalSuara} description="Suara masuk" icon={BarChart3} className="border-sky-200 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/40 dark:border-sky-900" />
-            <StatCard title="Sudah Memilih" value={statistik.sudahMemilih} description={`dari ${statistik.totalVoters} pemilih`} icon={UserCheck} className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 dark:border-emerald-900" />
-            <StatCard title="Belum Memilih" value={statistik.belumMemilih} description="Pemilih tersisa" icon={UserX} className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 dark:border-amber-900" />
-            <StatCard title="Partisipasi" value={`${persentasePartisipasi}%`} description="Tingkat partisipasi" icon={Percent} className="border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-950/40 dark:to-fuchsia-950/40 dark:border-violet-900" />
-          </StatCardGrid>
+      {/* Pemberitahuan saat voting masih berjalan (bukan superadmin) */}
+      {votingDitutupUntukAdmin && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <BarChart3 className="size-4 flex-shrink-0 mt-0.5" />
+          <p>
+            Voting sedang berlangsung. Statistik pemilih tetap terpantau, sedangkan
+            perolehan suara lengkap baru tampil setelah voting dinonaktifkan.
+          </p>
+        </div>
+      )}
 
-          {/* Winner Announcement - 2 Columns */}
-          {sortedKandidat.length > 0 && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {/* Strip statistik: 3 ubin + bar proporsi (motif identitas halaman kehadiran) */}
+      <section aria-label="Ringkasan pemilih">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <span className="block text-2xl font-bold text-blue-900 md:text-3xl">
+              {totalSuara}
+            </span>
+            <span className="mt-0.5 block text-xs font-medium text-blue-700">
+              Suara masuk
+            </span>
+          </div>
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+            <span className="block text-2xl font-bold text-green-800 md:text-3xl">
+              {statistik.sudahMemilih}
+            </span>
+            <span className="mt-0.5 block text-xs font-medium text-green-700">
+              Sudah memilih
+            </span>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <span className="block text-2xl font-bold text-slate-700 md:text-3xl">
+              {statistik.belumMemilih}
+            </span>
+            <span className="mt-0.5 block text-xs font-medium text-slate-500">
+              Belum memilih
+            </span>
+          </div>
+        </div>
+
+        <div
+          className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
+          role="img"
+          aria-label={`Partisipasi ${persentasePartisipasi} persen`}
+        >
+          <div
+            className="bg-green-600"
+            style={{ width: `${(statistik.sudahMemilih / Math.max(1, statistik.totalVoters)) * 100}%` }}
+          />
+          <div
+            className="bg-slate-400"
+            style={{ width: `${(statistik.belumMemilih / Math.max(1, statistik.totalVoters)) * 100}%` }}
+          />
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">
+          {statistik.totalVoters} pemilih (siswa + pegawai) · partisipasi {persentasePartisipasi}%
+        </p>
+      </section>
+
+      {/* Perolehan suara per kategori */}
+      <Card className="border-slate-200 bg-white">
+        <CardContent className="p-4 md:p-6">
+          {kandidat.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <BarChart3 />
+                </EmptyMedia>
+                <EmptyTitle>Belum ada data voting</EmptyTitle>
+                <EmptyDescription>
+                  Hasil perolehan suara akan muncul di sini setelah ada suara masuk.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div className="space-y-8">
               {['mitratama', 'mitramuda'].map((roleType) => {
-                const roleWinner = sortedKandidat.find(k => k.role === roleType)
-                const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                const isMuda = roleType === 'mitramuda'
+                const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
+                const info = infoKategori[roleType as keyof typeof infoKategori]
+                // Terbanyak = jumlah suara tertinggi di kategori (> 0)
+                const terbanyak = roleKandidat.reduce((m, k) => Math.max(m, k.jumlahSuara), 0)
+
+                if (roleKandidat.length === 0) return null
 
                 return (
-                  <Card
-                    key={roleType}
-                    className={
-                      isMuda
-                        ? 'border-2 border-cyan-200 bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-100 shadow-lg dark:from-cyan-950/40 dark:via-sky-950/40 dark:to-blue-950/40 dark:border-cyan-900'
-                        : 'border-2 border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 via-pink-50 to-purple-100 shadow-lg dark:from-fuchsia-950/40 dark:via-pink-950/40 dark:to-purple-950/40 dark:border-fuchsia-900'
-                    }
-                  >
-                    <CardContent className="py-8 text-center">
-                      <Badge
-                        variant="outline"
-                        className={
-                          isMuda
-                            ? 'mb-4 border-cyan-300 bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-100 dark:border-cyan-700'
-                            : 'mb-4 border-fuchsia-300 bg-fuchsia-100 px-3 py-1 text-xs font-bold text-fuchsia-800 dark:bg-fuchsia-900/60 dark:text-fuchsia-100 dark:border-fuchsia-700'
-                        }
-                      >
-                        {roleLabel}
-                      </Badge>
-                      <div
-                        className={`mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-gradient-to-br shadow-lg ${
-                          isMuda ? 'from-cyan-400 to-blue-500' : 'from-fuchsia-400 to-pink-500'
-                        }`}
-                      >
-                        <Trophy className="size-8 text-white" />
-                      </div>
-                      {roleWinner && roleWinner.jumlahSuara > 0 ? (
-                        <>
-                          <h2 className={`mb-3 text-lg font-bold ${isMuda ? 'text-cyan-900 dark:text-cyan-100' : 'text-fuchsia-900 dark:text-fuchsia-100'}`}>
-                            🏆 Pemenang 🏆
-                          </h2>
-                          <Badge
-                            className={
-                              isMuda
-                                ? 'mb-3 bg-cyan-200 text-cyan-900 dark:bg-cyan-800 dark:text-cyan-50'
-                                : 'mb-3 bg-fuchsia-200 text-fuchsia-900 dark:bg-fuchsia-800 dark:text-fuchsia-50'
-                            }
-                          >
-                            No. {roleWinner.nomorUrut}
-                          </Badge>
-                          <h3 className={`mb-3 text-xl font-bold ${isMuda ? 'text-cyan-900 dark:text-cyan-100' : 'text-fuchsia-900 dark:text-fuchsia-100'}`}>
-                            {roleWinner.namaCalon}
-                          </h3>
+                  <div key={roleType}>
+                    {/* Kepala kategori: lencana warna kategori + garis sambung */}
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${info.chip}`}>
+                        {info.label}
+                      </span>
+                      <span className="h-px flex-1 bg-slate-200" />
+                    </div>
+
+                    <div className="space-y-3">
+                      {roleKandidat.map((k, index) => {
+                        const persentase = totalSuara > 0
+                          ? Math.round((k.jumlahSuara / totalSuara) * 100)
+                          : 0
+                        const isLeader = k.jumlahSuara > 0 && k.jumlahSuara === terbanyak
+
+                        return (
                           <div
-                            className={`inline-flex items-baseline gap-2 rounded-full bg-gradient-to-r px-4 py-2 shadow-md ${
-                              isMuda ? 'from-cyan-500 to-blue-600' : 'from-fuchsia-500 to-pink-600'
+                            key={k.id}
+                            className={`rounded-lg border p-3.5 ${
+                              isLeader
+                                ? 'border-amber-300 bg-amber-50/60'
+                                : 'border-slate-200 bg-white hover:bg-slate-50'
                             }`}
                           >
-                            <span className="text-2xl font-bold text-white">{roleWinner.jumlahSuara}</span>
-                            <span className="text-sm text-white/90">suara</span>
-                            <span className="text-xs text-white/80">
-                              ({totalSuara > 0 ? Math.round((roleWinner.jumlahSuara / totalSuara) * 100) : 0}%)
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`flex size-9 flex-shrink-0 items-center justify-center rounded-md text-sm font-bold ${
+                                  isLeader
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {index + 1}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="truncate font-semibold text-slate-900">
+                                    {k.namaCalon}
+                                  </span>
+                                  {isLeader && (
+                                    <span className="rounded-full bg-amber-700 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                      Terbanyak
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-slate-400">
+                                  Nomor urut {k.nomorUrut}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <span className={`block text-xl font-bold ${isLeader ? info.angka : 'text-slate-900'}`}>
+                                  {k.jumlahSuara}
+                                </span>
+                                <span className="block text-xs text-slate-400">
+                                  {persentase}% suara
+                                </span>
+                              </div>
+                            </div>
+                            {/* Bar suara: warna solid kategori, bukan gradien */}
+                            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className={`h-full rounded-full ${info.bar}`}
+                                style={{ width: `${persentase}%` }}
+                              />
+                            </div>
                           </div>
-                        </>
-                      ) : (
-                        <div className={`py-6 ${isMuda ? 'text-cyan-600 dark:text-cyan-400' : 'text-fuchsia-600 dark:text-fuchsia-400'}`}>
-                          <p className="font-semibold">Belum ada data</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )
               })}
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {/* Results Table */}
-          <Card>
-            <DataTableToolbar
-              title="Perolehan Suara Detail"
-              icon={BarChart3}
-              description="Hasil lengkap pemilihan Ketua OSIS"
-              actions={
-                <>
-                  <Button variant="outline" size="sm" onClick={() => fetchDataWithRole(adminRole)}>
-                    <RefreshCw />
-                    Refresh
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={openResetDialog}
-                  >
-                    <Trash2 />
-                    Reset
-                  </Button>
-                </>
-              }
-            />
-            <CardContent>
-              {kandidat.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <BarChart3 />
-                    </EmptyMedia>
-                    <EmptyTitle>Belum ada data voting</EmptyTitle>
-                    <EmptyDescription>
-                      Hasil perolehan suara akan muncul di sini setelah ada suara masuk.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : (
-                <div className="space-y-8">
-                  {['mitratama', 'mitramuda'].map((roleType) => {
-                    const roleKandidat = sortedKandidat.filter(k => k.role === roleType)
-                    const roleLabel = roleType === 'mitramuda' ? 'Mitra Muda (Kelas X)' : 'Mitra Tama (Kelas XI)'
-                    const isMuda = roleType === 'mitramuda'
-
-                    if (roleKandidat.length === 0) return null
-
-                    return (
-                      <div key={roleType}>
-                        <div className="mb-6 flex items-center gap-4">
-                          <Badge
-                            className={
-                              isMuda
-                                ? 'border-cyan-300 bg-cyan-100 px-4 py-1.5 text-sm font-bold text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-100 dark:border-cyan-700'
-                                : 'border-fuchsia-300 bg-fuchsia-100 px-4 py-1.5 text-sm font-bold text-fuchsia-800 dark:bg-fuchsia-900/60 dark:text-fuchsia-100 dark:border-fuchsia-700'
-                            }
-                            variant="outline"
-                          >
-                            {roleLabel}
-                          </Badge>
-                          <span
-                            className={`h-0.5 flex-1 bg-gradient-to-r ${
-                              isMuda ? 'from-cyan-300 to-transparent' : 'from-fuchsia-300 to-transparent'
-                            }`}
-                          />
-                        </div>
-                        <div className="space-y-4">
-                          {roleKandidat.map((k, index) => {
-                            const persentase = totalSuara > 0 ? Math.round((k.jumlahSuara / totalSuara) * 100) : 0
-                            const isWinner = index === 0 && k.jumlahSuara > 0
-
-                            return (
-                              <div
-                                key={k.id}
-                                className={`rounded-xl border-2 p-4 transition-all ${
-                                  isWinner
-                                    ? 'border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-md dark:from-amber-950/40 dark:to-yellow-950/40 dark:border-amber-800'
-                                    : 'border-border bg-card hover:shadow-sm'
-                                }`}
-                              >
-                                <div className="mb-3 flex items-center justify-between">
-                                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                                    <div
-                                      className={`flex size-10 items-center justify-center rounded-full text-sm font-bold ${
-                                        isWinner
-                                          ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-md'
-                                          : isMuda
-                                            ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-200'
-                                            : 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/60 dark:text-fuchsia-200'
-                                      }`}
-                                    >
-                                      {isWinner ? <Trophy className="size-5" /> : index + 1}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="mb-1 flex items-center gap-2">
-                                        <Badge variant="secondary" className="text-xs">No. {k.nomorUrut}</Badge>
-                                        {isWinner && (
-                                          <Badge className="bg-gradient-to-r from-yellow-400 to-amber-500 text-xs text-white">
-                                            Pemenang
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <span className="block truncate font-semibold">{k.namaCalon}</span>
-                                    </div>
-                                  </div>
-                                  <div className="ml-4 text-right">
-                                    <div className={`text-2xl font-bold ${isWinner ? 'text-amber-600 dark:text-amber-400' : ''}`}>
-                                      {k.jumlahSuara}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">suara</div>
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Persentase</span>
-                                    <span className={`font-semibold ${isWinner ? 'text-amber-600 dark:text-amber-400' : ''}`}>
-                                      {persentase}%
-                                    </span>
-                                  </div>
-                                  <div className="relative h-3 overflow-hidden rounded-full bg-muted">
-                                    <div
-                                      className={`absolute left-0 top-0 h-full rounded-full transition-all duration-500 ${
-                                        isWinner
-                                          ? 'bg-gradient-to-r from-yellow-400 to-amber-500'
-                                          : isMuda
-                                            ? 'bg-gradient-to-r from-cyan-400 to-blue-500'
-                                            : 'bg-gradient-to-r from-fuchsia-400 to-pink-500'
-                                      }`}
-                                      style={{ width: `${persentase}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {/* Reset Voting Dialog */}
+      {/* Dialog reset: konfirmasi destruktif, tanpa emoji */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-destructive/10">
-              <TriangleAlert className="size-6 text-destructive" />
-            </div>
             <DialogTitle className="text-xl">Reset Semua Hasil Voting</DialogTitle>
             <DialogDescription>
-              Tindakan ini akan menghapus semua hasil voting dan mengatur ulang status voting semua siswa.
+              Tindakan ini akan menghapus semua hasil voting dan mengatur ulang status
+              pemilih semua siswa dan pegawai.
               <span className="mt-2 block font-semibold text-destructive">
-                ⚠️ Tindakan ini tidak dapat dibatalkan!
+                Tindakan ini tidak dapat dibatalkan.
               </span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="reset-password">
-              Masukkan password untuk konfirmasi:
+              Password login superadmin Anda:
             </Label>
-            <Input
-              id="reset-password"
-              type="password"
-              placeholder="Masukkan password"
-              value={resetPassword}
-              onChange={(e) => setResetPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !isResetting) {
-                  handleResetVoting()
-                }
-              }}
-              className="h-10"
-            />
+            <div className="relative">
+              <Input
+                id="reset-password"
+                type={tampilPassword ? 'text' : 'password'}
+                placeholder="Password login akun ini"
+                autoComplete="current-password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isResetting) {
+                    handleResetVoting()
+                  }
+                }}
+                className="h-10 pr-10"
+              />
+              {/* Tombol tampil/simpan password: target 44px termasuk area sentuh */}
+              <button
+                type="button"
+                onClick={() => setTampilPassword((t) => !t)}
+                aria-label={tampilPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-pressed={tampilPassword}
+                className="absolute right-0 top-0 flex size-10 items-center justify-center rounded-md text-slate-500 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
+                {tampilPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Password diverifikasi di server; password yang salah tidak akan
+              menghapus apa pun.
+            </p>
           </div>
           <DialogFooter className="gap-3 sm:gap-3">
             <Button
@@ -495,10 +478,7 @@ export default function HasilVotingPage() {
                   Menghapus...
                 </>
               ) : (
-                <>
-                  <Trash2 />
-                  Ya, Reset
-                </>
+                'Ya, Reset'
               )}
             </Button>
           </DialogFooter>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { pegawai } from '@/lib/schema'
-import { eq, asc, or, ilike } from 'drizzle-orm'
+import { pegawai, classroom as classroomTable } from '@/lib/schema'
+import { eq, leftJoin } from 'drizzle-orm'
 import { generatePegawaiToken, generatePegawaiPassword, hashToken } from '@/lib/utils'
 import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
@@ -13,23 +13,32 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const role = searchParams.get('role')
     const search = searchParams.get('search')
+    const kelas = searchParams.get('kelas')
 
-    let query = db.select().from(pegawai)
+    const baris = await db
+      .select({ pegawai, kelasNama: classroomTable.name })
+      .from(pegawai)
+      .leftJoin(classroomTable, eq(pegawai.classroomId, classroomTable.id))
 
-    if (role && role !== 'all') {
-      query = query.where(eq(pegawai.role, role))
-    }
-
-    if (search) {
-      query = query.where(
-        or(
-          ilike(pegawai.nama, `%${search}%`),
-          ilike(pegawai.email, `%${search}%`)
-        )
-      )
-    }
-
-    const allPegawai = await query.orderBy(asc(pegawai.role), asc(pegawai.nama))
+    const allPegawai = baris
+      // Bentuk respons tetap rata (satu objek per pegawai) ditambah nama kelas;
+      // pemakai lain (PDF kartu, import) tak perlu tahu bedanya.
+      .map(({ pegawai: p, kelasNama }) => ({ ...p, kelasNama }))
+      .filter((p) => {
+        if (role && role !== 'all' && p.role !== role) return false
+        if (
+          search &&
+          !p.nama.toLowerCase().includes(search.toLowerCase()) &&
+          !p.email.toLowerCase().includes(search.toLowerCase())
+        ) {
+          return false
+        }
+        // Filter per kelas (mis. ?kelas=GURU) dipakai halaman Kelas saat
+        // membuat kartu / daftar hadir untuk kelompok pegawai.
+        if (kelas && p.kelasNama !== kelas) return false
+        return true
+      })
+      .sort((a, b) => (a.role === b.role ? a.nama.localeCompare(b.nama) : a.role < b.role ? -1 : 1))
 
     return NextResponse.json(allPegawai)
   } catch (error) {

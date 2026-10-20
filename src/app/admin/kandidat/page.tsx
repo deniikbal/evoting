@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -134,16 +133,18 @@ export default function KandidatManagementPage() {
         body: formData,
       })
 
-      const data = await response.json()
+      // Balasan galat belum tentu JSON (mis. 413 dari nginx berupa HTML), jadi
+      // pembacaan body dilindungi supaya pesan aslinya tidak hilang.
+      const data = await response.json().catch(() => null)
 
-      if (response.ok) {
-        return data.url
-      } else {
-        toast.error(data.message || 'Gagal mengupload gambar')
-        return null
+      if (response.ok && data?.url) {
+        return data.url as string
       }
-    } catch (error) {
-      toast.error('Gagal mengupload gambar')
+
+      toast.error(data?.message || `Gagal mengupload gambar (${response.status})`)
+      return null
+    } catch {
+      toast.error('Gagal mengupload gambar. Periksa koneksi lalu coba lagi.')
       return null
     } finally {
       setIsUploading(false)
@@ -161,22 +162,22 @@ export default function KandidatManagementPage() {
     }).join('\n')
   }
 
-  const handleMisiChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setFormData({...formData, misi: e.target.value})
-  }
-
   const handleAddKandidat = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // Upload image first if exists
+      // Foto diunggah lebih dulu. Kalau gagal, simpan dihentikan: dulu alurnya
+      // lanjut menyimpan kandidat dengan fotoUrl kosong, sehingga muncul
+      // kandidat tanpa foto tanpa penjelasan.
       let imageUrl = formData.fotoUrl
       if (imageFile) {
         const uploadedUrl = await uploadImage()
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl
+        if (!uploadedUrl) {
+          setIsSubmitting(false)
+          return
         }
+        imageUrl = uploadedUrl
       }
 
       // Format misi with numbering
@@ -227,13 +228,17 @@ export default function KandidatManagementPage() {
     setIsSubmitting(true)
 
     try {
-      // Upload image first if exists
+      // Foto diunggah lebih dulu. Kalau gagal, simpan dihentikan: dulu alurnya
+      // lanjut menyimpan kandidat dengan fotoUrl kosong, sehingga muncul
+      // kandidat tanpa foto tanpa penjelasan.
       let imageUrl = formData.fotoUrl
       if (imageFile) {
         const uploadedUrl = await uploadImage()
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl
+        if (!uploadedUrl) {
+          setIsSubmitting(false)
+          return
         }
+        imageUrl = uploadedUrl
       }
 
       // Format misi with numbering
@@ -411,58 +416,40 @@ export default function KandidatManagementPage() {
                     <span className="text-sm font-medium text-muted-foreground">{roleKandidat.length} kandidat</span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                     {roleKandidat.map((k) => (
-                      <Card key={k.id} className="transition-shadow hover:shadow-lg">
-                        <CardHeader className="pb-3 text-center sm:pb-6">
-                          <div className="mx-auto mb-3 flex size-24 items-center justify-center rounded-full bg-muted sm:mb-4 sm:size-32">
-                            {k.fotoUrl ? (
-                              <img
-                                src={k.fotoUrl}
-                                alt={k.namaCalon}
-                                className="size-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <User className="size-12 text-muted-foreground sm:size-16" />
-                            )}
-                          </div>
-                          <div className="mb-2 flex flex-wrap justify-center gap-2">
-                            <Badge variant="secondary">
-                              Nomor {k.nomorUrut}
-                            </Badge>
-                            <Badge variant="outline">
-                              {k.jumlahSuara} suara
-                            </Badge>
-                          </div>
-                          <CardTitle className="truncate px-2 text-base sm:text-lg">{k.namaCalon}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-0 sm:pt-6">
-                          <div className="mb-4 space-y-3">
-                            <div className="text-xs sm:text-sm">
-                              <p className="mb-1 font-semibold">Visi:</p>
-                              <p className="line-clamp-2 text-xs text-muted-foreground">
-                                {k.visi || 'Belum ada visi'}
-                              </p>
+                      <div
+                        key={k.id}
+                        className="overflow-hidden rounded-md border-2 border-border bg-card"
+                      >
+                        {/* Foto mengikuti kartu bilik voting: rasio 4:5, penuh,
+                            nomor urut sebagai label di pojok kiri atas. */}
+                        <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
+                          {k.fotoUrl ? (
+                            <img
+                              src={k.fotoUrl}
+                              alt={k.namaCalon}
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-full items-center justify-center">
+                              <User className="size-10 text-muted-foreground" aria-hidden="true" />
                             </div>
-                            <div className="text-xs sm:text-sm">
-                              <p className="mb-1 font-semibold">Misi:</p>
-                              {k.misi ? (
-                                <ol className="space-y-1 text-xs text-muted-foreground">
-                                  {k.misi.split('\n').filter(line => line.trim()).slice(0, 3).map((line, idx) => (
-                                    <li key={idx} className="line-clamp-1">
-                                      {line}
-                                    </li>
-                                  ))}
-                                  {k.misi.split('\n').filter(line => line.trim()).length > 3 && (
-                                    <li className="italic text-muted-foreground/70">...</li>
-                                  )}
-                                </ol>
-                              ) : (
-                                <p className="text-xs text-muted-foreground">Belum ada misi</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
+                          )}
+
+                          <span
+                            className="absolute left-2 top-2 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-white shadow-sm"
+                            style={{ backgroundColor: '#f59e0b' }}
+                          >
+                            {String(k.nomorUrut).padStart(2, '0')}
+                          </span>
+                        </div>
+
+                        <div className="border-t border-border bg-card px-2 py-2">
+                          <p className="line-clamp-2 text-center text-sm font-bold leading-snug sm:text-base">
+                            {k.namaCalon}
+                          </p>
+                          <div className="mt-2 flex gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
@@ -482,8 +469,8 @@ export default function KandidatManagementPage() {
                               <Trash2 />
                             </Button>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -499,7 +486,7 @@ export default function KandidatManagementPage() {
           <DialogHeader>
             <DialogTitle>Tambah Kandidat Baru</DialogTitle>
             <DialogDescription>
-              Isi data kandidat, visi, dan misi.
+              Isi nomor urut, nama, kategori, dan foto kandidat.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddKandidat} className="space-y-3">
@@ -576,28 +563,6 @@ export default function KandidatManagementPage() {
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="visi">Visi</Label>
-              <Textarea
-                id="visi"
-                value={formData.visi}
-                onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                rows={2}
-                placeholder="Visi..."
-                className="resize-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="misi">Misi (per baris)</Label>
-              <Textarea
-                id="misi"
-                value={formData.misi}
-                onChange={handleMisiChange}
-                rows={3}
-                placeholder="Misi 1&#10;Misi 2"
-                className="resize-none"
-              />
-            </div>
             <DialogFooter className="gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)} disabled={isUploading || isSubmitting}>
                 Batal
@@ -628,7 +593,7 @@ export default function KandidatManagementPage() {
           <DialogHeader>
             <DialogTitle>Edit Kandidat</DialogTitle>
             <DialogDescription>
-              Perbarui data kandidat, visi, dan misi.
+              Perbarui nomor urut, nama, kategori, dan foto kandidat.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditKandidat} className="space-y-3">
@@ -705,28 +670,6 @@ export default function KandidatManagementPage() {
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="editVisi">Visi</Label>
-              <Textarea
-                id="editVisi"
-                value={formData.visi}
-                onChange={(e) => setFormData({...formData, visi: e.target.value})}
-                rows={2}
-                placeholder="Visi..."
-                className="resize-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="editMisi">Misi (per baris)</Label>
-              <Textarea
-                id="editMisi"
-                value={formData.misi}
-                onChange={handleMisiChange}
-                rows={3}
-                placeholder="Misi 1&#10;Misi 2"
-                className="resize-none"
-              />
-            </div>
             <DialogFooter className="gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)} disabled={isUploading || isSubmitting}>
                 Batal

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { classroom, siswa } from '@/lib/schema'
+import { classroom, siswa, pegawai } from '@/lib/schema'
 import { eq } from 'drizzle-orm'
 import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
 
@@ -68,6 +68,21 @@ export async function DELETE(
     if (studentsInClassroom.length > 0) {
       return NextResponse.json(
         { message: `Tidak dapat menghapus kelas. Masih ada ${studentsInClassroom.length} siswa yang terdaftar di kelas ini.` },
+        { status: 400 }
+      )
+    }
+
+    // Kelas khusus pegawai (GURU, TU) berisi pegawai, bukan siswa. Tanpa
+    // pemeriksaan ini kelasnya bisa terhapus dan pegawai kehilangan
+    // classroom_id-nya tanpa peringatan apa pun di halaman Kelas.
+    const pegawaiDiKelas = await db
+      .select()
+      .from(pegawai)
+      .where(eq(pegawai.classroomId, id))
+
+    if (pegawaiDiKelas.length > 0) {
+      return NextResponse.json(
+        { message: `Tidak dapat menghapus kelas. Masih ada ${pegawaiDiKelas.length} pegawai yang terdaftar di kelas ini.` },
         { status: 400 }
       )
     }

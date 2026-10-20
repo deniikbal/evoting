@@ -7,6 +7,7 @@ import { FileDown, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import PegawaiCard from '@/components/admin/PegawaiCard'
 import { generateCardsPdf } from '@/lib/generate-cards-pdf'
+import { denganNomorUrut } from '@/lib/urutan-kelas'
 
 interface Pegawai {
   id: number
@@ -17,6 +18,9 @@ interface Pegawai {
   sudahMemilih: boolean
   tokenPlain: string
   qrId: string
+  /** Dicetak di kartu bila terisi; saat ini masih kosong di basis data. */
+  nip?: string | null
+  nomorInduk?: string | null
 }
 
 interface Props {
@@ -104,7 +108,13 @@ export function PegawaiPdfCards({
       )}
 
       {/* Container off-screen untuk snapshot. Sengaja bukan display:none supaya
-          canvas QR di PegawaiCard ter-render dan bisa diambil html2canvas. */}
+          canvas QR di PegawaiCard ter-render dan bisa diambil html2canvas.
+          Kolomnya lebar TETAP (65mm = kartu 60mm + 2 x 2,5mm garis potong),
+          bukan `1fr`: dengan `1fr` minimum kolom adalah min-content, sehingga
+          kartu berisi nama panjang melebarkan kolomnya sendiri dan grid
+          meluber melewati lebar A4. `gap: 0` disengaja karena garis putus-putus
+          tiap kartu sudah menyisakan 2,5mm di luar tepi kartu, jadi garis dua
+          kartu bersebelahan berimpit menjadi satu garis potong. */}
       <div
         id={containerId}
         aria-hidden="true"
@@ -116,15 +126,21 @@ export function PegawaiPdfCards({
           background: '#ffffff',
           color: '#000000',
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '2mm',
-          padding: '5mm',
+          gridTemplateColumns: 'repeat(3, 65mm)',
+          justifyContent: 'center',
+          gap: '0',
+          padding: '7.5mm',
           zIndex: -1,
         }}
       >
-        {pegawai.map((p) => (
-          <PegawaiCard key={p.id} pegawai={p} />
-        ))}
+        {(() => {
+          // Nomor urut alfabet nama, memakai helper yang sama dengan kartu
+          // siswa supaya penomoran kedua jenis kartu konsisten.
+          const berurut = denganNomorUrut(
+            pegawai.map((p) => ({ ...p, namaLengkap: p.nama }))
+          )
+          return berurut.map((p) => <PegawaiCard key={p.id} pegawai={p} />)
+        })()}
       </div>
     </div>
   )

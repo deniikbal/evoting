@@ -3,9 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Camera, Keyboard, CheckCircle, XCircle, User, Vote, ArrowRight,
-  ScanLine, RotateCcw, TriangleAlert, Users, SwitchCamera, Maximize, Minimize,
-  ShieldCheck, Lock, Sparkles, ChevronLeft,
+  ScanLine, RotateCcw, TriangleAlert, Users, Maximize, Minimize,
+  ShieldCheck, Lock, Sparkles, ChevronLeft, Send,
 } from 'lucide-react'
 import { Panel, ToolButton, StepTag } from './ui'
 
@@ -37,6 +40,27 @@ const AUTOCLOSE_SECONDS = 1
 export default function KioskPage() {
   const [step, setStep] = useState<Step>('scan')
 
+  // Teks bantuan per tahap: bahasa siswa, bukan bahasa sistem. Kalimat
+  // menjawab "sekarang aku harus apa" dalam satu baris.
+  const BANTUAN: Record<Step, { judul: string; isi: string }> = {
+    scan: {
+      judul: 'Tunjukkan kartu kamu ke kamera',
+      isi: 'Cukup arahkan kartu pemilih ke kotak kamera sampai bunyi "beep". Nanti namamu muncul di layar untuk dicek panitia.',
+    },
+    confirm: {
+      judul: 'Ini kamu, kan?',
+      isi: 'Cek nama dan kelas di layar. Kalau bener, lanjut. Kalau bukan kamu, tekan Batal dan panggil panitia.',
+    },
+    voting: {
+      judul: 'Pilih dua: Mitra Tama dan Mitra Muda',
+      isi: 'Ketuk foto kandidat pilihanmu di masing-masing kategori. Setelah dua-duanya ada tanda centang, tombol simpan akan aktif.',
+    },
+    done: {
+      judul: 'Suara kamu udah masuk!',
+      isi: 'Makasih ya. Layar balik ke kamera otomatis buat pemilih berikutnya.',
+    },
+  }
+
   // Scan input
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [scanError, setScanError] = useState('')
@@ -55,6 +79,8 @@ export default function KioskPage() {
   const [selectedMitraMuda, setSelectedMitraMuda] = useState<Kandidat | null>(null)
   const [isVoting, setIsVoting] = useState(false)
   const [voteError, setVoteError] = useState('')
+  // Dialog konfirmasi terakhir: cek pilihan sekali lagi sebelum suara dikirim.
+  const [bukaRangkuman, setBukaRangkuman] = useState(false)
 
   // Auto-close countdown
   const [countdown, setCountdown] = useState(AUTOCLOSE_SECONDS)
@@ -65,11 +91,11 @@ export default function KioskPage() {
   const stepRef = useRef<Step>('scan')
   stepRef.current = step
 
-  // Kamera: pilihan depan/belakang + mode layar penuh
-  const [facing, setFacing] = useState<'environment' | 'user'>('environment')
+  // Mode layar penuh. Kamera dipaku ke belakang — kiosk memakai kamera
+  // belakang perangkat, tanpa pilihan ganti kamera.
   const [isFullscreen, setIsFullscreen] = useState(false)
   const camWrapRef = useRef<HTMLDivElement>(null)
-  // Mengganti kamera = stop() lalu start() pada elemen DOM yang sama.
+  // Memulai ulang kamera (mis. pindah langkah) memakai elemen DOM yang sama.
   // html5-qrcode menolak start kalau elemen belum benar-benar dibersihkan,
   // jadi stop sebelumnya di-await dulu.
   const stopPromiseRef = useRef<Promise<unknown> | null>(null)
@@ -85,6 +111,7 @@ export default function KioskPage() {
     setVoteError('')
     setScanError('')
     setCountdown(AUTOCLOSE_SECONDS)
+    setBukaRangkuman(false)
   }, [])
 
   /* ============ AUTH QR (qr_id / NIS lama) ============ */
@@ -262,7 +289,8 @@ export default function KioskPage() {
         scannerRef.current = scanner
 
         await scanner.start(
-          { facingMode: facing },
+          // Kamera belakang selalu; tidak ada perpindahan ke kamera depan.
+          { facingMode: 'environment' },
           {
             fps: 10,
             qrbox: (vw: number, vh: number) => {
@@ -286,8 +314,8 @@ export default function KioskPage() {
         console.error('Kamera gagal:', err)
         if (!cancelled) {
           setScanError(
-            `Kamera ${facing === 'user' ? 'depan' : 'belakang'} tidak dapat diakses. ` +
-              'Coba tekan tombol Kamera Depan/Belakang, pastikan izin kamera diizinkan browser, ' +
+            'Kamera belakang tidak dapat diakses. Pastikan izin kamera diizinkan ' +
+              'browser dan tidak ada aplikasi lain yang sedang memakai kamera, ' +
               'lalu muat ulang halaman.'
           )
         }
@@ -310,7 +338,7 @@ export default function KioskPage() {
       // menangkapnya, halaman jadi client-side exception saat pindah mode.
       stopPromiseRef.current = stopPrevious()
     }
-  }, [step, facing, authenticateNis])
+  }, [step, authenticateNis])
 
   /* ============ LAYAR PENUH (SELURUH HALAMAN) ============ */
   // Dulu yang di-fullscreen hanya kotak kamera. Akibatnya: begitu panitia
@@ -363,6 +391,27 @@ export default function KioskPage() {
   }, [step, resetToScan])
 
   /* ============ PILIH KANDIDAT ============ */
+  // Warna penanda pilihan per kategori. Sebelumnya kartu terpilih memakai
+  // `border-primary` + `ring-primary`, sedangkan `--primary` pada tema ini
+  // bernilai oklch(0.205 0 0) — praktis hitam dan nyaris sama dengan
+  // `--border` yang abu-abu muda. Akibatnya pemilih sulit melihat mana yang
+  // sudah dipilih. Sekarang tiap kategori punya warna yang jelas berbeda:
+  // Mitra Tama hijau, Mitra Muda merah.
+  const WARNA = {
+    mitratama: {
+      garis: '#15803d',
+      cahaya: 'rgba(21, 128, 61, 0.30)',
+      latar: 'rgba(21, 128, 61, 0.07)',
+      teks: '#166534',
+    },
+    mitramuda: {
+      garis: '#b91c1c',
+      cahaya: 'rgba(185, 28, 28, 0.30)',
+      latar: 'rgba(185, 28, 28, 0.07)',
+      teks: '#991b1b',
+    },
+  } as const
+
   const selectKandidat = (k: Kandidat) => {
     if (k.role === 'mitratama') {
       setSelectedMitraTama(k)
@@ -425,13 +474,13 @@ export default function KioskPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <ScanLine className="size-4 shrink-0 text-foreground" aria-hidden="true" />
-                    <h2 className="text-sm font-semibold text-foreground">Pindai Kartu Pemilih</h2>
+                    <h2 className="text-sm font-semibold text-foreground">{BANTUAN.scan.judul}</h2>
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Arahkan QR ke kamera. Nama pemilih muncul untuk diperiksa panitia.
+                    {BANTUAN.scan.isi}
                   </p>
                 </div>
-                <StepTag>Langkah 1 dari 3</StepTag>
+                <StepTag>1. Pindai</StepTag>
               </div>
 
               <div className="px-3 py-4 sm:px-4">
@@ -446,24 +495,10 @@ export default function KioskPage() {
                     <div
                       id="kiosk-qr-reader"
                       className="mx-auto w-full [&_video]:block [&_video]:w-full"
-                      style={
-                        // Kamera depan di-mirror supaya gerak terasa natural.
-                        // Tidak memengaruhi pembacaan QR.
-                        facing === 'user' ? { transform: 'scaleX(-1)' } : undefined
-                      }
                     />
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    <ToolButton
-                      onClick={() =>
-                        setFacing((f) => (f === 'environment' ? 'user' : 'environment'))
-                      }
-                      icon={<SwitchCamera />}
-                      title="Ganti kamera depan/belakang"
-                    >
-                      {facing === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
-                    </ToolButton>
                     <ToolButton
                       onClick={toggleFullscreen}
                       icon={isFullscreen ? <Minimize /> : <Maximize />}
@@ -475,7 +510,7 @@ export default function KioskPage() {
 
                   <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                     <Camera className="size-3.5" aria-hidden="true" />
-                    Kamera {facing === 'user' ? 'depan' : 'belakang'} aktif
+                    Kamera belakang aktif
                   </p>
                 </div>
 
@@ -508,50 +543,85 @@ export default function KioskPage() {
         {/* ================= STEP: CONFIRM ================= */}
         {step === 'confirm' && siswa && (
           <Panel className="mx-auto w-full max-w-lg border-2">
-            <div className="border-b-2 border-primary bg-primary/5 px-4 py-4 text-center sm:px-6">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-sm">
+            {/* Motif identitas: bar dua warna = dua kategori pemilihan (hijau Mitra
+                Tama, merah Mitra Muda), warna yang sama dengan kartu kandidat di
+                langkah berikut. Dulu kartu ini hitam-putih polos sehingga tidak ada
+                bahasa warna yang menghubungkannya dengan langkah memilih. */}
+            <div aria-hidden="true" className="flex h-1.5 w-full">
+              <div className="w-1/2" style={{ backgroundColor: WARNA.mitratama.garis }} />
+              <div className="w-1/2" style={{ backgroundColor: WARNA.mitramuda.garis }} />
+            </div>
+
+            {/* Bagian identitas memakai latar hijau, warna langkah terverifikasi;
+                lencana dan label memiliki makna warna yang sama dari awal sampai
+                akhir alur (terverifikasi = hijau, waspada = amber). Kontras
+                terukur: teks hijau 7:1, teks amber 7,7:1 di atas latarnya sendiri. */}
+            <div
+              className="px-4 pb-4 pt-5 text-center sm:px-6 sm:pt-6"
+              style={{ backgroundColor: WARNA.mitratama.latar }}
+            >
+              <div
+                className="mx-auto flex size-14 items-center justify-center rounded-full text-white"
+                style={{ backgroundColor: WARNA.mitratama.garis }}
+              >
                 <CheckCircle className="size-7" aria-hidden="true" />
               </div>
-              <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              <p
+                className="mt-3 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ color: WARNA.mitratama.teks }}
+              >
                 Pemilih Terverifikasi
               </p>
               <h2 className="mt-1.5 text-2xl font-bold leading-tight text-foreground sm:text-3xl">
                 {siswa.namaLengkap}
               </h2>
+              <p className="mt-2 text-sm font-medium text-muted-foreground">
+                {BANTUAN.confirm.judul}
+              </p>
 
               <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
                 {siswa.type === 'siswa' ? (
-                  <span className="rounded-md border-2 border-border bg-background px-3 py-1 font-mono text-sm font-bold text-foreground">
+                  <span className="rounded-md border border-border bg-background px-3 py-1 font-mono text-sm font-bold text-foreground">
                     NIS {siswa.nis}
                   </span>
                 ) : (
-                  <span className="rounded-md border-2 border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
+                  <span className="rounded-md border border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
                     {siswa.type === 'guru' ? 'Guru' : 'Tenaga Kependidikan'}
                   </span>
                 )}
-                <span className="rounded-md border-2 border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
+                <span className="rounded-md border border-border bg-background px-3 py-1 text-sm font-bold text-foreground">
                   {siswa.type === 'siswa' ? `Kelas ${siswa.kelas}` : siswa.kelas}
                 </span>
               </div>
             </div>
 
             <div className="px-4 py-5 sm:px-6">
-              <div className="flex items-start gap-2 rounded-md border border-border bg-secondary px-3 py-2.5 text-left">
+              {/* Kotak peringatan pakai warna amber, bukan abu-abu; isinya
+                  memang peringatan, jadi harus terlihat layaknya tanda "berhati-hati". */}
+              <div
+                className="flex items-start gap-2 rounded-md border px-3 py-2.5 text-left"
+                style={{
+                  backgroundColor: 'rgba(217, 119, 6, 0.10)',
+                  borderColor: 'rgba(217, 119, 6, 0.45)',
+                }}
+              >
                 <TriangleAlert
-                  className="mt-0.5 size-4 shrink-0 text-foreground"
+                  className="mt-0.5 size-4 shrink-0"
+                  style={{ color: '#92400e' }}
                   aria-hidden="true"
                 />
-                <p className="text-xs leading-relaxed text-secondary-foreground">
-                  <strong className="font-semibold">Periksa dulu:</strong> pastikan wajah pemilih
-                  cocok dengan nama di atas. Kalau bukan, tekan Batal.
+                <p className="text-xs leading-relaxed" style={{ color: '#78350f' }}>
+                  {BANTUAN.confirm.isi}
                 </p>
               </div>
 
               <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
+                {/* Tombol "Mulai Memilih" ikut warna hijau terverifikasi, bukan
+                    hitam, supaya warnanya seturut dengan lencana terverifikasi. */}
                 <button
                   type="button"
                   onClick={startVoting}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-1"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[#15803d] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#14532d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-1"
                 >
                   <Vote className="size-4" aria-hidden="true" />
                   Mulai Memilih
@@ -622,6 +692,13 @@ export default function KioskPage() {
               </div>
             ) : (
               <>
+                {/* Panduan bahasa siswa untuk layar memilih: satu baris yang
+                    menjawab "aku harus pilih berapa", bukan label prosedur. */}
+                <div className="flex flex-col gap-1 rounded-md border border-border bg-card px-3 py-2.5">
+                  <p className="text-sm font-semibold text-foreground">{BANTUAN.voting.judul}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{BANTUAN.voting.isi}</p>
+                </div>
+
                 {['mitratama', 'mitramuda'].map((roleType) => {
                   const list = kandidat.filter((k) => k.role === roleType)
                   const isMuda = roleType === 'mitramuda'
@@ -644,17 +721,31 @@ export default function KioskPage() {
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                         {list.map((k) => {
                           const isSelected = selected?.id === k.id
+                          const warna = WARNA[roleType as 'mitratama' | 'mitramuda']
                           return (
                             <button
                               key={k.id}
                               type="button"
                               onClick={() => selectKandidat(k)}
                               aria-pressed={isSelected}
-                              className={`group relative overflow-hidden rounded-md border-2 bg-card text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                              className={`group relative overflow-hidden rounded-md border-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                                 isSelected
-                                  ? 'border-primary ring-4 ring-primary/30 bg-primary/5'
-                                  : 'border-border hover:border-foreground/40'
+                                  ? ''
+                                  : 'border-border bg-card hover:border-foreground/40'
                               }`}
+                              style={
+                                isSelected
+                                  ? {
+                                      borderColor: warna.garis,
+                                      backgroundColor: warna.latar,
+                                      // Cincin digambar dengan box-shadow, bukan
+                                      // kelas `ring-*`: warna ring bawaan Tailwind
+                                      // tidak bisa diganti per-kategori lewat
+                                      // kelas dinamis tanpa membuat kelas baru.
+                                      boxShadow: `0 0 0 4px ${warna.cahaya}`,
+                                    }
+                                  : undefined
+                              }
                             >
                               <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
                                 {k.fotoUrl ? (
@@ -678,19 +769,28 @@ export default function KioskPage() {
                                 </span>
 
                                 {isSelected && (
-                                  <span className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                                  <span
+                                    className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full text-white shadow-sm"
+                                    style={{ backgroundColor: warna.garis }}
+                                  >
                                     <CheckCircle className="size-4" aria-hidden="true" />
                                   </span>
                                 )}
                               </div>
 
                               <div className="border-t border-border bg-card px-2 py-2">
-                                <p className={`line-clamp-2 text-xs font-semibold leading-snug sm:text-[13px] ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                                <p
+                                  className="line-clamp-2 text-center text-sm font-bold leading-snug sm:text-base"
+                                  style={isSelected ? { color: warna.teks } : undefined}
+                                >
                                   {k.namaCalon}
                                 </p>
                                 {isSelected && (
-                                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                                    Terpilih
+                                  <p
+                                    className="mt-0.5 text-center text-[10px] font-bold uppercase tracking-wide"
+                                    style={{ color: warna.teks }}
+                                  >
+                                    ✓ Terpilih
                                   </p>
                                 )}
                               </div>
@@ -713,28 +813,50 @@ export default function KioskPage() {
                   <div className="mb-2 grid grid-cols-2 gap-2">
                     <div
                       className={`rounded-md border-2 px-2.5 py-1.5 ${
-                        selectedMitraTama ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                        selectedMitraTama ? '' : 'border-border bg-card'
                       }`}
+                      style={
+                        selectedMitraTama
+                          ? {
+                              borderColor: WARNA.mitratama.garis,
+                              backgroundColor: WARNA.mitratama.latar,
+                            }
+                          : undefined
+                      }
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mitra Tama</p>
                       <p
-                        className={`truncate text-xs font-semibold sm:text-sm ${
-                          selectedMitraTama ? 'text-primary' : 'text-muted-foreground'
-                        }`}
+                        className="truncate text-xs font-semibold sm:text-sm"
+                        style={
+                          selectedMitraTama
+                            ? { color: WARNA.mitratama.teks }
+                            : { color: 'var(--muted-foreground)' }
+                        }
                       >
                         {selectedMitraTama ? selectedMitraTama.namaCalon : 'Belum dipilih'}
                       </p>
                     </div>
                     <div
                       className={`rounded-md border-2 px-2.5 py-1.5 ${
-                        selectedMitraMuda ? 'border-primary bg-primary/10' : 'border-border bg-card'
+                        selectedMitraMuda ? '' : 'border-border bg-card'
                       }`}
+                      style={
+                        selectedMitraMuda
+                          ? {
+                              borderColor: WARNA.mitramuda.garis,
+                              backgroundColor: WARNA.mitramuda.latar,
+                            }
+                          : undefined
+                      }
                     >
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mitra Muda</p>
                       <p
-                        className={`truncate text-xs font-semibold sm:text-sm ${
-                          selectedMitraMuda ? 'text-primary' : 'text-muted-foreground'
-                        }`}
+                        className="truncate text-xs font-semibold sm:text-sm"
+                        style={
+                          selectedMitraMuda
+                            ? { color: WARNA.mitramuda.teks }
+                            : { color: 'var(--muted-foreground)' }
+                        }
                       >
                         {selectedMitraMuda ? selectedMitraMuda.namaCalon : 'Belum dipilih'}
                       </p>
@@ -743,21 +865,12 @@ export default function KioskPage() {
 
                   <button
                     type="button"
-                    onClick={submitVote}
+                    onClick={() => setBukaRangkuman(true)}
                     disabled={!canSubmit || isVoting}
                     className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isVoting ? (
-                      <>
-                        <Spinner className="size-4" />
-                        Menyimpan suara
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="size-4" aria-hidden="true" />
-                        Konfirmasi dan Simpan Suara
-                      </>
-                    )}
+                    <Lock className="size-4" aria-hidden="true" />
+                    Konfirmasi dan Simpan Suara
                   </button>
                   <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
                     Suara tidak dapat diubah setelah disimpan.
@@ -765,6 +878,93 @@ export default function KioskPage() {
                 </div>
               </>
             )}
+
+            {/* Dialog konfirmasi terakhir: rangkuman pilihan sebelum dikirim.
+                Suara baru masuk setelah tombol "Ya, Kirim Suara" ditekan, jadi
+                salah ketuk di daftar kandidat masih bisa diperbaiki. */}
+            <Dialog open={bukaRangkuman} onOpenChange={(o) => { if (!isVoting) setBukaRangkuman(o) }}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Pastikan pilihanmu</DialogTitle>
+                  <DialogDescription>
+                    Ini dua nama yang akan merekam suaramu. Periksa sekali lagi:
+                    setelah dikirim, suara tidak bisa diubah.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-2 py-2">
+                  {[
+                    { label: 'Mitra Tama', pilih: selectedMitraTama, warna: WARNA.mitratama },
+                    { label: 'Mitra Muda', pilih: selectedMitraMuda, warna: WARNA.mitramuda },
+                  ].map(({ label, pilih, warna }) => (
+                    <div
+                      key={label}
+                      className="flex items-center gap-3 rounded-md border-2 px-3 py-2"
+                      style={{
+                        borderColor: pilih ? warna.garis : undefined,
+                        backgroundColor: pilih ? warna.latar : undefined,
+                      }}
+                    >
+                      {pilih?.fotoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={pilih.fotoUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="size-10 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span
+                          className="flex size-10 shrink-0 items-center justify-center rounded-full text-white"
+                          style={{ backgroundColor: warna.garis }}
+                          aria-hidden="true"
+                        >
+                          <User className="size-4" />
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {label} · No. {String(pilih?.nomorUrut ?? 0).padStart(2, '0')}
+                        </p>
+                        <p
+                          className="truncate text-sm font-bold"
+                          style={pilih ? { color: warna.teks } : undefined}
+                        >
+                          {pilih?.namaCalon || 'Belum dipilih'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setBukaRangkuman(false)}
+                    disabled={isVoting}
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto"
+                  >
+                    Batal, mau ubah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitVote}
+                    disabled={isVoting}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 sm:w-auto"
+                  >
+                    {isVoting ? (
+                      <>
+                        <Spinner className="size-4" /> Mengirim suara
+                      </>
+                    ) : (
+                      <>
+                        <Send className="size-4" /> Ya, Kirim Suara
+                      </>
+                    )}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
@@ -776,8 +976,8 @@ export default function KioskPage() {
                 <CheckCircle className="size-7" aria-hidden="true" />
               </div>
               <h2 className="mt-4 text-xl font-semibold text-foreground">Suara Tersimpan</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Terima kasih, {siswa?.namaLengkap?.split(' ')[0] || 'pemilih'}.
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                {BANTUAN.done.isi}
               </p>
 
               <div className="mt-4 rounded-md border border-border px-3 py-2.5">

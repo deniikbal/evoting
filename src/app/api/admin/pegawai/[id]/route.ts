@@ -44,7 +44,7 @@ export async function PUT(
   if (!punyaSesiAdmin(request)) return responsBukanAdmin()
   try {
     const pegawaiId = parseInt(params.id)
-    const { nama, email, role, nip, nomorInduk, status } = await request.json()
+    const { nama, email, role, nip, nomorInduk, status, classroomId } = await request.json()
 
     // Check if pegawai exists
     const [existingPegawai] = await db
@@ -85,6 +85,11 @@ export async function PUT(
         nip: nip !== undefined ? nip : existingPegawai.nip,
         nomorInduk: nomorInduk !== undefined ? nomorInduk : existingPegawai.nomorInduk,
         status: status || existingPegawai.status,
+        // Pindah kelas: '' berarti tanpa kelas; string angka masuk kelas itu.
+        // Tidak dikirim sama sekali = tidak berubah (aman untuk pemanggil lama).
+        ...(classroomId !== undefined
+          ? { classroomId: classroomId === '' ? null : parseInt(classroomId) }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(pegawai.id, pegawaiId))

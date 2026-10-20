@@ -25,6 +25,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { StudentPdfCards } from '@/components/admin/student-pdf-cards'
+import { PegawaiPdfCards } from '@/components/admin/pegawai-pdf-cards'
 import { generateDaftarHadirPdf } from '@/lib/generate-daftar-hadir-pdf'
 import type { Siswa } from '@/app/admin/siswa/page'
 import { bandingAngkatan, bandingNamaKelas, cocokCari, denganNomorUrut } from '@/lib/urutan-kelas'
@@ -42,6 +43,46 @@ interface Classroom {
   createdAt: string
   /** Jumlah siswa terdaftar di kelas ini. Kelas berisi siswa tidak dapat dihapus. */
   jumlahSiswa: number
+  /**
+   * Kelas khusus pegawai (GURU, TU) berisi pegawai, bukan siswa. Angkanya
+   * dibutuhkan: tanpa itu kelas GURU/TU tampil 0, dial dialog detail tidak
+   * tahu harus memuat pegawai, dan tombol hapus salah anggapan kelasnya kosong.
+   */
+  jumlahPegawai: number
+}
+
+/** Pegawai di dialog detail kelas (kelas GURU/TU). */
+interface PegawaiDetail {
+  id: number
+  nama: string
+  email: string
+  role: string
+  sudahMemilih: boolean
+}
+
+/**
+ * Data untuk PDF kartu pemilih. Kelas dengan siswa memakai `siswa`; kelas
+ * khusus pegawai (GURU/TU) memakai `pegawai`.
+ */
+interface KartuRequest {
+  kelas: string
+  siswa: Siswa[]
+  pegawai?: PegawaiKartu[]
+}
+
+/** Bentuk pegawai yang dibutuhkan kartu PDF (lihat PegawaiPdfCards). */
+interface PegawaiKartu {
+  id: number
+  nama: string
+  email: string
+  role: 'guru' | 'tu'
+  status: 'aktif' | 'non-aktif'
+  sudahMemilih: boolean
+  tokenPlain: string
+  qrId: string
+  nip?: string | null
+  nomorInduk?: string | null
+  nomorUrut?: number
 }
 
 type KunciSort = 'name' | 'angkatan' | 'createdAt' | 'jumlahSiswa'
@@ -65,11 +106,12 @@ export default function KelasManagementPage() {
   const [kelasDaftarHadir, setKelasDaftarHadir] = useState<string | null>(null)
 
   // Generate kartu PDF per kelas: container snapshot render hanya saat request aktif
-  const [kartuRequest, setKartuRequest] = useState<{ kelas: string; siswa: Siswa[] } | null>(null)
+  const [kartuRequest, setKartuRequest] = useState<KartuRequest | null>(null)
 
   // Detail siswa satu kelas: dibuka dengan mengklik angka jumlah siswa.
   const [detailKelas, setDetailKelas] = useState<Classroom | null>(null)
   const [detailSiswa, setDetailSiswa] = useState<Array<Siswa & { nomorUrut: number }>>([])
+  const [detailPegawai, setDetailPegawai] = useState<PegawaiDetail[]>([])
   const [detailMemuat, setDetailMemuat] = useState(false)
   const [detailGalat, setDetailGalat] = useState<string | null>(null)
 
@@ -109,27 +151,42 @@ export default function KelasManagementPage() {
     void muatSesi()
   }, [router])
 
-  // Siapkan siswa satu kelas, lalu mount StudentPdfCards (autoDownload)
+  // Siapkan anggota satu kelas, lalu mount PDF cards (autoDownload)
   const handleKartuKelas = async (kelas: Classroom) => {
-    if (kelas.jumlahSiswa === 0) {
-      toast.error(`Kelas ${kelas.name} belum memiliki siswa`)
+    const tanpaAnggota = kelas.jumlahSiswa === 0 && kelas.jumlahPegawai === 0
+    if (tanpaAnggota) {
+      toast.error(`Kelas ${kelas.name} belum memiliki anggota`)
       return
     }
     setKelasKartu(kelas.name)
     try {
-      toast.info(`Menyiapkan kartu kelas ${kelas.name}...`)
-      // Ambil hanya siswa kelas ini, bukan seluruh sekolah.
-      const response = await fetch(
-        `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
-      )
-      const siswaKelas: Siswa[] = response.ok ? await response.json() : []
-      if (siswaKelas.length === 0) {
-        toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
-        return
+      toast.info(`Menyiapkan kartu ${kelas.jumlahSiswa > 0 ? 'siswa' : 'pegawai'} kelas ${kelas.name}...`)
+      if (kelas.jumlahSiswa > 0) {
+        const response = await fetch(
+          `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
+        )
+        const siswaKelas: Siswa[] = response.ok ? await response.json() : []
+        if (siswaKelas.length === 0) {
+          toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
+          return
+        }
+        setKartuRequest({ kelas: kelas.name, siswa: siswaKelas })
+      } else {
+        // Kelas GURU/TU: ambil pegawai dari kelas ini via API filter ?kelas=
+        const pegawaiFilter: PegawaiKartu[] =
+          await fetch(`/api/admin/pegawai?kelas=${encodeURIComponent(kelas.name)}`).then(r => r.ok ? r.json() : [])
+        if (pegawaiFilter.length === 0) {
+          toast.error(`Tidak ada pegawai di kelas ${kelas.name}`)
+          return
+        }
+        // Tambahkan nomor urut alfabet nama
+        const berurut = pegawaiFilter
+          .sort((a, b) => a.nama.localeCompare(b.nama))
+          .map((p, i) => ({ ...p, nomorUrut: i + 1 }))
+        setKartuRequest({ kelas: kelas.name, siswa: [], pegawai: berurut })
       }
-      setKartuRequest({ kelas: kelas.name, siswa: siswaKelas })
     } catch {
-      toast.error('Gagal memuat data siswa')
+      toast.error('Gagal memuat data anggota')
     } finally {
       setKelasKartu(null)
     }
@@ -139,26 +196,48 @@ export default function KelasManagementPage() {
   // Tidak memakai container off-screen seperti kartu: PDF-nya vektor, jadi
   // cukup data NIS dan nama.
   const handleDaftarHadir = async (kelas: Classroom) => {
-    if (kelas.jumlahSiswa === 0) {
-      toast.error(`Kelas ${kelas.name} belum memiliki siswa`)
+    if (kelas.jumlahSiswa === 0 && kelas.jumlahPegawai === 0) {
+      toast.error(`Kelas ${kelas.name} belum memiliki anggota`)
       return
     }
     setKelasDaftarHadir(kelas.name)
     try {
       toast.info(`Menyiapkan daftar hadir kelas ${kelas.name}...`)
-      const response = await fetch(
-        `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
-      )
-      const siswaKelas: Siswa[] = response.ok ? await response.json() : []
-      if (siswaKelas.length === 0) {
-        toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
-        return
+      if (kelas.jumlahSiswa > 0) {
+        const response = await fetch(
+          `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`
+        )
+        const siswaKelas: Siswa[] = response.ok ? await response.json() : []
+        if (siswaKelas.length === 0) {
+          toast.error(`Tidak ada siswa di kelas ${kelas.name}`)
+          return
+        }
+        await generateDaftarHadirPdf({
+          kelas: kelas.name,
+          siswa: siswaKelas.map((s) => ({ nis: s.nis, namaLengkap: s.namaLengkap })),
+        })
+        toast.success(`Daftar hadir kelas ${kelas.name} siap diunduh`)
+      } else {
+        // Kelas GURU/TU: daftar hadir untuk pegawai, kolom identitas NIP.
+        const pegawaiKelas: PegawaiKartu[] = await fetch(
+          `/api/admin/pegawai?kelas=${encodeURIComponent(kelas.name)}`
+        ).then((r) => (r.ok ? r.json() : []))
+        if (pegawaiKelas.length === 0) {
+          toast.error(`Tidak ada pegawai di kelas ${kelas.name}`)
+          return
+        }
+        await generateDaftarHadirPdf({
+          kelas: kelas.name,
+          siswa: pegawaiKelas.map((p) => ({
+            nis: p.nip || p.nomorInduk || '-',
+            namaLengkap: p.nama,
+          })),
+          judulKolomId: 'NIP/Nomor Induk',
+          labelPemilih: 'pegawai',
+          sebutanKop: 'Kelompok',
+        })
+        toast.success(`Daftar hadir kelas ${kelas.name} siap diunduh`)
       }
-      await generateDaftarHadirPdf({
-        kelas: kelas.name,
-        siswa: siswaKelas.map((s) => ({ nis: s.nis, namaLengkap: s.namaLengkap })),
-      })
-      toast.success(`Daftar hadir kelas ${kelas.name} siap diunduh`)
     } catch (err) {
       console.error('Gagal membuat daftar hadir:', err)
       toast.error(
@@ -169,40 +248,69 @@ export default function KelasManagementPage() {
     }
   }
 
-  // Detail siswa satu kelas. Hanya dipanggil untuk kelas yang berisi siswa.
+  // Detail anggota satu kelas: siswa, dan pegawai untuk kelas GURU/TU.
   const bukaDetailSiswa = async (kelas: Classroom) => {
-    if (kelas.jumlahSiswa === 0) return
+    const tanpaAnggota = kelas.jumlahSiswa === 0 && kelas.jumlahPegawai === 0
+    if (tanpaAnggota) return
     setDetailKelas(kelas)
     setDetailSiswa([])
+    setDetailPegawai([])
     setDetailGalat(null)
     setDetailMemuat(true)
     try {
-      const response = await fetch(
+      const permintaanSiswa = fetch(
         `/api/admin/siswa?kelas=${encodeURIComponent(kelas.name)}`,
         { cache: 'no-store' }
       )
-      if (!response.ok) {
-        setDetailGalat(`Server menjawab ${response.status} saat memuat siswa.`)
+      const permintaanPegawai = kelas.jumlahPegawai > 0
+        ? fetch('/api/admin/pegawai', { cache: 'no-store' })
+        : Promise.resolve(null)
+      const [responseSiswa, responsPegawai] = await Promise.all([permintaanSiswa, permintaanPegawai])
+      if (!responseSiswa.ok) {
+        setDetailGalat(`Server menjawab ${responseSiswa.status} saat memuat anggota.`)
         return
       }
-      const data: Siswa[] = await response.json()
-      if (data.length === 0) {
-        setDetailGalat(`Tidak ada siswa terdaftar di kelas ${kelas.name}.`)
+      const siswaKelas: Siswa[] = await responseSiswa.json()
+      let pegawaiKelas: PegawaiDetail[] = []
+      if (responsPegawai && responsPegawai.ok) {
+        const semuaPegawai: Array<Partial<PegawaiDetail> & { classroomId?: number | null }> =
+          await responsPegawai.json()
+        pegawaiKelas = semuaPegawai
+          .filter((p) => p.classroomId === kelas.id)
+          .map((p) => ({
+            id: p.id ?? 0,
+            nama: p.nama ?? '',
+            email: p.email ?? '',
+            role: p.role ?? '',
+            sudahMemilih: p.sudahMemilih ?? false,
+          }))
+      } else if (responsPegawai && !responsPegawai.ok) {
+        setDetailGalat(`Server menjawab ${responsPegawai.status} saat memuat pegawai.`)
         return
       }
-      setDetailSiswa(denganNomorUrut(data))
+      if (siswaKelas.length === 0 && pegawaiKelas.length === 0) {
+        setDetailGalat(`Tidak ada anggota terdaftar di kelas ${kelas.name}.`)
+        return
+      }
+      setDetailSiswa(denganNomorUrut(siswaKelas))
+      // siswa tetap memakai nomor urut kartu; pegawai urut alfabet di bawah.
+      setDetailPegawai(pegawaiKelas.sort((a, b) => a.nama.localeCompare(b.nama)))
     } catch {
-      setDetailGalat('Data siswa tidak dapat diambil. Periksa koneksi lalu coba lagi.')
+      setDetailGalat('Data anggota tidak dapat diambil. Periksa koneksi lalu coba lagi.')
     } finally {
       setDetailMemuat(false)
     }
   }
 
   // Angka ringkasan di dialog detail: berapa yang sudah memilih.
+  // Pegawai ikut dihitung karena kelas GURU/TU beranggotakan pegawai.
   const ringkasDetail = useMemo(() => {
-    const sudah = detailSiswa.filter((s) => s.sudahMemilih).length
-    return { sudah, belum: detailSiswa.length - sudah, total: detailSiswa.length }
-  }, [detailSiswa])
+    const sudah =
+      detailSiswa.filter((s) => s.sudahMemilih).length +
+      detailPegawai.filter((p) => p.sudahMemilih).length
+    const total = detailSiswa.length + detailPegawai.length
+    return { sudah, belum: total - sudah, total }
+  }, [detailSiswa, detailPegawai])
 
   const fetchClassrooms = async () => {
     setGalatMuat(null)
@@ -451,8 +559,10 @@ export default function KelasManagementPage() {
   const endIndex = startIndex + itemsPerPage
   const currentItems = sortedClassrooms.slice(startIndex, endIndex)
   const selectableItems = currentItems
-  // Hanya kelas kosong yang dapat dihapus, jadi hanya itu yang bisa dipilih.
-  const bisaDihapus = selectableItems.filter((c) => c.jumlahSiswa === 0)
+  // Hanya kelas tanpa anggota (siswa maupun pegawai) yang dapat dihapus.
+  const bisaDihapus = selectableItems.filter(
+    (c) => c.jumlahSiswa === 0 && c.jumlahPegawai === 0
+  )
   const allCurrentSelected =
     bisaDihapus.length > 0 && bisaDihapus.every((c) => selectedIds.includes(c.id))
   const someCurrentSelected =
@@ -471,12 +581,16 @@ export default function KelasManagementPage() {
     const angkatanList = Array.from(new Set(classrooms.map((c) => c.angkatan)))
     const urutAngkatan = [...angkatanList].sort(bandingAngkatan)
     const totalSiswa = classrooms.reduce((s, c) => s + c.jumlahSiswa, 0)
-    const kelasKosong = classrooms.filter((c) => c.jumlahSiswa === 0).length
+    const totalPegawai = classrooms.reduce((s, c) => s + c.jumlahPegawai, 0)
+    const kelasKosong = classrooms.filter(
+      (c) => c.jumlahSiswa === 0 && c.jumlahPegawai === 0
+    ).length
     return {
       totalKelas: classrooms.length,
       totalAngkatan: angkatanList.length,
       angkatanTerbaru: urutAngkatan[urutAngkatan.length - 1] ?? '-',
       totalSiswa,
+      totalPegawai,
       kelasKosong,
     }
   }, [classrooms])
@@ -535,13 +649,17 @@ export default function KelasManagementPage() {
         <StatCard
           title="Siswa terdaftar"
           value={statistik.totalSiswa}
-          description="Terhubung ke kelas"
+          description={
+            statistik.totalPegawai > 0
+              ? `Termasuk ${statistik.totalPegawai} pegawai di kelas khusus`
+              : 'Terhubung ke kelas'
+          }
           icon={Users}
         />
         <StatCard
           title="Kelas kosong"
           value={statistik.kelasKosong}
-          description="Tanpa siswa, dapat dihapus"
+          description={statistik.kelasKosong > 0 ? 'Tanpa anggota, dapat dihapus' : 'Semua kelas berisi anggota'}
           icon={Layers}
         />
         <StatCard
@@ -824,7 +942,8 @@ export default function KelasManagementPage() {
                   </TableRow>
                 ) : (
                   currentItems.map((classroom) => {
-                    const kosong = classroom.jumlahSiswa === 0
+                    const tanpaAnggota =
+                      classroom.jumlahSiswa === 0 && classroom.jumlahPegawai === 0
                     return (
                       <TableRow
                         key={classroom.id}
@@ -836,11 +955,11 @@ export default function KelasManagementPage() {
                             checked={selectedIds.includes(classroom.id)}
                             onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
                             aria-label={`Pilih ${classroom.name}`}
-                            disabled={!kosong}
+                            disabled={!tanpaAnggota}
                             title={
-                              kosong
+                              tanpaAnggota
                                 ? undefined
-                                : 'Kelas masih memiliki siswa, hapus siswanya dahulu'
+                                : 'Kelas masih memiliki anggota, hapus anggotanya dahulu'
                             }
                           />
                         </TableCell>
@@ -849,19 +968,19 @@ export default function KelasManagementPage() {
                           <Badge variant="secondary">{classroom.angkatan}</Badge>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {kosong ? (
+                          {tanpaAnggota ? (
                             <span className="text-muted-foreground">0</span>
                           ) : (
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 px-2 tabular-nums"
-                              title={`Lihat siswa kelas ${classroom.name}`}
+                              title={`Lihat anggota kelas ${classroom.name}`}
                               onClick={() => bukaDetailSiswa(classroom)}
                             >
-                              {classroom.jumlahSiswa}
+                              {classroom.jumlahSiswa + classroom.jumlahPegawai}
                               <span className="sr-only">
-                                siswa di kelas {classroom.name}, klik untuk
+                                anggota di kelas {classroom.name}, klik untuk
                                 melihat daftar dan status memilih
                               </span>
                             </Button>
@@ -877,12 +996,14 @@ export default function KelasManagementPage() {
                               size="icon"
                               className="size-8"
                               title={
-                                kosong
-                                  ? 'Belum ada siswa di kelas ini'
-                                  : 'Unduh kartu pemilih kelas ini'
+                                tanpaAnggota
+                                  ? 'Kelas ini belum memiliki anggota'
+                                  : classroom.jumlahPegawai > 0
+                                    ? 'Unduh kartu pemilih pegawai kelas ini'
+                                    : 'Unduh kartu pemilih kelas ini'
                               }
                               onClick={() => handleKartuKelas(classroom)}
-                              disabled={kosong || kelasKartu !== null}
+                              disabled={tanpaAnggota || kelasKartu !== null}
                             >
                               {kelasKartu === classroom.name ? (
                                 <Loader2 className="animate-spin" />
@@ -898,12 +1019,12 @@ export default function KelasManagementPage() {
                               size="icon"
                               className="size-8"
                               title={
-                                kosong
-                                  ? 'Belum ada siswa di kelas ini'
+                                classroom.jumlahPegawai > 0
+                                  ? 'Unduh daftar hadir pemilih (F4)'
                                   : 'Unduh daftar hadir pemilihan (F4)'
                               }
                               onClick={() => handleDaftarHadir(classroom)}
-                              disabled={kosong || kelasDaftarHadir !== null}
+                              disabled={tanpaAnggota || kelasDaftarHadir !== null}
                             >
                               {kelasDaftarHadir === classroom.name ? (
                                 <Loader2 className="animate-spin" />
@@ -929,12 +1050,12 @@ export default function KelasManagementPage() {
                               size="icon"
                               className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               title={
-                                kosong
+                                tanpaAnggota
                                   ? 'Hapus kelas'
-                                  : 'Kelas masih memiliki siswa dan tidak dapat dihapus'
+                                  : 'Kelas masih memiliki anggota, hapus anggotanya dahulu'
                               }
                               onClick={() => openDeleteDialog(classroom)}
-                              disabled={!kosong}
+                              disabled={!tanpaAnggota}
                             >
                               <Trash2 />
                               <span className="sr-only">Hapus {classroom.name}</span>
@@ -975,7 +1096,8 @@ export default function KelasManagementPage() {
               </Empty>
             ) : (
               currentItems.map((classroom) => {
-                const kosong = classroom.jumlahSiswa === 0
+                const tanpaAnggota =
+                  classroom.jumlahSiswa === 0 && classroom.jumlahPegawai === 0
                 return (
                   <div
                     key={classroom.id}
@@ -990,25 +1112,31 @@ export default function KelasManagementPage() {
                           checked={selectedIds.includes(classroom.id)}
                           onCheckedChange={(v) => toggleSelectOne(classroom.id, v === true)}
                           aria-label={`Pilih ${classroom.name}`}
-                          disabled={!kosong}
+                          disabled={!tanpaAnggota}
                         />
                         <div>
                           <p className="text-sm font-semibold">{classroom.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {classroom.jumlahSiswa > 0 ? (
+                            {tanpaAnggota ? (
+                              'Belum ada anggota'
+                            ) : (
                               <button
                                 type="button"
                                 className="font-medium underline underline-offset-2 hover:text-foreground"
                                 onClick={() => bukaDetailSiswa(classroom)}
                               >
-                                {classroom.jumlahSiswa} siswa
+                                {classroom.jumlahSiswa > 0 &&
+                                  `${classroom.jumlahSiswa} siswa`}
+                                {classroom.jumlahSiswa > 0 &&
+                                  classroom.jumlahPegawai > 0 &&
+                                  ' + '}
+                                {classroom.jumlahPegawai > 0 &&
+                                  `${classroom.jumlahPegawai} pegawai`}
                                 <span className="sr-only">
                                   , klik untuk melihat daftar dan status
                                   memilih kelas {classroom.name}
                                 </span>
                               </button>
-                            ) : (
-                              'Belum ada siswa'
                             )}
                             <span className="mx-1">·</span>
                             {new Date(classroom.createdAt).toLocaleDateString('id-ID')}
@@ -1024,7 +1152,7 @@ export default function KelasManagementPage() {
                         className="size-9"
                         title="Kartu pemilih"
                         onClick={() => handleKartuKelas(classroom)}
-                        disabled={kosong || kelasKartu !== null}
+                        disabled={tanpaAnggota || kelasKartu !== null}
                       >
                         {kelasKartu === classroom.name ? (
                           <Loader2 className="animate-spin" />
@@ -1038,12 +1166,14 @@ export default function KelasManagementPage() {
                         size="icon"
                         className="size-9"
                         title={
-                          kosong
-                            ? 'Belum ada siswa di kelas ini'
-                            : 'Daftar hadir pemilihan (F4)'
+                          tanpaAnggota
+                            ? 'Kelas ini belum memiliki anggota'
+                            : classroom.jumlahPegawai > 0
+                              ? 'Daftar hadir pemilih (F4)'
+                              : 'Daftar hadir pemilihan (F4)'
                         }
                         onClick={() => handleDaftarHadir(classroom)}
-                        disabled={kosong || kelasDaftarHadir !== null}
+                        disabled={tanpaAnggota || kelasDaftarHadir !== null}
                       >
                         {kelasDaftarHadir === classroom.name ? (
                           <Loader2 className="animate-spin" />
@@ -1068,9 +1198,13 @@ export default function KelasManagementPage() {
                         variant="outline"
                         size="icon"
                         className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        title={kosong ? 'Hapus kelas' : 'Kelas masih memiliki siswa'}
+                        title={
+                          tanpaAnggota
+                            ? 'Hapus kelas'
+                            : 'Kelas masih memiliki anggota, hapus anggotanya dahulu'
+                        }
                         onClick={() => openDeleteDialog(classroom)}
-                        disabled={!kosong}
+                        disabled={!tanpaAnggota}
                       >
                         <Trash2 />
                         <span className="sr-only">Hapus {classroom.name}</span>
@@ -1183,22 +1317,24 @@ export default function KelasManagementPage() {
           if (!buka) {
             setDetailKelas(null)
             setDetailSiswa([])
+            setDetailPegawai([])
             setDetailGalat(null)
           }
         }}
       >
         <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Siswa kelas {detailKelas?.name}</DialogTitle>
+            <DialogTitle>Anggota kelas {detailKelas?.name}</DialogTitle>
             <DialogDescription>
-              Angkatan {detailKelas?.angkatan}. Nomor urut mengikuti urutan di
-              kartu pemilih kelas ini.
+              {detailKelas?.jumlahSiswa === 0 && detailKelas?.jumlahPegawai > 0
+                ? 'Kelas khusus pegawai. Status memilih dihitung dari pegawai di kelas ini.'
+                : 'Angkatan ' + detailKelas?.angkatan + '. Nomor urut mengikuti urutan di kartu pemilih kelas ini.'}
             </DialogDescription>
           </DialogHeader>
 
           {detailMemuat && (
             <div className="space-y-2 py-4" aria-busy="true">
-              <p className="text-sm text-muted-foreground">Memuat data siswa...</p>
+              <p className="text-sm text-muted-foreground">Memuat data anggota...</p>
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-11 w-full" />
               ))}
@@ -1211,7 +1347,7 @@ export default function KelasManagementPage() {
                 <EmptyMedia variant="icon">
                   <XCircle />
                 </EmptyMedia>
-                <EmptyTitle>Data siswa tidak tampil</EmptyTitle>
+                <EmptyTitle>Data anggota tidak tampil</EmptyTitle>
                 <EmptyDescription>{detailGalat}</EmptyDescription>
               </EmptyHeader>
               <Button
@@ -1237,7 +1373,8 @@ export default function KelasManagementPage() {
                   {ringkasDetail.belum} belum memilih
                 </Badge>
                 <span className="ml-auto text-muted-foreground tabular-nums">
-                  {ringkasDetail.total} siswa
+                  {ringkasDetail.total}{' '}
+                  {detailPegawai.length === 0 ? 'siswa' : 'anggota'}
                 </span>
               </div>
 
@@ -1274,6 +1411,40 @@ export default function KelasManagementPage() {
                       </Badge>
                     </li>
                   ))}
+                  {detailSiswa.length > 0 && detailPegawai.length > 0 && (
+                    <li aria-hidden="true">
+                      <p className="bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Pegawai
+                      </p>
+                    </li>
+                  )}
+                  {detailPegawai.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center gap-3 px-3 py-2.5"
+                    >
+                      <span className="w-8 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{p.nama}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {p.role === 'guru' ? 'Guru' : 'TU'} · {p.email}
+                        </p>
+                      </div>
+                      <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                        {p.sudahMemilih ? (
+                          <>
+                            <CheckCircle className="size-3" />
+                            Sudah
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="size-3" />
+                            Belum
+                          </>
+                        )}
+                      </Badge>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </>
@@ -1281,16 +1452,27 @@ export default function KelasManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Kartu PDF per kelas */}
-      {kartuRequest && (
-        <StudentPdfCards
-          siswa={kartuRequest.siswa}
-          containerId="kartu-per-kelas-render"
+      {/* Kartu PDF per kelas: siswa dari halaman kelas campus, pegawai kelas GURU/TU */}
+      {kartuRequest && kartuRequest.pegawai ? (
+        <PegawaiPdfCards
+          pegawai={kartuRequest.pegawai}
+          containerId="kartu-pegawai-per-render"
           hideControls
           autoDownload
           fileName={`kartu-pemilih-${kartuRequest.kelas.replace(/[/\\]/g, '-')}.pdf`}
           onDone={() => setKartuRequest(null)}
         />
+      ) : (
+        kartuRequest && (
+          <StudentPdfCards
+            siswa={kartuRequest.siswa}
+            containerId="kartu-per-kelas-render"
+            hideControls
+            autoDownload
+            fileName={`kartu-pemilih-${kartuRequest.kelas.replace(/[/\\]/g, '-')}.pdf`}
+            onDone={() => setKartuRequest(null)}
+          />
+        )
       )}
     </div>
   )

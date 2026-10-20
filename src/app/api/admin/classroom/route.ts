@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { classroom, siswa } from '@/lib/schema'
+import { classroom, siswa, pegawai } from '@/lib/schema'
 import { count } from 'drizzle-orm'
 import { bandingNamaKelas } from '@/lib/urutan-kelas'
 import { punyaSesiAdmin, responsBukanAdmin } from '@/lib/admin-guard'
@@ -25,8 +25,21 @@ export async function GET(request: NextRequest) {
       .from(siswa)
       .groupBy(siswa.classroomId)
 
+    // Kelas khusus pegawai (GURU, TU) berisi pegawai, bukan siswa: hitung juga
+    // supaya jumlah anggota di halaman Kelas tidak 0 dan dialog detail tahu
+    // datanya pegawai.
+    const perKelasPegawai = await db
+      .select({ classroomId: pegawai.classroomId, total: count() })
+      .from(pegawai)
+      .groupBy(pegawai.classroomId)
+
     const petaJumlah = new Map(
       perKelas
+        .filter((row) => row.classroomId !== null)
+        .map((row) => [row.classroomId as number, Number(row.total)])
+    )
+    const petaJumlahPegawai = new Map(
+      perKelasPegawai
         .filter((row) => row.classroomId !== null)
         .map((row) => [row.classroomId as number, Number(row.total)])
     )
@@ -35,6 +48,7 @@ export async function GET(request: NextRequest) {
       .map((k) => ({
         ...k,
         jumlahSiswa: petaJumlah.get(k.id) ?? 0,
+        jumlahPegawai: petaJumlahPegawai.get(k.id) ?? 0,
       }))
       .sort((a, b) => bandingNamaKelas(a.name, b.name))
 

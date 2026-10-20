@@ -22,7 +22,7 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { PegawaiPdfCards } from '@/components/admin/pegawai-pdf-cards'
 import {
   Plus, Upload, Download, RefreshCw, Trash2, RotateCcw, Copy, Check, Loader2,
-  Search, Printer, Users, CheckCircle, FileSpreadsheet, FileDown
+  Search, Printer, Users, CheckCircle, FileSpreadsheet, FileDown, Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ambilSesiAdmin } from '@/lib/sesi-klien'
@@ -41,6 +41,12 @@ interface Pegawai {
   sudahMemilih: boolean
   tokenPlain: string
   qrId: string
+  classroomId?: number | null
+  /** Nama kelas/group pegawai (GURU / TU / kelas mengajar), dari leftJoin classroom. */
+  kelasNama?: string | null
+  /** Dikirim /api/admin/pegawai (select *). Kosong pada data saat ini. */
+  nip?: string | null
+  nomorInduk?: string | null
 }
 
 interface Credentials {
@@ -92,6 +98,18 @@ export default function PegawaiPage() {
   const [galatMuat, setGalatMuat] = useState('')
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [loadingClassrooms, setLoadingClassrooms] = useState(false)
+  // Edit pegawai: tombol edit kini ada di tabel desktop dan kartu ponsel.
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedPegawai, setSelectedPegawai] = useState<Pegawai | null>(null)
+  const [editFormData, setEditFormData] = useState<{
+    nama: string
+    email: string
+    role: 'guru' | 'tu'
+    classroomId: string
+    nip: string
+    nomorInduk: string
+    status: 'aktif' | 'non-aktif'
+  }>({ nama: '', email: '', role: 'guru', classroomId: '', nip: '', nomorInduk: '', status: 'aktif' })
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [kartuRequest, setKartuRequest] = useState<Pegawai[] | null>(null)
   const [classroomSearch, setClassroomSearch] = useState('')
@@ -259,6 +277,56 @@ export default function PegawaiPage() {
         await fetchPegawai()
       } else {
         setFormError(data.message || 'Gagal menambah pegawai')
+      }
+    } catch (err) {
+      setFormError('Terjadi kesalahan. Silakan coba lagi.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEdit = (p: Pegawai) => {
+    setFormError('')
+    setSelectedPegawai(p)
+    setEditFormData({
+      nama: p.nama,
+      email: p.email,
+      role: p.role,
+      classroomId: p.classroomId ? String(p.classroomId) : '',
+      nip: p.nip || '',
+      nomorInduk: p.nomorInduk || '',
+      status: p.status,
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedPegawai) return
+
+    if (!editFormData.nama || !editFormData.email) {
+      setFormError('Nama dan email harus diisi')
+      return
+    }
+    if (!editFormData.email.includes('@')) {
+      setFormError('Email tidak valid')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(`/api/admin/pegawai/${selectedPegawai.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        toast.success('Pegawai berhasil diperbarui')
+        setShowEditModal(false)
+        await fetchPegawai()
+      } else {
+        setFormError(data.message || 'Gagal memperbarui pegawai')
       }
     } catch (err) {
       setFormError('Terjadi kesalahan. Silakan coba lagi.')
@@ -534,19 +602,20 @@ export default function PegawaiPage() {
               {/* Desktop Table View */}
               <div className="hidden rounded-md border sm:block">
                 <Table>
-                  <TableHeader className="bg-muted/50">
+                  <TableHeader className="bg-slate-50">
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status akun</TableHead>
-                      <TableHead>Memilih</TableHead>
-                      <TableHead className="w-28 text-right">Aksi</TableHead>
+                      <TableHead className="text-slate-500">Nama</TableHead>
+                      <TableHead className="text-slate-500">Role</TableHead>
+                      <TableHead className="text-slate-500">Kelas</TableHead>
+                      <TableHead className="text-slate-500">Status akun</TableHead>
+                      <TableHead className="text-slate-500">Memilih</TableHead>
+                      <TableHead className="w-32 text-right text-slate-500">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentItems.length === 0 ? (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={5} className="py-10">
+                        <TableCell colSpan={6} className="py-10">
                           <Empty>
                             <EmptyHeader>
                               <EmptyMedia variant="icon">
@@ -574,20 +643,50 @@ export default function PegawaiPage() {
                             <p className="break-all text-xs text-muted-foreground">{p.email}</p>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
+                            <Badge className="border-blue-200 bg-blue-50 text-blue-800" variant="outline">
+                              {p.role === 'guru' ? 'Guru' : 'TU'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-slate-600">
+                            {p.kelasNama || 'Tanpa kelas'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
+                            <Badge
+                              className={
+                                p.status === 'aktif'
+                                  ? 'border-green-200 bg-green-100 text-green-800'
+                                  : 'border-slate-200 bg-slate-100 text-slate-600'
+                              }
+                              variant="outline"
+                            >
                               {p.status === 'aktif' ? 'Aktif' : 'Non-aktif'}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                            <Badge
+                              className={
+                                p.sudahMemilih
+                                  ? 'border-green-200 bg-green-100 text-green-800'
+                                  : 'border-slate-200 bg-slate-100 text-slate-600'
+                              }
+                              variant="outline"
+                            >
                               {p.sudahMemilih ? 'Sudah' : 'Belum'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0"
+                                title={`Edit ${p.nama}`}
+                                onClick={() => handleEdit(p)}
+                              >
+                                <Pencil />
+                                <span className="sr-only">Edit pegawai</span>
+                              </Button>
                               {p.sudahMemilih ? (
                                 <Button
                                   type="button"
@@ -644,15 +743,43 @@ export default function PegawaiPage() {
                         <p className="break-all text-xs text-muted-foreground">{p.email}</p>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant="outline">{p.role === 'guru' ? 'Guru' : 'TU'}</Badge>
-                        <Badge variant={p.status === 'aktif' ? 'default' : 'destructive'}>
+                        <Badge className="border-blue-200 bg-blue-50 text-blue-800" variant="outline">
+                          {p.role === 'guru' ? 'Guru' : 'TU'}
+                        </Badge>
+                        <Badge className="border-slate-200 bg-slate-100 text-slate-600" variant="outline">
+                          {p.kelasNama || 'Tanpa kelas'}
+                        </Badge>
+                        <Badge
+                          className={
+                            p.status === 'aktif'
+                              ? 'border-green-200 bg-green-100 text-green-800'
+                              : 'border-slate-200 bg-slate-100 text-slate-600'
+                          }
+                          variant="outline"
+                        >
                           {p.status === 'aktif' ? 'Aktif' : 'Non-aktif'}
                         </Badge>
-                        <Badge variant={p.sudahMemilih ? 'default' : 'secondary'}>
+                        <Badge
+                          className={
+                            p.sudahMemilih
+                              ? 'border-green-200 bg-green-100 text-green-800'
+                              : 'border-slate-200 bg-slate-100 text-slate-600'
+                          }
+                          variant="outline"
+                        >
                           {p.sudahMemilih ? 'Sudah memilih' : 'Belum memilih'}
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="default"
+                          className="min-h-11 sm:min-h-0"
+                          onClick={() => handleEdit(p)}
+                        >
+                          <Pencil />
+                          Edit
+                        </Button>
                         {p.sudahMemilih ? (
                           <Button variant="outline" size="default" className="min-h-11 sm:min-h-0" onClick={() => handleResetStatus(p.id)}>
                             <RotateCcw />
@@ -878,6 +1005,182 @@ export default function PegawaiPage() {
         </DialogContent>
       </Dialog>
 
+
+      {/* Edit Pegawai Modal */}
+      <Dialog
+        open={showEditModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowEditModal(false)
+            setFormError('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit pegawai</DialogTitle>
+            <DialogDescription>
+              {selectedPegawai?.nama
+                ? `Perbaiki data ${selectedPegawai.nama}. Kelas di sini adalah kelompok pemilihnya, bukan kelas mengajar.`
+                : 'Perbaiki data pegawai.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitEdit} className="space-y-3">
+            {formError && (
+              <Alert variant="destructive">
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="edit-nama" className="text-xs">Nama *</Label>
+              <Input
+                id="edit-nama"
+                placeholder="Nama lengkap"
+                value={editFormData.nama}
+                onChange={(e) => setEditFormData({ ...editFormData, nama: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-email" className="text-xs">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                placeholder="email@sekolah"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Role *</Label>
+                <Select
+                  value={editFormData.role}
+                  onValueChange={(value) =>
+                    setEditFormData({ ...editFormData, role: value as 'guru' | 'tu' })
+                  }
+                >
+                  <SelectTrigger className="w-full min-h-11 sm:min-h-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="guru">Guru</SelectItem>
+                    <SelectItem value="tu">TU</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                {/* Kelas = kelompok pemilih (mis. GURU, TU); ikut ke daftar hadir per kelas. */}
+                <Label className="text-xs">Kelas</Label>
+                <Select
+                  value={editFormData.classroomId}
+                  onValueChange={(value) => {
+                    setEditFormData({ ...editFormData, classroomId: value })
+                    setClassroomSearch('')
+                  }}
+                >
+                  <SelectTrigger className="w-full min-h-11 sm:min-h-0">
+                    <SelectValue placeholder="Pilih kelas..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div className="sticky top-0 z-50 border-b bg-popover p-2">
+                      <Input
+                        placeholder="Cari kelas..."
+                        value={classroomSearch}
+                        onChange={(e) => setClassroomSearch(e.target.value)}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    {loadingClassrooms ? (
+                      <div className="p-2 text-center text-xs text-muted-foreground">Memuat...</div>
+                    ) : classrooms
+                        .filter((c) =>
+                          `${c.name} ${c.angkatan}`
+                            .toLowerCase()
+                            .includes(classroomSearch.toLowerCase())
+                        )
+                        .length > 0 ? (
+                      classrooms
+                        .filter((c) =>
+                          `${c.name} ${c.angkatan}`
+                            .toLowerCase()
+                            .includes(classroomSearch.toLowerCase())
+                        )
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name} ({c.angkatan})
+                          </SelectItem>
+                        ))
+                    ) : (
+                      <div className="p-2 text-center text-xs text-muted-foreground">
+                        Tidak ada kelas
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-nip" className="text-xs">NIP</Label>
+                <Input
+                  id="edit-nip"
+                  placeholder="123456789"
+                  value={editFormData.nip}
+                  onChange={(e) => setEditFormData({ ...editFormData, nip: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-nomorInduk" className="text-xs">No. Induk</Label>
+                <Input
+                  id="edit-nomorInduk"
+                  placeholder="G001"
+                  value={editFormData.nomorInduk}
+                  onChange={(e) => setEditFormData({ ...editFormData, nomorInduk: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
+              <Select
+                value={editFormData.status}
+                onValueChange={(value) =>
+                  setEditFormData({ ...editFormData, status: value as 'aktif' | 'non-aktif' })
+                }
+              >
+                <SelectTrigger className="w-full min-h-11 sm:min-h-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aktif">Aktif</SelectItem>
+                  <SelectItem value="non-aktif">Non-Aktif</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                className="min-h-11 sm:min-h-0"
+                onClick={() => setShowEditModal(false)}
+                disabled={isSubmitting}
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="default" className="min-h-11 sm:min-h-0" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Menyimpan
+                  </>
+                ) : (
+                  'Simpan'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog akun baru: hanya email yang ditampilkan. Token login sengaja
           tidak ditampilkan di UI (DESIGN.md batasan 4); login pegawai kini lewat QR. */}

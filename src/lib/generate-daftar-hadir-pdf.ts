@@ -25,12 +25,17 @@ const MARGIN_KANAN = 15
  * tabel berhenti tepat di margin kanan. Kolom tanda tangan 45mm: cukup untuk
  * tanda tangan tangan, bukan sekadar centang.
  */
-const KOLOM = [
-  { judul: 'No', lebar: 12, tengah: true },
-  { judul: 'NIS', lebar: 28, tengah: true },
-  { judul: 'Nama Lengkap', lebar: 100, tengah: false },
-  { judul: 'Tanda Tangan', lebar: 45, tengah: true },
-]
+/** Struktur kolom tabel. `judulKolomId` mengganti judul kolom kedua: 'NIS'
+ *  untuk daftar siswa, 'NIP/Nomor Induk' untuk daftar pegawai (kelas GURU/TU).
+ *  Lebarnya tetap, jadi layout F4 tidak berubah. */
+function kolomTabel(judulKolomId = 'NIS') {
+  return [
+    { judul: 'No', lebar: 12, tengah: true },
+    { judul: judulKolomId, lebar: 28, tengah: true },
+    { judul: 'Nama Lengkap', lebar: 100, tengah: false },
+    { judul: 'Tanda Tangan', lebar: 45, tengah: true },
+  ]
+}
 
 /**
  * Baris paling tinggi 12mm. Karena rekap kini menempel di bawah tabel (bukan
@@ -83,6 +88,12 @@ export interface OpsiDaftarHadir {
   namaSekolah?: string
   /** Baris keterangan tambahan di kop, mis. tahun pelajaran. */
   keterangan?: string
+  /** Judul kolom identitas: 'NIS' (default) atau 'NIP/Nomor Induk' untuk pegawai. */
+  judulKolomId?: string
+  /** Sebutan anggota di rekap: 'siswa' (default) atau 'pegawai'. */
+  labelPemilih?: string
+  /** Label nama kelompok di kop: 'Kelas' (default) atau 'Kelompok' untuk pegawai. */
+  sebutanKop?: string
 }
 
 export async function generateDaftarHadirPdf({
@@ -91,10 +102,15 @@ export async function generateDaftarHadirPdf({
   fileName,
   namaSekolah = NAMA_SEKOLAH_BAWAAN,
   keterangan,
+  judulKolomId = 'NIS',
+  labelPemilih = 'siswa',
+  sebutanKop = 'Kelas',
 }: OpsiDaftarHadir): Promise<void> {
   if (siswa.length === 0) {
-    throw new Error(`Kelas ${kelas} belum memiliki siswa`)
+    throw new Error(`Kelas ${kelas} belum memiliki ${labelPemilih}`)
   }
+
+  const kolom = kolomTabel(judulKolomId)
 
   const pdf = new jsPDF({
     unit: 'mm',
@@ -108,7 +124,7 @@ export async function generateDaftarHadirPdf({
   const baris = denganNomorUrut(siswa)
   const total = baris.length
 
-  const lebarTabel = KOLOM.reduce((n, k) => n + k.lebar, 0)
+  const lebarTabel = kolom.reduce((n, k) => n + k.lebar, 0)
   // Tabel berhenti sebelum blok rekap, bukan sampai margin bawah.
   const yAkhirTabel = F4_TINGGI_MM - MARGIN_BAWAH - TINGGI_REKAP
 
@@ -130,9 +146,9 @@ export async function generateDaftarHadirPdf({
 
     const yTabel = halaman === 0 ? Y_TABEL_AWAL : Y_TABEL_LANJUTAN
     if (halaman === 0) {
-      gambarKop(pdf, { namaSekolah, kelas, keterangan })
+      gambarKop(pdf, { namaSekolah, kelas, keterangan, sebutanKop })
     } else {
-      gambarKopLanjutan(pdf, { kelas, halaman: halaman + 1 })
+      gambarKopLanjutan(pdf, { kelas, halaman: halaman + 1, sebutanKop })
     }
 
     const yIsi = yTabel + TINGGI_JUDUL_TABEL
@@ -141,13 +157,14 @@ export async function generateDaftarHadirPdf({
       (yAkhirTabel - yIsi) / potongan.length
     )
 
-    gambarJudulTabel(pdf, MARGIN_KIRI, yTabel, lebarTabel, TINGGI_JUDUL_TABEL)
+    gambarJudulTabel(pdf, MARGIN_KIRI, yTabel, lebarTabel, TINGGI_JUDUL_TABEL, kolom)
     gambarIsiTabel(pdf, {
       x: MARGIN_KIRI,
       y: yIsi,
       lebarTabel,
       tinggiBaris,
       data: potongan,
+      kolom,
     })
 
     // Rekap hanya di lembar terakhir: isinya menghitung seluruh kelas, bukan
@@ -157,6 +174,7 @@ export async function generateDaftarHadirPdf({
         total,
         akhirTabel: yIsi + tinggiBaris * potongan.length,
         batasBawah: F4_TINGGI_MM - MARGIN_BAWAH,
+        labelPemilih,
       })
     }
   }
@@ -173,6 +191,8 @@ interface Kop {
   namaSekolah: string
   kelas: string
   keterangan?: string
+  /** Label sebelum nama kelas: 'Kelas' (default) atau 'Kelompok' untuk pegawai. */
+  sebutanKop?: string
 }
 
 /**
@@ -181,7 +201,7 @@ interface Kop {
  * masih muat. "Jumlah pemilih" TIDAK lagi di kop: sekarang ada di blok rekap
  * bawah tabel bersama jumlah hadir/tidak hadir, sesuai permintaan Pak Deni.
  */
-function gambarKop(pdf: jsPDF, { namaSekolah, kelas, keterangan }: Kop) {
+function gambarKop(pdf: jsPDF, { namaSekolah, kelas, keterangan, sebutanKop = 'Kelas' }: Kop) {
   const tengah = F4_LEBAR_MM / 2
   const kanan = F4_LEBAR_MM - MARGIN_KANAN
 
@@ -201,7 +221,7 @@ function gambarKop(pdf: jsPDF, { namaSekolah, kelas, keterangan }: Kop) {
 
   pdf.setFontSize(9)
   pdf.setFont('helvetica', 'bold')
-  pdf.text(`Kelas: ${kelas}`, MARGIN_KIRI, 30)
+  pdf.text(`${sebutanKop}: ${kelas}`, MARGIN_KIRI, 30)
 
   pdf.setFont('helvetica', 'normal')
   pdf.text('Hari/Tanggal: ...................................', MARGIN_KIRI, 36)
@@ -214,13 +234,13 @@ function gambarKop(pdf: jsPDF, { namaSekolah, kelas, keterangan }: Kop) {
 
 function gambarKopLanjutan(
   pdf: jsPDF,
-  { kelas, halaman }: { kelas: string; halaman: number }
+  { kelas, halaman, sebutanKop = 'Kelas' }: { kelas: string; halaman: number; sebutanKop?: string }
 ) {
   pdf.setTextColor(0, 0, 0)
   pdf.setFont('helvetica', 'bold')
   pdf.setFontSize(10)
   pdf.text(
-    `DAFTAR HADIR PEMILIHAN KETUA OSIS - KELAS ${kelas} (lanjutan ${halaman})`,
+    `DAFTAR HADIR PEMILIHAN KETUA OSIS - ${sebutanKop.toUpperCase()} ${kelas} (lanjutan ${halaman})`,
     F4_LEBAR_MM / 2,
     18,
     { align: 'center' }
@@ -234,7 +254,8 @@ function gambarJudulTabel(
   x: number,
   y: number,
   lebarTabel: number,
-  tinggi: number
+  tinggi: number,
+  kolom = kolomTabel()
 ) {
   pdf.setTextColor(0, 0, 0)
   pdf.setFont('helvetica', 'bold')
@@ -245,13 +266,13 @@ function gambarJudulTabel(
   // patah pada garis tepi.
   pdf.setLineWidth(0.2)
   let xKolom = x
-  for (const kolom of KOLOM) {
+  for (const k of kolom) {
     if (xKolom > x) pdf.line(xKolom, y, xKolom, y + tinggi)
-    pdf.text(kolom.judul, teksPosisi(xKolom, kolom), y + tinggi / 2, {
-      align: kolom.tengah ? 'center' : 'left',
+    pdf.text(k.judul, teksPosisi(xKolom, k), y + tinggi / 2, {
+      align: k.tengah ? 'center' : 'left',
       baseline: 'middle',
     })
-    xKolom += kolom.lebar
+    xKolom += k.lebar
   }
 
   pdf.setLineWidth(0.4)
@@ -264,17 +285,18 @@ interface OpsiIsi {
   lebarTabel: number
   tinggiBaris: number
   data: Array<SiswaDaftarHadir & { nomorUrut: number }>
+  kolom: ReturnType<typeof kolomTabel>
 }
 
-function gambarIsiTabel(pdf: jsPDF, { x, y, lebarTabel, tinggiBaris, data }: OpsiIsi) {
+function gambarIsiTabel(pdf: jsPDF, { x, y, lebarTabel, tinggiBaris, data, kolom }: OpsiIsi) {
   const tinggiTotal = tinggiBaris * data.length
   pdf.setLineWidth(0.2)
   pdf.setTextColor(0, 0, 0)
 
   // Pemisah kolom digambar SEKALI sepanjang tabel, bukan potongan per baris.
   let xKolom = x
-  for (const kolom of KOLOM) {
-    xKolom += kolom.lebar
+  for (const k of kolom) {
+    xKolom += k.lebar
     if (xKolom < x + lebarTabel - 0.01) {
       pdf.line(xKolom, y, xKolom, y + tinggiTotal)
     }
@@ -304,21 +326,21 @@ function gambarIsiTabel(pdf: jsPDF, { x, y, lebarTabel, tinggiBaris, data }: Ops
     const isi = [String(siswa.nomorUrut), siswa.nis, siswa.namaLengkap, '']
 
     let xSel = x
-    KOLOM.forEach((kolom, i) => {
+    kolom.forEach((k, i) => {
       const teks = isi[i]
       if (teks) {
         // Nama panjang diperkecil bertahap (9 -> 8 -> 7pt). Kalau tetap tidak
         // muat, dipotong dengan elipsis: lebih baik nama sedikit dipendekkan
         // daripada meluber ke kolom tanda tangan.
-        const maks = kolom.lebar - 5
+        const maks = k.lebar - 5
         const ukuran = ukuranPas(pdf, teks, maks)
         pdf.setFontSize(ukuran)
-        pdf.text(potongTeks(pdf, teks, maks), teksPosisi(xSel, kolom), yBaris + tinggiBaris / 2, {
-          align: kolom.tengah ? 'center' : 'left',
+        pdf.text(potongTeks(pdf, teks, maks), teksPosisi(xSel, k), yBaris + tinggiBaris / 2, {
+          align: k.tengah ? 'center' : 'left',
           baseline: 'middle',
         })
       }
-      xSel += kolom.lebar
+      xSel += k.lebar
     })
 
     yBaris += tinggiBaris
@@ -342,7 +364,10 @@ interface OpsiRekap {
  * berisi 46 siswa membuatnya otomatis berada dekat dasar, sedangkan kelas
  * kecil tidak menyisakan jurang kosong ratusan milimeter di antaranya.
  */
-function gambarRekap(pdf: jsPDF, { total, akhirTabel, batasBawah }: OpsiRekap) {
+function gambarRekap(
+  pdf: jsPDF,
+  { total, akhirTabel, batasBawah, labelPemilih = 'siswa' }: OpsiRekap & { labelPemilih?: string }
+) {
   const kanan = F4_LEBAR_MM - MARGIN_KANAN
   const lebar = kanan - MARGIN_KIRI
   const tinggi = 26
@@ -354,7 +379,7 @@ function gambarRekap(pdf: jsPDF, { total, akhirTabel, batasBawah }: OpsiRekap) {
   const xLabel = MARGIN_KIRI + 4
   const xTitikDua = MARGIN_KIRI + 52
   const isi = [
-    { label: 'Jumlah pemilih', nilai: `${total} siswa`, tebal: true },
+    { label: 'Jumlah pemilih', nilai: `${total} ${labelPemilih}`, tebal: true },
     { label: 'Jumlah yang hadir', nilai: '..............................', tebal: false },
     { label: 'Jumlah tidak hadir', nilai: '..............................', tebal: false },
   ]

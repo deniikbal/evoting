@@ -50,3 +50,6 @@ server.log
 tmp-*.log
 # uploads
 /public/uploads/
+
+# Foto kandidat (dokumen runtime, bukan kode)
+/data/

@@ -1,22 +1,30 @@
 'use client'
 
+/*
+ * Design Read: konfigurasi pemilihan untuk panitia OSIS, gaya bersih hangat
+ * identitas e-voting, dial ENERGY 1 / RHYTHM 1 / MOTION 1.
+ *
+ * Palet berpangkat makna (konsisten antar halaman):
+ * - hijau : status "Aktif" (voting jalan, pantauan "sudah memilih" juga hijau)
+ * - merah : tindakan menghentikan voting (efek tentsif)
+ * - biru  : tombol memulai + aksi simpan/refresh (identitas aplikasi)
+ * - netral slate: status non-aktif, teks pendukung
+ *
+ * Keputusan utama (R-31):
+ * - Panel status terpisah dari form waktu: status adalah keputusan sensitif
+ *   (butuh password), waktu hanya pelengkap; jadi tidak digabung satu kotak.
+ * - MOTION 1: hanya hover/fokus, tanpa animasi loop.
+ */
+
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  RefreshCw, Save, Play, Square, TriangleAlert, Loader2, Settings,
-} from 'lucide-react'
+import { Eye, EyeOff, Play, Square, RefreshCw, Save, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ambilSesiAdmin } from '@/lib/sesi-klien'
@@ -44,6 +52,7 @@ export default function PengaturanPage() {
   const [votingAction, setVotingAction] = useState<'start' | 'stop'>('start')
   const [isToggling, setIsToggling] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [tampilPassword, setTampilPassword] = useState(false)
   const [admin, setAdmin] = useState<Admin | null>(null)
   const router = useRouter()
 
@@ -164,170 +173,198 @@ export default function PengaturanPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="size-6 animate-spin" />
-          <p>Memuat pengaturan...</p>
-        </div>
+      <div className="flex flex-1 flex-col gap-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* Voting Control */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Settings className="size-5" />
-            Kontrol Voting
-          </CardTitle>
-          <CardDescription>
-            Atur status dan waktu voting
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSave} className="space-y-6">
-            {/* Voting Status */}
-            <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`size-3 rounded-full ${votingAktif ? 'bg-primary' : 'bg-destructive'}`}
-                  aria-hidden
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">Status Voting</p>
-                    <Badge variant={votingAktif ? 'default' : 'secondary'}>
-                      {votingAktif ? 'Aktif' : 'Non-Aktif'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {votingAktif
-                      ? 'Voting sedang aktif, siswa dapat memilih'
-                      : 'Voting tidak aktif, siswa tidak dapat memilih'
-                    }
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                onClick={() => openConfirmDialog(votingAktif ? 'stop' : 'start')}
-                variant={votingAktif ? 'destructive' : 'default'}
-                size="sm"
-                className="w-full sm:w-auto"
-              >
-                {votingAktif ? (
-                  <>
-                    <Square />
-                    Hentikan
-                  </>
-                ) : (
-                  <>
-                    <Play />
-                    Mulai
-                  </>
-                )}
-              </Button>
-            </div>
+      {/* Kepala halaman */}
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
+          Pengaturan
+        </h1>
+        <p className="mt-0.5 text-sm text-slate-500">
+          Status dan waktu pemilihan. Perubahan langsung memengaruhi mesin pemilih.
+        </p>
+      </div>
 
-            {/* Time Settings */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="waktu_mulai">Waktu Mulai Voting</Label>
-                <Input
-                  id="waktu_mulai"
-                  type="datetime-local"
-                  value={pengaturan.waktu_mulai_voting}
-                  onChange={(e) => setPengaturan(prev => ({
-                    ...prev,
-                    waktu_mulai_voting: e.target.value
-                  }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="waktu_selesai">Waktu Selesai Voting</Label>
-                <Input
-                  id="waktu_selesai"
-                  type="datetime-local"
-                  value={pengaturan.waktu_selesai_voting}
-                  onChange={(e) => setPengaturan(prev => ({
-                    ...prev,
-                    waktu_selesai_voting: e.target.value
-                  }))}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Menyimpan...
-                  </>
-                ) : (
-                  <>
-                    <Save />
-                    Simpan
-                  </>
-                )}
-              </Button>
-              <Button type="button" variant="outline" onClick={fetchPengaturan}>
-                <RefreshCw />
-                Refresh
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Confirm Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={(open) => {
-        setShowConfirmDialog(open)
-        if (!open) setConfirmPassword('')
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div
-              className={`mb-2 flex size-12 items-center justify-center rounded-full ${
-                votingAction === 'start' ? 'bg-primary/10' : 'bg-destructive/10'
-              }`}
-            >
-              <TriangleAlert
-                className={`size-6 ${
-                  votingAction === 'start' ? 'text-primary' : 'text-destructive'
+      {/* Status voting: dipisah dari form, aksinya perlu password */}
+      <section
+        aria-label="Status voting"
+        className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className={`size-3 flex-shrink-0 rounded-full ${
+              votingAktif ? 'bg-green-600' : 'bg-slate-400'
+            }`}
+            aria-hidden
+          />
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-slate-900">Voting</p>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                  votingAktif
+                    ? 'border-green-200 bg-green-100 text-green-800'
+                    : 'border-slate-200 bg-slate-100 text-slate-600'
                 }`}
+              >
+                {votingAktif ? 'Aktif' : 'Non-aktif'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-500">
+              {votingAktif
+                ? 'Siswa dan pegawai sedang dapat memilih'
+                : 'Mesin pemilih masih terkunci'}
+            </p>
+          </div>
+        </div>
+        {votingAktif ? (
+          <Button
+            type="button"
+            onClick={() => openConfirmDialog('stop')}
+            variant="outline"
+            size="sm"
+            className="h-10 w-full border-red-200 bg-white text-red-700 hover:bg-red-50 sm:w-auto"
+          >
+            <Square className="size-3.5" /> Hentikan voting
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => openConfirmDialog('start')}
+            size="sm"
+            className="h-10 w-full bg-[#1e3a8a] text-white hover:bg-[#172554] sm:w-auto"
+          >
+            <Play className="size-3.5" /> Mulai voting
+          </Button>
+        )}
+      </section>
+
+      {/* Waktu voting */}
+      <form
+        onSubmit={handleSave}
+        className="rounded-lg border border-slate-200 bg-white"
+      >
+        <div className="p-4 md:p-6">
+          <p className="font-semibold text-slate-900">Waktu rencana pemilihan</p>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Dicatat sebagai jadwal pada daftar hadir; bukan kunci mesin. Perpindahan
+            status tetap lewat tombol di atas.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="waktu_mulai" className="text-slate-700">Waktu mulai</Label>
+              <Input
+                id="waktu_mulai"
+                type="datetime-local"
+                className="h-11"
+                value={pengaturan.waktu_mulai_voting}
+                onChange={(e) => setPengaturan(prev => ({
+                  ...prev,
+                  waktu_mulai_voting: e.target.value
+                }))}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="waktu_selesai" className="text-slate-700">Waktu selesai</Label>
+              <Input
+                id="waktu_selesai"
+                type="datetime-local"
+                className="h-11"
+                value={pengaturan.waktu_selesai_voting}
+                onChange={(e) => setPengaturan(prev => ({
+                  ...prev,
+                  waktu_selesai_voting: e.target.value
+                }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row md:px-6">
+          <Button
+            type="submit"
+            disabled={isSaving}
+            className="h-10 bg-[#1e3a8a] text-white hover:bg-[#172554]"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Menyimpan...
+              </>
+            ) : (
+              <>
+                <Save className="size-4" /> Simpan waktu
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+            onClick={fetchPengaturan}
+          >
+            <RefreshCw className="size-4" /> Segarkan
+          </Button>
+        </div>
+      </form>
+
+      {/* Dialog konfirmasi: password login diverifikasi di server */}
+      <Dialog
+        open={showConfirmDialog}
+        onOpenChange={(open) => {
+          setShowConfirmDialog(open)
+          if (!open) setConfirmPassword('')
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-xl">
               {votingAction === 'start' ? 'Mulai Voting' : 'Hentikan Voting'}
             </DialogTitle>
             <DialogDescription>
               {votingAction === 'start'
-                ? 'Apakah Anda yakin ingin memulai voting? Siswa akan dapat melakukan pemilihan setelah voting dimulai.'
-                : 'Apakah Anda yakin ingin menghentikan voting? Siswa tidak akan dapat melakukan pemilihan setelah voting dihentikan.'
-              }
+                ? 'Voting akan dibuka: siswa dan pegawai langsung dapat memilih di mesin masing-masing.'
+                : 'Voting akan ditutup: mesin pemilih berhenti menerima suara.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-4">
-            <Label htmlFor="confirm-password">
-              Masukkan password untuk konfirmasi:
-            </Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              placeholder="Masukkan password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !isToggling) {
-                  handleConfirmToggle()
-                }
-              }}
-              className="h-10"
-            />
-            <p className="text-xs text-muted-foreground">Password diperlukan untuk keamanan sistem</p>
+            <Label htmlFor="confirm-password">Password login Anda:</Label>
+            <div className="relative">
+              <Input
+                id="confirm-password"
+                type={tampilPassword ? 'text' : 'password'}
+                placeholder="Password login akun ini"
+                autoComplete="current-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isToggling) {
+                    handleConfirmToggle()
+                  }
+                }}
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setTampilPassword((t) => !t)}
+                aria-label={tampilPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-pressed={tampilPassword}
+                className="absolute right-0 top-0 flex size-10 items-center justify-center rounded-md text-slate-500 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+              >
+                {tampilPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Password diverifikasi di server; yang salah tidak mengubah apa pun.
+            </p>
           </div>
           <DialogFooter className="gap-3 sm:gap-3">
             <Button
@@ -344,21 +381,19 @@ export default function PengaturanPage() {
               variant={votingAction === 'start' ? 'default' : 'destructive'}
               onClick={handleConfirmToggle}
               disabled={isToggling || !confirmPassword}
+              className={votingAction === 'start' ? 'bg-[#1e3a8a] hover:bg-[#172554]' : ''}
             >
               {isToggling ? (
                 <>
-                  <RefreshCw className="animate-spin" />
-                  Memproses...
+                  <Loader2 className="size-4 animate-spin" /> Memproses...
                 </>
               ) : votingAction === 'start' ? (
                 <>
-                  <Play />
-                  Ya, Mulai
+                  <Play className="size-4" /> Ya, Mulai
                 </>
               ) : (
                 <>
-                  <Square />
-                  Ya, Hentikan
+                  <Square className="size-4" /> Ya, Hentikan
                 </>
               )}
             </Button>
